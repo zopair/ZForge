@@ -47,16 +47,16 @@ const runtime = executionBackend === 'container'
     }).initialize()
   : hostRuntime;
 const artifactStore = await new LocalArtifactStore({ rootDir: artifactDir }).initialize();
-const androidBuildPath = executionBackend === 'container' ? null : process.env.PATH ?? null;
+const buildPath = executionBackend === 'container' ? null : process.env.PATH ?? null;
 const androidBuildService = new AndroidBuildService({
   runtime,
   artifactStore,
   androidHome: process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT ?? null,
   javaHome: process.env.JAVA_HOME ?? null,
-  path: androidBuildPath,
+  path: buildPath,
   timeoutMs: Number(process.env.ZFORGE_ANDROID_BUILD_TIMEOUT_MS ?? 840000),
 });
-const webBuildService = new WebBuildService({ runtime, artifactStore, path: process.env.PATH ?? null, timeoutMs: Number(process.env.ZFORGE_WEB_BUILD_TIMEOUT_MS ?? 840000) });
+const webBuildService = new WebBuildService({ runtime, artifactStore, path: buildPath, timeoutMs: Number(process.env.ZFORGE_WEB_BUILD_TIMEOUT_MS ?? 840000) });
 const webBrowserVerificationService = new WebBrowserVerificationService({ runtime, timeoutMs: Number(process.env.ZFORGE_BROWSER_VERIFY_TIMEOUT_MS ?? 30000) });
 const voiceService = new LocalVoiceService({
   whisperCommand: process.env.ZFORGE_WHISPER_BIN ?? 'whisper-cli',
