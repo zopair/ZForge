@@ -62,6 +62,11 @@ const voiceService = new LocalVoiceService({
   ffmpegCommand: process.env.ZFORGE_FFMPEG_BIN ?? 'ffmpeg',
   piperCommand: process.env.ZFORGE_PIPER_BIN ?? 'python3',
   piperModelPath: process.env.ZFORGE_PIPER_MODEL ?? null,
+  kemetonePythonCommand: process.env.ZFORGE_KEMETONE_PYTHON ?? 'python3',
+  kemetoneModelDir: process.env.ZFORGE_KEMETONE_DIR ?? null,
+  kemetoneEspeakCommand: process.env.ZFORGE_KEMETONE_ESPEAK_BIN ?? 'espeak-ng',
+  kemetoneEspeakLib: process.env.ZFORGE_KEMETONE_ESPEAK_LIB ?? null,
+  kemetoneTimeoutMs: Number(process.env.ZFORGE_KEMETONE_TIMEOUT_MS ?? 300000),
   timeoutMs: Number(process.env.ZFORGE_VOICE_TIMEOUT_MS ?? 120000),
 });
 const modelAdapter = new OllamaModelAdapter({ baseUrl: process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434' });

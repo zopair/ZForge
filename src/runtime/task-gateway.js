@@ -281,7 +281,10 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
         return artifact ? send(response, 200, artifact) : send(response, 404, { error: 'artifact_not_found' });
       }
       if (request.method === 'GET' && url.pathname === '/api/voice/capabilities') {
-        return send(response, 200, { capabilities: voiceService?.capabilities?.() ?? { transcription: false, synthesis: false, localOnly: true } });
+        const capabilities = voiceService?.inspectCapabilities
+          ? await voiceService.inspectCapabilities()
+          : voiceService?.capabilities?.() ?? { transcription: false, synthesis: false, localOnly: true };
+        return send(response, 200, { capabilities });
       }
       if (request.method === 'POST' && url.pathname === '/api/voice/transcribe') {
         if (!voiceService || typeof voiceService.transcribe !== 'function') return send(response, 503, { error: 'local_transcription_unavailable' });
@@ -297,7 +300,7 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
         if (!voiceService || typeof voiceService.synthesize !== 'function') return send(response, 503, { error: 'local_synthesis_unavailable' });
         try {
           const body = await readJson(request, maxBodyBytes);
-          const result = await voiceService.synthesize({ text: body.text });
+          const result = await voiceService.synthesize({ text: body.text, engine: body.engine ?? 'auto' });
           response.writeHead(200, {
             'Content-Type': result.contentType ?? 'audio/wav',
             'Content-Length': result.audio.length,

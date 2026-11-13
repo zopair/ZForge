@@ -23,6 +23,8 @@ jobs:
           node-version: 24
       - name: Run dependency-free unit tests
         run: npm test
+      - name: Validate offline KemeTone Python adapter syntax
+        run: python3 -m py_compile scripts/kemetone-inference.py
 
   browser-smoke:
     timeout-minutes: 30

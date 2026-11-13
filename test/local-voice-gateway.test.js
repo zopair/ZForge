@@ -11,9 +11,10 @@ test('voice gateway authenticates and routes audio to local transcription and sy
   const wav = Buffer.from('RIFF0000WAVEdata');
   const voiceService = {
     maxAudioBytes: 1024,
-    capabilities: () => ({ transcription: true, synthesis: true, localOnly: true }),
+    capabilities: () => ({ transcription: false, synthesis: false, localOnly: true }),
+    inspectCapabilities: async () => ({ transcription: true, synthesis: true, localOnly: true, checks: { whisperExecutable: true, piperModule: true } }),
     transcribe: async input => { received.audio = input.audio; received.contentType = input.contentType; return { text: 'local words', engine: 'whisper.cpp', local: true }; },
-    synthesize: async input => { received.text = input.text; return { audio: wav, contentType: 'audio/wav' }; },
+    synthesize: async input => { received.text = input.text; received.engine = input.engine; return { audio: wav, contentType: 'audio/wav' }; },
   };
   const gateway = createTaskGateway({ dataDir: root, token: 'local-voice-gateway-token', voiceService });
   await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
@@ -23,7 +24,7 @@ test('voice gateway authenticates and routes audio to local transcription and sy
     const denied = await fetch(base + '/api/voice/capabilities');
     assert.equal(denied.status, 401);
     const capabilities = await fetch(base + '/api/voice/capabilities', { headers });
-    assert.deepEqual((await capabilities.json()).capabilities, { transcription: true, synthesis: true, localOnly: true });
+    assert.deepEqual((await capabilities.json()).capabilities, { transcription: true, synthesis: true, localOnly: true, checks: { whisperExecutable: true, piperModule: true } });
     const transcribed = await fetch(base + '/api/voice/transcribe', { method: 'POST', headers: { ...headers, 'Content-Type': 'audio/webm' }, body: Buffer.from('fake audio') });
     assert.equal(transcribed.status, 200);
     assert.equal((await transcribed.json()).text, 'local words');
@@ -34,6 +35,7 @@ test('voice gateway authenticates and routes audio to local transcription and sy
     assert.equal(synthesized.headers.get('content-type'), 'audio/wav');
     assert.equal(Buffer.from(await synthesized.arrayBuffer()).toString(), wav.toString());
     assert.equal(received.text, 'hello');
+    assert.equal(received.engine, 'auto');
   } finally {
     await new Promise(resolve => gateway.server.close(resolve));
     await rm(root, { recursive: true, force: true });
