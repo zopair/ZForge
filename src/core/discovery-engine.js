@@ -34,7 +34,7 @@ const OPEN_SOURCE_LICENSES = new Set([
   'LGPL-3.0-only','LGPL-3.0-or-later','MIT','MPL-1.1','MPL-2.0','MS-PL','MS-RL','NCSA',
   'OFL-1.1','OSL-3.0','PostgreSQL','Python-2.0','Unlicense','UPL-1.0','WTFPL','Zlib',
 ]);
-const NON_OPEN_SOURCE_MARKERS = ['BUSL','BSL-','SSPL','ELASTIC','COMMONS-CLAUSE','SOURCE-AVAILABLE','PROPRIETARY'];
+const NON_OPEN_SOURCE_MARKERS = ['BUSL','SSPL','ELASTIC','COMMONS-CLAUSE','SOURCE-AVAILABLE','PROPRIETARY'];
 
 export function buildDiscoveryPlan({ capabilities = [], keywords = [], maxQueries = 48 } = {}) {
   if (!Array.isArray(capabilities) || !Array.isArray(keywords)) throw new TypeError('capabilities and keywords must be arrays');
@@ -106,11 +106,13 @@ export function evaluateRepositoryCandidate(candidate) {
   const failures = [];
   const unresolved = [];
   if (candidate.archived === true) failures.push('ARCHIVED');
+  if (candidate.archived !== false) unresolved.push('ARCHIVE_STATUS_UNVERIFIED');
   if (license.status === 'NOT_OPEN_SOURCE') failures.push('NON_OPEN_SOURCE_LICENSE');
   if (candidate.paidDependency === true) failures.push('PAID_DEPENDENCY');
   if (candidate.zeroCostVerified === false) failures.push('NO_ZERO_COST_PATH');
   if (candidate.selfHosted === false) failures.push('NO_SELF_HOSTED_PATH');
   if (candidate.securityBlocked === true) failures.push('SECURITY_BLOCK');
+  if (candidate.securityBlocked !== false) unresolved.push('SECURITY_BLOCK_STATUS_UNVERIFIED');
   if (license.status === 'UNKNOWN') unresolved.push('LICENSE_UNVERIFIED');
   if (candidate.zeroCostVerified !== true && candidate.zeroCostVerified !== false) unresolved.push('ZERO_COST_UNVERIFIED');
   if (candidate.selfHosted !== true && candidate.selfHosted !== false) unresolved.push('SELF_HOSTING_UNVERIFIED');
@@ -122,7 +124,7 @@ export function evaluateRepositoryCandidate(candidate) {
   if (candidate.dependencyReviewComplete !== true) unresolved.push('DEPENDENCY_REVIEW_INCOMPLETE');
   if (candidate.securityReviewed !== true) unresolved.push('SECURITY_REVIEW_INCOMPLETE');
   if (candidate.maintenanceReviewed !== true) unresolved.push('MAINTENANCE_REVIEW_INCOMPLETE');
-  if (candidate.versionPinned !== true) unresolved.push('VERSION_NOT_PINNED');
+  if (candidate.versionPinned !== true || typeof candidate.version !== 'string' || !candidate.version.trim()) unresolved.push('VERSION_NOT_PINNED');
   if (failures.length) return { status:'REJECTED', eligible:false, license, failures, unresolved };
   if (unresolved.length) return { status:'QUARANTINED', eligible:false, license, failures, unresolved };
   return { status:'CANDIDATE', eligible:true, license, failures, unresolved:[] };
