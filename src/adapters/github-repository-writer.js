@@ -22,7 +22,7 @@ export class GitHubRepositoryWriter{
     if(!response.ok)throw new GitHubWriteError(`GitHub write request failed with HTTP ${response.status}.`,{status:response.status});
     return response.json();
   }
-  async createTaskBranch({branch,baseRef=this.defaultBranch}={}){
+  async createTaskBranch({branch,baseRef=this.defaultBranch,approval}={}){
     this.assertTaskBranch(branch);
     if(typeof baseRef!=='string'||!baseRef.trim())throw new TypeError('baseRef is required');
     const approved=await this.approvalVerifier(approval,{type:'create-branch',repository:this.repository,branch,baseRef});
