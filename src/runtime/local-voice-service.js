@@ -74,6 +74,26 @@ async function executableAvailable(command) {
   return false;
 }
 
+async function directoryAvailable(path) {
+  if (!path) return false;
+  try { return (await stat(path)).isDirectory(); }
+  catch { return false; }
+}
+
+async function readValidWav(outputPath, directory, maxBytes, engine) {
+  const info = await lstat(outputPath);
+  if (info.isSymbolicLink() || !info.isFile() || info.size < 12 || info.size > maxBytes) {
+    throw new Error(engine + ' did not produce a WAV file within the configured size limit');
+  }
+  const actual = await realpath(outputPath);
+  if (!actual.startsWith(directory + sep)) throw new Error(engine + ' output escaped its temporary directory');
+  const audio = await readFile(actual);
+  if (audio.subarray(0, 4).toString() !== 'RIFF' || audio.subarray(8, 12).toString() !== 'WAVE') {
+    throw new Error(engine + ' output is not a valid WAV file');
+  }
+  return audio;
+}
+
 async function regularModelFile(path) {
   if (!path) return false;
   try { return (await stat(path)).isFile(); }
@@ -283,9 +303,45 @@ export class LocalVoiceService {
     }
   }
 
-  async synthesize({ text } = {}) {
-    if (!this.piperModelPath) throw new Error('local Piper speech synthesis is not configured');
+  async synthesize({ text, engine = 'auto' } = {}) {
     if (typeof text !== 'string' || !text.trim() || text.length > MAX_TEXT_LENGTH) throw new TypeError('synthesis text must contain 1..8000 characters');
+    if (!['auto', 'piper', 'kemetone'].includes(engine)) throw new TypeError('synthesis engine must be auto, piper or kemetone');
+    const readiness = this.readinessSnapshot ?? await this.inspectCapabilities();
+    const arabicOnly = /[\\p{Script=Arabic}]/u.test(text) && !/[A-Za-z0-9]/u.test(text);
+    const wordCount = text.trim().split(/\\s+/u).length;
+    const kemetoneCompatible = arabicOnly && wordCount <= this.maxKemetoneWords;
+    let selectedEngine = engine;
+    if (selectedEngine === 'auto') {
+      if (readiness.checks.kemetoneReady && kemetoneCompatible) selectedEngine = 'kemetone';
+      else if (readiness.checks.piperReady) selectedEngine = 'piper';
+      else if (readiness.checks.kemetoneReady && !kemetoneCompatible) {
+        throw new Error('KemeTone supports Arabic-script text only, without Latin letters or digits, and up to ' + this.maxKemetoneWords + ' words; configure Piper for mixed-language speech');
+      } else {
+        throw new Error('no local speech synthesis engine is ready');
+      }
+    }
+    if (selectedEngine === 'kemetone') {
+      if (!readiness.checks.kemetoneReady) throw new Error('local KemeTone Egyptian speech synthesis is not ready');
+      if (!kemetoneCompatible) throw new TypeError('KemeTone supports Arabic-script text only, without Latin letters or digits, and up to ' + this.maxKemetoneWords + ' words');
+      const directory = await mkdtemp(join(tmpdir(), 'zforge-kemetone-'));
+      const outputPath = join(directory, 'speech.wav');
+      try {
+        const modelScript = join(this.kemetoneModelDir, 'example.py');
+        await runLocalProcess({
+          command: this.kemetonePythonCommand,
+          args: [modelScript, text.trim(), outputPath],
+          cwd: this.kemetoneModelDir,
+          timeoutMs: this.kemetoneTimeoutMs,
+          maxOutputBytes: this.maxOutputBytes,
+          extraEnv: this.kemetoneEspeakLib ? { KEMETONE_ESPEAK_LIB: this.kemetoneEspeakLib } : {},
+        });
+        const audio = await readValidWav(outputPath, directory, this.maxSynthesizedBytes, 'KemeTone');
+        return { audio, contentType: 'audio/wav', engine: 'KemeTone Egyptian', local: true };
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
+    }
+    if (!readiness.checks.piperReady) throw new Error('local Piper speech synthesis is not ready');
     const model = await assertModelFile(this.piperModelPath, 'Piper voice model');
     const directory = await mkdtemp(join(tmpdir(), 'zforge-piper-'));
     const outputPath = join(directory, 'speech.wav');
@@ -297,12 +353,7 @@ export class LocalVoiceService {
         timeoutMs: this.timeoutMs,
         maxOutputBytes: this.maxOutputBytes,
       });
-      const info = await lstat(outputPath);
-      if (info.isSymbolicLink() || !info.isFile() || info.size < 12 || info.size > this.maxSynthesizedBytes) throw new Error('Piper did not produce a valid WAV file within the configured size limit');
-      const actual = await realpath(outputPath);
-      if (!actual.startsWith(directory + sep)) throw new Error('Piper output escaped its temporary directory');
-      const audio = await readFile(actual);
-      if (audio.subarray(0, 4).toString() !== 'RIFF' || audio.subarray(8, 12).toString() !== 'WAVE') throw new Error('Piper output is not a valid WAV file');
+      const audio = await readValidWav(outputPath, directory, this.maxSynthesizedBytes, 'Piper');
       return { audio, contentType: 'audio/wav', engine: 'Piper', local: true };
     } finally {
       await rm(directory, { recursive: true, force: true });
