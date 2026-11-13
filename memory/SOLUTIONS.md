@@ -28,3 +28,10 @@ No runtime solutions recorded.
 - Verification: GitHub Actions run 43367618834, Node.js 24.22.2; 49 passed, 0 failed.
 - Safety evidence: local memory and prompt readers reject symlinks; GitHub writer requires a server-side token, an approval verifier, an authorized task branch and explicit path scope; no merge-to-main method exists.
 - Limitations: no configured token/approval verifier, no live task gateway, no execution sandbox, no local model installation, no live voice or Android/iOS worker.
+
+
+## ZF-SOL-004 — Approval-gated draft PR workflow (2026-11-13)
+- Scope: add GitHub draft pull request creation and read-only PR status retrieval to the task-branch writer; remove duplicate Apple vendor seed.
+- Verification: GitHub Actions run 43367816284, Node.js 24.22.2; 50 passed, 0 failed.
+- Safety: PR creation requires approval bound to task branch and base ref; writer has no merge method.
+- Limitation: this is an adapter only. No GitHub token, approval-verification service, task gateway or autonomous worker is configured.
