@@ -22,3 +22,36 @@ test('Chief Agent refuses to plan without a task request',async()=>{
   const agent=new ChiefAgent({modelAdapter:{chat:async()=>({content:'x'})},discoveryService:{discover:async()=>({})},memoryStore:{loadRelevant:async()=>({})},promptProvider:{getChiefAgentPrompt:async()=>''},model:'local-model'});
   await assert.rejects(()=>agent.planTask({request:' '}),/request/i);
 });
+
+test('Chief Agent includes a proposed zero-cost internal build brief when complete discovery finds no eligible tool', async () => {
+  let submittedPrompt = '';
+  const agent = new ChiefAgent({
+    modelAdapter: { chat: async ({ messages }) => { submittedPrompt = messages[1].content; return { content: 'Build the missing tool in an isolated task branch.' }; } },
+    discoveryService: { discover: async () => ({ status: 'BATCH_COMPLETE', queryCatalogComplete: true, results: [] }) },
+    memoryStore: { loadRelevant: async () => ({}) },
+    promptProvider: { getChiefAgentPrompt: async () => 'Canonical instructions' },
+    model: 'local-model',
+  });
+  const result = await agent.planTask({ request: 'Build offline Arabic OCR', capabilities: ['offline-arabic-ocr'] });
+  const context = JSON.parse(submittedPrompt.slice(submittedPrompt.indexOf('\\n') + 1));
+  assert.equal(context.capabilityGapDecisions[0].action, 'BUILD_INTERNAL_TOOL');
+  assert.equal(context.toolBuildBriefs[0].zeroBudgetOnly, true);
+  assert.equal(context.toolBuildBriefs[0].openSourceOnly, true);
+  assert.equal(result.executionStarted, false);
+  assert.equal(result.requiresApproval, true);
+});
+
+test('Chief Agent does not create a build brief while discovery is incomplete', async () => {
+  let submittedPrompt = '';
+  const agent = new ChiefAgent({
+    modelAdapter: { chat: async ({ messages }) => { submittedPrompt = messages[1].content; return { content: 'Continue bounded discovery.' }; } },
+    discoveryService: { discover: async () => ({ status: 'RATE_LIMITED', queryCatalogComplete: false, results: [] }) },
+    memoryStore: { loadRelevant: async () => ({}) },
+    promptProvider: { getChiefAgentPrompt: async () => 'Canonical instructions' },
+    model: 'local-model',
+  });
+  await agent.planTask({ request: 'Find offline OCR', capabilities: ['offline-arabic-ocr'] });
+  const context = JSON.parse(submittedPrompt.slice(submittedPrompt.indexOf('\\n') + 1));
+  assert.equal(context.capabilityGapDecisions[0].action, 'CONTINUE_DISCOVERY');
+  assert.equal(context.toolBuildBriefs.length, 0);
+});
