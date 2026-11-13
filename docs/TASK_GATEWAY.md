@@ -17,6 +17,11 @@ export ZFORGE_HOST=127.0.0.1
 export ZFORGE_PORT=8787
 export ZFORGE_DATA_DIR="$PWD/.zforge-data"
 export ZFORGE_WORKSPACE_DIR="$PWD/.zforge-workspaces"
+export ZFORGE_REPO_ROOT="$PWD"
+export ZFORGE_MODEL=qwen3:8b
+export ZFORGE_ALLOWED_ORIGINS=https://zopair.github.io
+# Optional: a GitHub token increases public API search quota; keep it server-side only.
+# export GITHUB_TOKEN=...
 npm start
 ```
 
@@ -29,12 +34,14 @@ All endpoints except health require `Authorization: Bearer <token>`.
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/health` | Liveness response; contains no secret |
+| GET | `/api/models` | List installed Ollama models |
 | GET | `/api/tasks` | List durable task records |
 | POST | `/api/tasks` | Create a queued task: `{ "request": "...", "workspaceId": "..." }` |
 | GET | `/api/tasks/:id` | Read task state and event history |
 | PATCH | `/api/tasks/:id` | Apply a valid lifecycle transition |
 | POST | `/api/workspaces` | Create a workspace: `{ "id": "..." }` |
 | POST | `/api/tasks/:id/execute` | Run an explicit command in that task's workspace |
+| POST | `/api/tasks/:id/agent-run` | Run Chief Agent planning followed by the local model tool loop; requires `confirmExecution: true` |
 
 Execution body example:
 
@@ -53,7 +60,9 @@ Commands are launched with `shell:false`; pass executable and arguments separate
 
 This is a local host process runner, not a container sandbox. A process inherits the operating-system identity and filesystem/network reach of the ZForge service account. Run it under a dedicated unprivileged account or inside a disposable container/VM with only the intended workspace mounted. Do not run it as root or expose it directly to untrusted networks.
 
-The API currently accepts explicit command invocations from an authenticated caller. It does not yet autonomously translate Chief Agent plans into tool calls, stream events to BLACK VANTA, or provision Android signing/build infrastructure. Those are separate integration phases.
+The `agent-run` endpoint invokes Chief Agent planning (memory + bounded GitHub discovery + canonical prompt), then passes the plan to the local Ollama tool loop. Available tools are `run_command`, `read_file`, `write_file`, `list_files` and evidence-backed `finish_task`. A task is marked succeeded only when the model cites successful tool-result IDs. Otherwise it remains inconclusive. The BLACK VANTA PWA can connect to this API, discover installed models, submit tasks and display the result.
+
+This is not yet an isolated sandbox. It also does not yet provide container workers, live streaming/SSE, a multi-agent scheduler, autonomous Agent Architect activation, voice, Android/iOS build/signing, or a full artifact release pipeline.
 
 ## Data and recovery
 
