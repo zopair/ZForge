@@ -45,8 +45,9 @@ function validateIssue(input, { partial = false } = {}) {
   for (const field of ['evidence', 'attempts', 'regressionTests']) {
     if (!partial || Object.hasOwn(input, field)) {
       if (field === 'regressionTests') {
-        if (!Array.isArray(input[field]) || input[field].length > 50 || input[field].some(item => typeof item !== 'string' || !item.trim() || item.length > 500)) throw new TypeError('regressionTests must contain at most 50 non-empty strings');
-        result[field] = [...input[field]];
+        const entries = input[field] ?? [];
+        if (!Array.isArray(entries) || entries.length > 50 || entries.some(item => typeof item !== 'string' || !item.trim() || item.length > 500)) throw new TypeError('regressionTests must contain at most 50 non-empty strings');
+        result[field] = [...entries];
       } else {
         result[field] = boundedList(input[field] ?? [], field, field === 'evidence' ? 50 : 50);
       }
