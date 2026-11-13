@@ -79,3 +79,25 @@ test('reverse engineering is limited to lawful interoperability and clean-room a
   assert.ok(denied.blockers.includes('ACCESS_CONTROL_BYPASS'));
   assert.ok(denied.blockers.includes('PRIVATE_DATA_OR_SECRET_EXPOSURE'));
 });
+
+test('complete discovery with unreviewed candidates requires evaluation before building', () => {
+  const gap = assessCapabilityGap({
+    capability: 'offline-arabic-ocr',
+    discovery: { status: 'COMPLETE', complete: true, results: [{ fullName: 'org/candidate' }] },
+  });
+  assert.equal(gap.action, 'EVALUATE_DISCOVERED_CANDIDATES');
+  assert.equal(gap.requiresApproval, false);
+});
+
+test('a build is proposed only after all discovered candidates have been evaluated', () => {
+  const gap = assessCapabilityGap({
+    capability: 'offline-arabic-ocr',
+    discovery: {
+      status: 'COMPLETE',
+      complete: true,
+      candidateEvaluationComplete: true,
+      results: [{ fullName: 'org/closed-tool', evaluation: { status: 'REJECTED', eligible: false } }],
+    },
+  });
+  assert.equal(gap.action, 'BUILD_INTERNAL_TOOL');
+});
