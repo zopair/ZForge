@@ -139,3 +139,24 @@ test('Chief Agent rejects orchestration plans that invent agents or contain cycl
   assert.equal(cycle.orchestrationTasks, null);
   assert.match(cycle.orchestrationPlanError, /cycle/i);
 });
+
+
+test('Chief Agent includes the self-healing discovery, repair, micro-tool and learning lifecycle in every plan context', async () => {
+  let submittedPrompt = '';
+  const agent = new ChiefAgent({
+    modelAdapter: { chat: async ({ messages }) => { submittedPrompt = messages[1].content; return { content: 'Diagnose, discover, repair and verify.' }; } },
+    discoveryService: { discover: async () => ({ status: 'COMPLETE', complete: true, results: [] }) },
+    memoryStore: { loadRelevant: async () => ({}) },
+    promptProvider: { getChiefAgentPrompt: async () => 'Canonical instructions' },
+    model: 'local-model',
+  });
+  const result = await agent.planTask({ request: 'Build and test a local tool' });
+  const context = JSON.parse(submittedPrompt.split(String.fromCharCode(10)).slice(1).join(String.fromCharCode(10)));
+  assert.equal(context.selfHealingEngineering.enabled, true);
+  assert.equal(context.selfHealingEngineering.zeroBudgetOnly, true);
+  assert.equal(context.selfHealingEngineering.openSourceOnly, true);
+  assert.equal(context.selfHealingEngineering.incompleteDiscoveryMustContinue, true);
+  assert.ok(context.selfHealingEngineering.lifecycle.includes('classify-root-cause'));
+  assert.ok(context.selfHealingEngineering.lifecycle.includes('build-minimal-original-micro-tool-only-after-complete-discovery'));
+  assert.equal(result.requiresApproval, true);
+});
