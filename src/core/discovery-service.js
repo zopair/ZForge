@@ -26,7 +26,7 @@ export class UniversalDiscoveryService {
       ?organizations.slice(vendorOffset,vendorOffset+this.maxVendorOrgsPerRun):[];
     const results=new Map();const searched=[];const cached=[];const queryReports=[];
     const organizationScans=[];const organizationCached=[];
-    let rateLimit=null;const apiErrors=[];let nextOffset=queryOffset;let nextQueryPage=queryPage;let nextVendorOffset=vendorOffset;let nextVendorPage=vendorPage;
+    let rateLimit=null;const apiErrors=[];const unavailableOrganizations=[];let fatalError=false;let nextOffset=queryOffset;let nextQueryPage=queryPage;let nextVendorOffset=vendorOffset;let nextVendorPage=vendorPage;
     const addResults=items=>{for(const item of items??[])results.set(String(item.id??item.fullName),item);};
     for(let index=0;index<selected.length;index++){
       const query=selected[index];const page=index===0?queryPage:1;const key=`query:${query}:page:${page}`;
@@ -37,9 +37,10 @@ export class UniversalDiscoveryService {
           response=await this.client.searchRepositories(query,{maxResults:this.maxResultsPerQuery,page});
           searched.push(query);this.cache.set(key,{savedAt:Date.now(),response});
         }catch(error){
-          if(error instanceof GitHubDiscoveryError&&(error.status===403||error.status===429)){rateLimit={status:error.status,resetAt:error.resetAt??null,message:error.message};}
-          else apiErrors.push({query,message:error instanceof Error?error.message:String(error)});
-          break;
+          if(error instanceof GitHubDiscoveryError&&(error.status===403||error.status===429)){rateLimit={status:error.status,resetAt:error.resetAt??null,message:error.message};break;}
+          apiErrors.push({query,message:error instanceof Error?error.message:String(error),status:error.status??null});
+          if(error instanceof GitHubDiscoveryError&&(error.status===404||error.status===422)){nextOffset=queryOffset+index+1;nextQueryPage=1;continue;}
+          fatalError=true;break;
         }
       }
       addResults(response.results);
@@ -49,7 +50,7 @@ export class UniversalDiscoveryService {
       }
       nextOffset=queryOffset+index+1;nextQueryPage=1;
     }
-    if(!rateLimit&&!apiErrors.length&&includeVendorSeeds&&typeof this.client.listOrganizationRepositories==='function'){
+    if(!rateLimit&&!fatalError&&includeVendorSeeds&&typeof this.client.listOrganizationRepositories==='function'){
       let currentVendorOffset=vendorOffset;let currentVendorPage=vendorPage;
       for(const entry of selectedOrganizations){
         const key=`org:${entry.organization}:page:${currentVendorPage}`;const cachedEntry=this.cache.get(key);
@@ -58,9 +59,9 @@ export class UniversalDiscoveryService {
         else{
           try{response=await this.client.listOrganizationRepositories(entry.organization,{page:currentVendorPage,perPage:100});this.cache.set(key,{savedAt:Date.now(),response});}
           catch(error){
-            if(error instanceof GitHubDiscoveryError&&(error.status===403||error.status===429))rateLimit={status:error.status,resetAt:error.resetAt??null,message:error.message};
-            else apiErrors.push({organization:entry.organization,message:error instanceof Error?error.message:String(error)});
-            break;
+            if(error instanceof GitHubDiscoveryError&&(error.status===403||error.status===429)){rateLimit={status:error.status,resetAt:error.resetAt??null,message:error.message};break;}
+            if(error instanceof GitHubDiscoveryError&&error.status===404){unavailableOrganizations.push(entry.organization);currentVendorOffset++;currentVendorPage=1;continue;}
+            apiErrors.push({organization:entry.organization,message:error instanceof Error?error.message:String(error),status:error.status??null});fatalError=true;break;
           }
         }
         addResults(response.results);
@@ -75,15 +76,15 @@ export class UniversalDiscoveryService {
     const vendorScanAvailable=!includeVendorSeeds||typeof this.client.listOrganizationRepositories==='function';
     const queryComplete=nextOffset>=unique.length;
     const vendorComplete=!includeVendorSeeds||nextVendorOffset>=organizations.length;
-    const complete=queryComplete&&vendorComplete;
+    const complete=queryComplete&&vendorComplete&&apiErrors.length===0&&unavailableOrganizations.length===0;
     return {
       plan,results:[...results.values()],searchedQueries:searched,cachedQueries:cached,queryReports,
-      vendorOrganizationsScanned:organizationScans,vendorOrganizationsCached:organizationCached,
+      vendorOrganizationsScanned:organizationScans,vendorOrganizationsCached:organizationCached,unavailableOrganizations,
       vendorScanAvailable,failedQueries:apiErrors,rateLimit,queryBudget:this.maxQueriesPerRun,
       queryOffset,nextOffset,queryPage,nextQueryPage,remainingQueries:Math.max(0,unique.length-nextOffset),
       vendorOffset,nextVendorOffset,nextVendorPage,remainingVendorOrganizations:Math.max(0,organizations.length-nextVendorOffset),
       complete,
-      status:rateLimit?'PAUSED_RATE_LIMIT':apiErrors.length?'PARTIAL_ERROR':!vendorScanAvailable?'VENDOR_SCAN_UNAVAILABLE':complete?'COMPLETE':'BATCH_COMPLETE',
+      status:rateLimit?'PAUSED_RATE_LIMIT':apiErrors.length||unavailableOrganizations.length?'PARTIAL_ERROR':!vendorScanAvailable?'VENDOR_SCAN_UNAVAILABLE':complete?'COMPLETE':'BATCH_COMPLETE',
       retrievedAt:new Date().toISOString(),
     };
   }
