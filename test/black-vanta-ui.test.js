@@ -16,6 +16,8 @@ test('BLACK VANTA exposes an active Arabic RTL chat composer and runtime connect
   assert.match(html, /id="runtime-token"/);
   assert.match(html, /id="runtime-model"/);
   assert.match(html, /id="runtime-agent"/);
+  assert.match(html, /id="android-project-path"/);
+  assert.match(html, /id="android-build-button"/);
   assert.doesNotMatch(html.match(/<input[^>]*id="chat-input"[^>]*>/)?.[0] ?? '', /\bdisabled\b/);
 });
 
@@ -41,6 +43,8 @@ test('BLACK VANTA connects to the authenticated task and model APIs without pers
   assert.match(js, /agentId/);
   assert.match(js, /api\("\/api\/tasks"/);
   assert.match(js, /agent-run/);
+  assert.match(js, /android-build/);
+  assert.match(js, /formats:\["apk","aab"\]/);
   assert.match(js, /confirmExecution:true/);
   assert.ok(js.includes('/api/artifacts/'));
   assert.match(js, /URL.createObjectURL/);

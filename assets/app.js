@@ -7,6 +7,8 @@ const runtimeUrlInput=document.getElementById("runtime-url");
 const runtimeTokenInput=document.getElementById("runtime-token");
 const runtimeModelSelect=document.getElementById("runtime-model");
 const runtimeAgentSelect=document.getElementById("runtime-agent");
+const androidProjectPath=document.getElementById("android-project-path");
+const androidBuildButton=document.getElementById("android-build-button");
 const connectButton=document.getElementById("connect-runtime");
 const runtimeBadge=document.getElementById("runtime-badge");
 const chiefStatus=document.getElementById("chief-status");
@@ -16,6 +18,7 @@ const securityNote=document.getElementById("security-note");
 let runtimeBaseUrl="";
 let runtimeToken="";
 let connected=false;
+let latestTaskId=null;
 
 function setConnectionState(value){
   connected=value;
@@ -23,6 +26,7 @@ function setConnectionState(value){
   runtimeBadge.textContent=value?"RUNTIME ONLINE":"RUNTIME OFFLINE";
   chiefStatus.textContent=value?"النموذج المحلي متصل":"بانتظار الاتصال";
   executionStatus.textContent=value?"جاهز لتنفيذ المهام":"بانتظار الاتصال";
+  androidBuildButton.disabled=!(value&&latestTaskId);
   document.querySelector(".connection-state")?.classList.toggle("is-connected",value);
 }
 
@@ -164,6 +168,36 @@ connectButton.addEventListener("click",async()=>{
   }
 });
 
+androidBuildButton.addEventListener("click",async()=>{
+  if(!connected||!latestTaskId)return;
+  androidBuildButton.disabled=true;
+  const originalLabel=androidBuildButton.textContent;
+  androidBuildButton.textContent="جارٍ بناء APK وAAB...";
+  executionStatus.textContent="جارٍ اختبار وبناء Android...";
+  try{
+    const projectPath=androidProjectPath.value.trim()||".";
+    const completed=await api("/api/tasks/"+encodeURIComponent(latestTaskId)+"/android-build",{
+      method:"POST",
+      body:{confirmExecution:true,projectPath,formats:["apk","aab"],runTests:true}
+    });
+    const result=completed.result??{};
+    if(completed.status==="succeeded"&&result.status==="succeeded"){
+      appendMessage("اكتمل بناء Android. تم نشر "+(result.artifacts??[]).length+" ملفاً مع بصمات SHA-256.");
+      for(const artifact of result.artifacts??[])appendArtifactLink(artifact);
+      executionStatus.textContent="بناء Android مكتمل";
+    }else{
+      appendMessage("فشل بناء Android: "+(result.error||completed.error||"لم يتم إنشاء ملفات APK/AAB."));
+      executionStatus.textContent="بناء Android فشل";
+    }
+  }catch(error){
+    appendMessage("تعذر بناء Android: "+error.message);
+    executionStatus.textContent="تعذر بناء Android";
+  }finally{
+    androidBuildButton.textContent=originalLabel;
+    androidBuildButton.disabled=!(connected&&latestTaskId);
+  }
+});
+
 form.addEventListener("submit",async event=>{
   event.preventDefault();
   const message=input.value.trim();
@@ -179,6 +213,8 @@ form.addEventListener("submit",async event=>{
   executionStatus.textContent="جارٍ تنفيذ المهمة...";
   try{
     const task=await api("/api/tasks",{method:"POST",body:{request:message}});
+    latestTaskId=task.id;
+    androidBuildButton.disabled=false;
     const runBody={model:runtimeModelSelect.value,confirmExecution:true};
     if(runtimeAgentSelect.value)runBody.agentId=runtimeAgentSelect.value;
     const completed=await api("/api/tasks/"+encodeURIComponent(task.id)+"/agent-run",{

@@ -145,7 +145,7 @@ export class TaskStore {
   }
 }
 
-export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, agentFactory = null, multiAgentCoordinator = null, artifactStore = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
+export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, agentFactory = null, multiAgentCoordinator = null, androidBuildService = null, artifactStore = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
   if (typeof token !== 'string' || token.length < 16) throw new TypeError('a gateway bearer token of at least 16 characters is required');
   if (!Number.isInteger(maxBodyBytes) || maxBodyBytes < 1024) throw new RangeError('maxBodyBytes must be at least 1024');
   if (!Array.isArray(allowedOrigins) || allowedOrigins.some(origin => typeof origin !== 'string' || !isValidOrigin(origin))) throw new TypeError('allowedOrigins must be an array of exact HTTP(S) origins');
@@ -337,6 +337,34 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
           return send(response, 200, completed);
         } catch (error) {
           const failed = await store.transition(task.id, 'failed', { error: error.message, details: { mode: 'local-agent' } });
+          return send(response, 200, failed);
+        }
+      }
+      const androidBuildMatch = url.pathname.match(/^\/api\/tasks\/([a-f0-9-]{36})\/android-build$/i);
+      if (androidBuildMatch && request.method === 'POST') {
+        if (!androidBuildService) return send(response, 503, { error: 'android_build_service_unavailable' });
+        const task = store.get(androidBuildMatch[1]);
+        if (!task) return send(response, 404, { error: 'task_not_found' });
+        const body = await readJson(request, maxBodyBytes);
+        if (body.confirmExecution !== true) return send(response, 409, { error: 'explicit_execution_confirmation_required' });
+        await store.transition(task.id, 'running', { details: { mode: 'android-gradle-build', projectPath: body.projectPath ?? '.' } });
+        try {
+          const result = await androidBuildService.build({
+            workspaceId: task.workspaceId,
+            projectPath: body.projectPath ?? '.',
+            variant: body.variant ?? 'debug',
+            formats: body.formats ?? ['apk'],
+            runTests: body.runTests !== false,
+          });
+          const status = result.status === 'succeeded' ? 'succeeded' : 'failed';
+          const completed = await store.transition(task.id, status, {
+            result,
+            error: status === 'succeeded' ? null : result.error ?? 'Android build failed',
+            details: { mode: 'android-gradle-build', artifactCount: result.artifacts?.length ?? 0 },
+          });
+          return send(response, 200, completed);
+        } catch (error) {
+          const failed = await store.transition(task.id, 'failed', { error: error.message, details: { mode: 'android-gradle-build' } });
           return send(response, 200, failed);
         }
       }
