@@ -107,7 +107,10 @@ test('Chief Agent extracts a bounded DAG only for independently active specialis
 
 test('Chief Agent rejects orchestration plans that invent agents or contain cycles', async () => {
   let response = '<ORCHESTRATION_PLAN>' + JSON.stringify({
-    tasks: [{ id: 'research', agentId: 'invented-agent', request: 'Do work', dependsOn: [] }],
+    tasks: [
+      { id: 'research', agentId: 'invented-agent', request: 'Do work', dependsOn: [] },
+      { id: 'build', agentId: 'invented-agent', request: 'Build work', dependsOn: ['research'] },
+    ],
   }) + '</ORCHESTRATION_PLAN>';
   const agent = new ChiefAgent({
     modelAdapter: { chat: async () => ({ content: response }) },
