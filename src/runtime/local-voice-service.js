@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
-import { mkdtemp, writeFile, readFile, lstat, stat, realpath, rm } from 'node:fs/promises';
+import { access, constants, mkdtemp, writeFile, readFile, lstat, stat, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { resolve, join, sep } from 'node:path';
+import { resolve, join, sep, delimiter } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 const AUDIO_TYPES = new Map([
@@ -60,6 +60,26 @@ function runLocalProcess({ command, args, input = null, cwd, timeoutMs, maxOutpu
   });
 }
 
+async function executableAvailable(command) {
+  if (typeof command !== 'string' || !command.trim()) return false;
+  const candidates = command.includes('/') || command.includes('\\')
+    ? [resolve(command)]
+    : (process.env.PATH ?? '').split(delimiter).filter(Boolean).map(directory => join(directory, command));
+  for (const candidate of candidates) {
+    try {
+      await access(candidate, constants.X_OK);
+      return true;
+    } catch {}
+  }
+  return false;
+}
+
+async function regularModelFile(path) {
+  if (!path) return false;
+  try { return (await stat(path)).isFile(); }
+  catch { return false; }
+}
+
 async function assertModelFile(path, label) {
   if (!path) throw new Error(label + ' is not configured');
   const info = await stat(path);
@@ -102,6 +122,53 @@ export class LocalVoiceService {
       synthesis: Boolean(this.piperModelPath),
       localOnly: true,
       engines: { transcription: this.whisperModelPath ? 'whisper.cpp' : null, synthesis: this.piperModelPath ? 'Piper' : null },
+    };
+  }
+
+  async inspectCapabilities() {
+    const checks = {
+      whisperExecutable: await executableAvailable(this.whisperCommand),
+      whisperModel: await regularModelFile(this.whisperModelPath),
+      ffmpegExecutable: await executableAvailable(this.ffmpegCommand),
+      piperInterpreter: await executableAvailable(this.piperCommand),
+      piperModel: await regularModelFile(this.piperModelPath),
+      piperConfig: await regularModelFile(this.piperModelPath ? this.piperModelPath + '.json' : null),
+      piperModule: false,
+    };
+    if (checks.piperInterpreter) {
+      const directory = await mkdtemp(join(tmpdir(), 'zforge-piper-check-'));
+      try {
+        await runLocalProcess({
+          command: this.piperCommand,
+          args: ['-c', 'import piper'],
+          cwd: directory,
+          timeoutMs: Math.min(this.timeoutMs, 15000),
+          maxOutputBytes: 32768,
+        });
+        checks.piperModule = true;
+      } catch {
+        checks.piperModule = false;
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
+    }
+    const transcription = checks.whisperExecutable && checks.whisperModel && checks.ffmpegExecutable;
+    const synthesis = checks.piperInterpreter && checks.piperModule && checks.piperModel && checks.piperConfig;
+    const issues = [];
+    if (!checks.whisperExecutable) issues.push('whisper.cpp executable is missing or not executable');
+    if (!checks.whisperModel) issues.push('Whisper model file is missing');
+    if (!checks.ffmpegExecutable) issues.push('FFmpeg is required for browser microphone audio');
+    if (!checks.piperInterpreter) issues.push('Piper Python interpreter is missing or not executable');
+    if (checks.piperInterpreter && !checks.piperModule) issues.push('Piper Python module is not installed in the configured interpreter');
+    if (!checks.piperModel) issues.push('Piper ONNX voice model is missing');
+    if (checks.piperModel && !checks.piperConfig) issues.push('Piper ONNX JSON sidecar config is missing');
+    return {
+      transcription,
+      synthesis,
+      localOnly: true,
+      engines: { transcription: transcription ? 'whisper.cpp' : null, synthesis: synthesis ? 'Piper' : null },
+      checks,
+      issues,
     };
   }
 
