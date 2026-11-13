@@ -10,6 +10,7 @@
 - `ContainerExecutionRuntime`: optional Podman/Docker backend with a read-only container root, workspace-only writable mount, CPU/RAM/PID limits and configurable bridge/none networking.
 - `LocalArtifactStore`: durable binary artifacts with SHA-256 integrity verification and authenticated downloads.
 - `AgentFactory` + `LocalAgentRegistry`: durable agent proposals, required test evidence, independent reviews, explicit activation approval and per-agent execution profiles.
+- `MultiAgentCoordinator`: bounded DAG execution for up to 32 delegated tasks, dependency-aware scheduling, per-agent profile enforcement, and preserved partial/failure outcomes.
 - `server.js`: environment-configured process entry point.
 
 ## Start
