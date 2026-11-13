@@ -63,6 +63,15 @@ try {
       const navigation = await page.goto(origin, { waitUntil: 'networkidle' });
       assert.equal(navigation?.status(), 200, name + ': app document should return HTTP 200');
       assert.match(await page.title(), /BLACK VANTA/);
+      await page.locator('#chat-input').fill('Build a sample PWA');
+      await page.locator('#send-button').click();
+      const cloudHandoff = page.locator('.cloud-task-link');
+      await cloudHandoff.waitFor({ timeout: 5000 });
+      const cloudHandoffUrl = new URL(await cloudHandoff.getAttribute('href'));
+      assert.equal(cloudHandoffUrl.origin, 'https://github.com', name + ': cloud handoff should use GitHub issue creation');
+      assert.equal(cloudHandoffUrl.pathname, '/zopair/ZForge/issues/new', name + ': cloud handoff should target the ZForge repository');
+      assert.match(cloudHandoffUrl.searchParams.get('title') ?? '', /^\\[ZForge Cloud Task\\]/, name + ': cloud task issue title should carry the execution prefix');
+      assert.equal(cloudHandoffUrl.searchParams.get('body'), 'Build a sample PWA', name + ': cloud task body should preserve the user request');
       assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
       const visualContract = await page.evaluate(() => {
         const style = selector => getComputedStyle(document.querySelector(selector));
