@@ -124,7 +124,7 @@ test('Chief Agent rejects orchestration plans that invent agents or contain cycl
     availableAgents: [{ id: 'builder', status: 'ACTIVE' }],
   });
   assert.equal(invalidAgent.orchestrationTasks, null);
-  assert.match(invalidAgent.orchestrationPlanError, /active agent/i);
+  assert.match(invalidAgent.orchestrationPlanError, /independently active/i);
 
   response = '<ORCHESTRATION_PLAN>' + JSON.stringify({
     tasks: [
