@@ -1,23 +1,56 @@
 # Tool Intelligence Registry
 
-Canonical index of category-specific evaluations. Popularity is discovery-only, never a ranking input.
+Canonical index of category-specific evaluations. Popularity is discovery-only and never a ranking input. No third-party project is approved merely because it appears in a search result.
 
 ## Status
-VERIFIED = passed recorded tests in stated environment. CONDITIONAL = documented constraint/incomplete evidence. CANDIDATE = discovered, untested. DEPRECATED = no longer preferred. REJECTED = failed a gate or test.
+- VERIFIED: passed recorded tests in a stated environment and pinned version.
+- CONDITIONAL: useful with explicit constraints or incomplete evidence.
+- CANDIDATE: discovered, not yet tested.
+- QUARANTINED: one or more hard gates are unknown.
+- DEPRECATED: no longer preferred.
+- REJECTED: failed a hard gate or representative test.
 
-## Registry
-No tools have been benchmarked yet. Do not invent winners or mark unevaluated tools strongest.
+## Internal discovery components (implementation status, not third-party approval)
+| Component | Location | State | Evidence |
+|---|---|---|---|
+| Discovery taxonomy/query planner | src/core/discovery-engine.js | Implemented; test pending CI | test/discovery-engine.test.js |
+| License classifier and eligibility gates | src/core/discovery-engine.js | Implemented; conservative allowlist | test/discovery-engine.test.js |
+| Toolchain compatibility composer | src/core/discovery-engine.js | Implemented; basic capability/conflict graph | test/discovery-engine.test.js |
+| GitHub public repository search | src/adapters/github-discovery.js | Implemented; read-only and rate-limit-aware | test/github-discovery.test.js |
+| Release update review | src/core/release-monitor.js | Implemented; review-only, no auto-upgrade | test/discovery-engine.test.js |
+| Chief Agent / Agent Architect policies | prompts/ | Updated; runtime not connected | docs/ARCHITECTURE.md |
+| Black Phantom UI | docs/BLACK_PHANTOM_UI.md | Specification only; PWA implementation pending | docs/BLACK_PHANTOM_UI.md |
 
-| Capability | Tool/project | Version | Status | Score | Confidence | Evidence | Verified |
-|---|---|---|---|---:|---|---|---|
-| — | — | — | — | — | — | — | — |
+## Third-party registry
+No third-party tools have been benchmarked and approved in this update. Do not invent winners or assign VERIFIED status without reproducible evidence.
+
+| Capability | Project | Version | Status | License gate | Self-hosted / zero-cost proof | Benchmark | Confidence |
+|---|---|---|---|---|---|---|---|
+| Agent orchestration | LangGraph | TBD | CANDIDATE | Pending exact component/license check | Pending | Not run | LOW |
+| Typed agent SDK | Pydantic AI | TBD | CANDIDATE | Pending | Pending | Not run | LOW |
+| Coding agent execution | OpenHands SDK | TBD | CANDIDATE | Pending dependencies/sandbox check | Pending | Not run | LOW |
+| Local model runtime | Ollama / llama.cpp | TBD | CANDIDATE | Pending pinned release review | Pending hardware tests | Not run | LOW |
+| Browser testing | Playwright | TBD | CANDIDATE | Pending pinned release review | Pending | Not run | LOW |
+| Prompt evaluation | Promptfoo | TBD | CANDIDATE | Pending full license/dependency review | Local-only path pending | Not run | LOW |
+| Full-stack builder | Dyad | TBD | CANDIDATE | Mixed directory licensing requires review | Pending | Not run | LOW |
+| Full-stack builder | Singulary | TBD | CANDIDATE | Pending current source/license verification | Pending | Not run | LOW |
+| Backend | PocketBase | TBD | CANDIDATE | Pending pinned release/dependency review | Self-host path to test | Not run | LOW |
+| Backend platform | Supabase | TBD | CANDIDATE | Component-by-component review | Self-host resource profile pending | Not run | LOW |
+| Visual editor | Onlook | TBD | CANDIDATE | Pending | Pending | Not run | LOW |
+
+These entries are research leads from prior exploration, not endorsements. Revalidate current repository, version, license text, dependency tree, free/self-hosted path and maintenance status before use.
+
+## Discovery coverage backlog
+Cloud/computing; GitHub APIs/Actions/Apps; full-stack; web/PWA; Android/NDK/Gradle/signing; Apple/iOS; AI models/inference; agents/MCP/skills; graphics/3D/animation/VFX; Arabic/RTL/fonts/NLP/voice; audio/video; security/supply-chain; DevOps/QA; data engineering; developer tooling; media production.
 
 ## Evaluation queue
-1. Semantic global GitHub/source discovery.
+1. Full license-text, dependency and hosted-service inspection.
 2. Sandboxed execution and test orchestration.
-3. PWA frontend and mobile UI.
-4. Android build, signing, artifact verification.
-5. Agent orchestration and structured memory.
-6. Security and software supply-chain analysis.
+3. Semantic search breadth, pagination, caching and rate-limit tests.
+4. Toolchain version/package/license compatibility.
+5. PWA frontend and Black Phantom interaction.
+6. Android build, signing, artifact verification.
+7. Agent orchestration and structured memory.
+8. Security and software supply-chain analysis.
 
-Each evaluation adds a dated evidence record under `memory/tool-evaluations/`.
+Each evaluation adds a dated evidence record under memory/tool-evaluations/.
