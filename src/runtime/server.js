@@ -2,6 +2,7 @@ import { createTaskGateway } from './task-gateway.js';
 import { LocalExecutionRuntime } from './local-execution-runtime.js';
 import { ContainerExecutionRuntime } from './container-execution-runtime.js';
 import { LocalArtifactStore } from './artifact-store.js';
+import { AndroidBuildService } from './android-build-service.js';
 import { OllamaModelAdapter } from '../adapters/ollama-model-adapter.js';
 import { AgentExecutionService } from '../core/agent-execution-service.js';
 import { ChiefAgent } from '../core/chief-agent.js';
@@ -42,6 +43,14 @@ const runtime = executionBackend === 'container'
     }).initialize()
   : hostRuntime;
 const artifactStore = await new LocalArtifactStore({ rootDir: artifactDir }).initialize();
+const androidBuildService = new AndroidBuildService({
+  runtime,
+  artifactStore,
+  androidHome: process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT ?? null,
+  javaHome: process.env.JAVA_HOME ?? null,
+  path: process.env.PATH ?? null,
+  timeoutMs: Number(process.env.ZFORGE_ANDROID_BUILD_TIMEOUT_MS ?? 1200000),
+});
 const modelAdapter = new OllamaModelAdapter({ baseUrl: process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434' });
 const workspaceManager = new AgentWorkspaceManager();
 const agentService = new AgentExecutionService({ modelAdapter, runtime, workspaceManager, artifactStore, maxSteps: Number(process.env.ZFORGE_AGENT_MAX_STEPS ?? 16) });
@@ -55,7 +64,7 @@ const chiefAgent = new ChiefAgent({ modelAdapter, discoveryService, memoryStore,
 const agentRegistry = await new LocalAgentRegistry({ dataDir }).initialize();
 const agentFactory = new AgentFactory({ registry: agentRegistry });
 const multiAgentCoordinator = new MultiAgentCoordinator({ agentFactory, agentService, maxParallel: Number(process.env.ZFORGE_MAX_PARALLEL_AGENTS ?? 3), defaultModel: model });
-const gateway = createTaskGateway({ dataDir, token, runtime, agentService, chiefAgent, agentFactory, multiAgentCoordinator, artifactStore, defaultModel: model, allowedOrigins });
+const gateway = createTaskGateway({ dataDir, token, runtime, agentService, chiefAgent, agentFactory, multiAgentCoordinator, androidBuildService, artifactStore, defaultModel: model, allowedOrigins });
 
 await gateway.ready;
 gateway.server.listen(port, host, () => {
