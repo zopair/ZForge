@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { access, constants, mkdtemp, writeFile, readFile, lstat, stat, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve, join, sep, delimiter } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 
 const AUDIO_TYPES = new Map([
@@ -13,6 +14,7 @@ const AUDIO_TYPES = new Map([
   ['audio/mpeg', 'mp3'],
 ]);
 const MAX_TEXT_LENGTH = 8000;
+const KEMETONE_INFERENCE_SCRIPT = fileURLToPath(new URL('../../scripts/kemetone-inference.py', import.meta.url));
 
 function runLocalProcess({ command, args, input = null, cwd, timeoutMs, maxOutputBytes, extraEnv = {} }) {
   return new Promise((resolveResult, reject) => {
@@ -327,10 +329,9 @@ export class LocalVoiceService {
       const directory = await mkdtemp(join(tmpdir(), 'zforge-kemetone-'));
       const outputPath = join(directory, 'speech.wav');
       try {
-        const modelScript = join(this.kemetoneModelDir, 'example.py');
         await runLocalProcess({
           command: this.kemetonePythonCommand,
-          args: [modelScript, text.trim(), outputPath],
+          args: [KEMETONE_INFERENCE_SCRIPT, this.kemetoneModelDir, text.trim(), outputPath],
           cwd: this.kemetoneModelDir,
           timeoutMs: this.kemetoneTimeoutMs,
           maxOutputBytes: this.maxOutputBytes,
@@ -338,6 +339,11 @@ export class LocalVoiceService {
         });
         const audio = await readValidWav(outputPath, directory, this.maxSynthesizedBytes, 'KemeTone');
         return { audio, contentType: 'audio/wav', engine: 'KemeTone Egyptian', local: true };
+      } catch (error) {
+        if (String(error?.message ?? error).includes('KEMETONE_CONTEXT_LIMIT') && readiness.checks.piperReady) {
+          return await this.synthesize({ text, engine: 'piper' });
+        }
+        throw error;
       } finally {
         await rm(directory, { recursive: true, force: true });
       }
