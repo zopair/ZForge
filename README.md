@@ -42,7 +42,7 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - Tool registry and engineering memory: memory/
 
 ## Current implementation status
-The repository contains a static Black Phantom PWA shell, initial discovery/evaluation modules, a loopback-only Ollama adapter, a draft-only Chief Agent planner, and Agent Architect validation gates. The local model adapter has not yet been tested against an installed model. The GitHub discovery/release/inspection adapters are read-only. No backend task gateway, persistent memory provider, isolated code execution worker, GitHub write credential, voice runtime, Android build worker, or autonomous repository mutation is connected yet. GitHub Pages serves static files only; Actions are ephemeral and quota-limited.
+The repository contains a static Black Phantom PWA shell, universal discovery/evaluation modules, a loopback-only Ollama adapter, a draft-only Chief Agent planner, Agent Architect validation gates, bounded local memory/prompt readers, and an approval-gated GitHub task-branch/file writer. The local model adapter has not yet been tested against an installed model, and no GitHub write credential or approval-verification service is configured. No backend task gateway, isolated code execution worker, live voice runtime, Android/iOS build worker, or autonomous task execution is connected yet. GitHub Pages serves static files only; Actions are ephemeral and quota-limited.
 
 ## Tests
 Run `npm test` with Node.js 20 or newer. CI uses Node.js 24.
