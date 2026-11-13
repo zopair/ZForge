@@ -41,3 +41,15 @@ test('Ollama adapter forwards tool schemas and exposes model tool calls', async 
   assert.equal(result.toolCalls[0].name, 'run_command');
   assert.deepEqual(result.toolCalls[0].arguments, { command: 'node', args: ['--version'] });
 });
+
+test('Ollama chat propagates task cancellation to the local model request', async () => {
+  const controller = new AbortController();
+  const adapter = new OllamaModelAdapter({
+    fetchImpl: async (_url, init) => new Promise((_resolve, reject) => {
+      init.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })), { once: true });
+    }),
+  });
+  const request = adapter.chat({ model: 'qwen3:8b', messages: [{ role: 'user', content: 'cancel me' }], signal: controller.signal });
+  controller.abort('user cancelled');
+  await assert.rejects(request, error => error.name === 'AbortError');
+});
