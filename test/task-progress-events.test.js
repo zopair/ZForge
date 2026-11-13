@@ -125,10 +125,15 @@ test('multi-agent orchestration persists specialist lifecycle and worker events 
     assert.equal(completed.status, 'succeeded');
     const response = await fetch(base + '/api/tasks/' + task.id + '/events?after=1', { headers });
     const payload = await response.json();
-    assert.deepEqual(payload.events.map(event => event.type), coordinatorEvents.map(event => event.type));
-    assert.equal(payload.events[0].details.agentId, 'researcher');
-    assert.equal(payload.events[1].details.taskId, 'research');
-    assert.equal(payload.events[2].details.evidenceCount, 1);
+    const eventTypes = payload.events.map(event => event.type);
+    const specialistStart = eventTypes.indexOf('agent.task.started');
+    assert.ok(eventTypes.includes('task.running'));
+    assert.ok(eventTypes.includes('task.succeeded'));
+    assert.deepEqual(eventTypes.slice(specialistStart, specialistStart + 3), coordinatorEvents.map(event => event.type));
+    const specialistEvents = payload.events.slice(specialistStart, specialistStart + 3);
+    assert.equal(specialistEvents[0].details.agentId, 'researcher');
+    assert.equal(specialistEvents[1].details.taskId, 'research');
+    assert.equal(specialistEvents[2].details.evidenceCount, 1);
     assert.equal(payload.status, 'succeeded');
   } finally {
     await new Promise(resolve => gateway.server.close(resolve));
