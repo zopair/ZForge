@@ -74,7 +74,7 @@ test('browser verifier reports page errors, console errors and horizontal overfl
     consoleErrors: ['missing chunk.js'],
   });
   const service = new WebBrowserVerificationService({ runtime, browserTypes: harness.browserTypes });
-  const result = await service.verify({ workspaceId: 'web-workspace', browsers: ['chromium'] });
+  const result = await service.verify({ workspaceId: 'web-workspace', projectPath: 'frontend', browsers: ['chromium'] });
   assert.equal(result.status, 'failed');
   assert.equal(result.summary.failed, 1);
   assert.equal(result.browsers[0].horizontalOverflow, true);
@@ -86,7 +86,7 @@ test('browser verifier preserves partial browser failures and rejects missing en
   const { runtime } = runtimeFixture();
   const harness = browserHarness({ launchError: 'firefox' });
   const service = new WebBrowserVerificationService({ runtime, browserTypes: harness.browserTypes });
-  const partial = await service.verify({ workspaceId: 'web-workspace', browsers: ['chromium', 'firefox'] });
+  const partial = await service.verify({ workspaceId: 'web-workspace', projectPath: 'frontend', browsers: ['chromium', 'firefox'] });
   assert.equal(partial.status, 'failed');
   assert.equal(partial.summary.passed, 1);
   assert.equal(partial.summary.failed, 1);
