@@ -66,7 +66,7 @@ export class ContainerExecutionRuntime {
     const cpuLimit = Number.isFinite(resourceLimits?.cpu) ? Math.min(this.cpuLimit, resourceLimits.cpu) : this.cpuLimit;
     const globalMemoryMb = memoryLimitMb(this.memoryLimit);
     const memoryMb = Number.isFinite(resourceLimits?.memoryMb) ? Math.max(1, Math.min(globalMemoryMb, resourceLimits.memoryMb)) : globalMemoryMb;
-    const effectiveMemory = `${Math.floor(memoryMb)}m`;
+    const effectiveMemory = `${Math.max(1, Math.floor(memoryMb))}m`;
     const argsForEngine = [
       'run', '--rm', '--init',
       '--workdir', normalizedCwd === '.' ? '/workspace' : posix.join('/workspace', normalizedCwd),
