@@ -76,7 +76,7 @@ export class ChiefAgent{
     };
     const response=await this.modelAdapter.chat({model:this.model,temperature:0.1,messages:[
       {role:'system',content:`${canonicalPrompt}\n\nRuntime execution boundary:\n${SYSTEM_SAFETY}`},
-      {role:'user',content:`Prepare a draft engineering plan from this structured task context. Use experimental workspaces, propose parallel variants where useful, and preserve failed or unexpected outcomes as learning. For BUILD_INTERNAL_TOOL, include a concrete implementation plan and tests. Do not claim execution has occurred.\n${JSON.stringify(context)}`},
+      {role:'user',content:`Prepare a draft engineering plan from this structured task context. Use experimental workspaces, propose parallel experiments (parallel variants) where useful, and preserve failed or unexpected outcomes as learning. For BUILD_INTERNAL_TOOL, include a concrete implementation plan and tests. Do not claim execution has occurred.\n${JSON.stringify(context)}`},
     ]});
     if(typeof response?.content!=='string'||!response.content.trim())throw new Error('local model returned an empty plan');
     return {
