@@ -92,7 +92,8 @@ No paid subscriptions, paid APIs, paid usage, trial credits or required commerci
 - F1 Universal Open-Source Discovery and repository inspection — initial implementation.
 - F2 Local model adapter, Chief Agent draft planner and Agent Architect — implemented; local model runtime integration pending.
 - F3 Persistent task gateway, durable execution ledger and local host process runner — initial implementation.
-- F4 Agent factory runtime and specialist collaboration.
+- F4 Agent Factory lifecycle and specialist activation — initial implementation.
+- F4.1 Bounded multi-agent DAG orchestration with dependency-aware execution — initial implementation.
 - F5 Agent Workspace Manager control plane — initial implementation; host runtime adapters pending.
 - F6 Container-isolated execution, browser, build and QA runtimes.
 - F7 Web/PWA and Android build, preview, signing and delivery workers.
