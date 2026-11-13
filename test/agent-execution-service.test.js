@@ -136,3 +136,55 @@ test('agent execution clamps process timeout to the activated profile resource l
   await agent.runTask({ request: 'Run within 5 seconds', model: 'local', workspaceId: 'ws-limits', resourceLimits: { timeoutSeconds: 5, storageMb: 10 } });
   assert.equal(actualTimeout, 5000);
 });
+
+
+test('failed commands trigger open-source recovery research before the agent chooses a different approach', async () => {
+  const executed = [];
+  let turn = 0;
+  let investigated = 0;
+  const recovery = {
+    investigate: async input => {
+      investigated += 1;
+      assert.equal(input.request, 'Build a Vite web application');
+      assert.equal(input.failure.command, 'missing-build-tool');
+      return {
+        status: 'ALTERNATIVES_FOUND',
+        fingerprint: 'a'.repeat(64),
+        duplicateFailure: false,
+        failure: { category: 'MISSING_DEPENDENCY' },
+        alternatives: [{ fullName: 'example/open-build-tool', license: 'MIT' }],
+        internalToolBuild: null,
+        nextActions: ['COMPARE_VERIFIED_ALTERNATIVES', 'RUN_REGRESSION_TESTS'],
+      };
+    },
+  };
+  const runtime = {
+    createWorkspace: async () => ({}),
+    execute: async input => {
+      executed.push(input.command);
+      return input.command === 'missing-build-tool'
+        ? { exitCode: 127, stdout: '', stderr: 'command not found: missing-build-tool' }
+        : { exitCode: 0, stdout: 'build passed', stderr: '' };
+    },
+  };
+  const modelAdapter = {
+    chat: async ({ messages }) => {
+      turn += 1;
+      if (turn === 1) return { toolCalls: [{ id: 'failed-build', name: 'run_command', arguments: { command: 'missing-build-tool', args: [] } }] };
+      if (turn === 2) {
+        const failed = JSON.parse(messages.filter(message => message.role === 'tool').at(-1).content);
+        assert.equal(failed.ok, false);
+        assert.equal(failed.recovery.status, 'ALTERNATIVES_FOUND');
+        assert.equal(failed.recovery.alternatives[0].fullName, 'example/open-build-tool');
+        return { toolCalls: [{ id: 'recovered-build', name: 'run_command', arguments: { command: 'node', args: ['--version'] } }] };
+      }
+      const successful = JSON.parse(messages.filter(message => message.role === 'tool').at(-1).content);
+      return { toolCalls: [{ id: 'finish-recovered', name: 'finish_task', arguments: { summary: 'Recovered and verified the build path', evidenceIds: [successful.id] } }] };
+    },
+  };
+  const agent = new AgentExecutionService({ modelAdapter, runtime, selfHealingEngine: recovery, maxSteps: 4 });
+  const result = await agent.runTask({ request: 'Build a Vite web application', model: 'local', workspaceId: 'ws-self-heal' });
+  assert.equal(result.completed, true);
+  assert.equal(investigated, 1);
+  assert.deepEqual(executed, ['missing-build-tool', 'node']);
+});
