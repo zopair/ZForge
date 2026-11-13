@@ -28,11 +28,11 @@ const VENDORS = Object.freeze([
 const OPEN_SOURCE_LICENSES = new Set([
   '0BSD','AAL','AFL-3.0','AGPL-1.0-only','AGPL-1.0-or-later','AGPL-3.0-only','AGPL-3.0-or-later',
   'Apache-1.1','Apache-2.0','Artistic-2.0','BSD-2-Clause','BSD-3-Clause','BSD-3-Clause-Clear',
-  'BSL-1.0','CC0-1.0','CDDL-1.0','CERN-OHL-P-2.0','CERN-OHL-S-2.0','ECL-2.0','EPL-1.0','EPL-2.0',
-  'EUPL-1.2','GFDL-1.3-only','GPL-1.0-only','GPL-1.0-or-later','GPL-2.0-only','GPL-2.0-or-later',
+  'BSL-1.0','CDDL-1.0','ECL-2.0','EPL-1.0','EPL-2.0',
+  'EUPL-1.2','GPL-1.0-only','GPL-1.0-or-later','GPL-2.0-only','GPL-2.0-or-later',
   'GPL-3.0-only','GPL-3.0-or-later','ISC','LGPL-2.0-only','LGPL-2.1-only','LGPL-2.1-or-later',
   'LGPL-3.0-only','LGPL-3.0-or-later','MIT','MPL-1.1','MPL-2.0','MS-PL','MS-RL','NCSA',
-  'OFL-1.1','OSL-3.0','PostgreSQL','Python-2.0','Unlicense','UPL-1.0','WTFPL','Zlib',
+  'OFL-1.1','OSL-3.0','PostgreSQL','Python-2.0','Unlicense','UPL-1.0','Zlib',
 ]);
 const NON_OPEN_SOURCE_MARKERS = ['BUSL','SSPL','ELASTIC','COMMONS-CLAUSE','SOURCE-AVAILABLE','PROPRIETARY'];
 
