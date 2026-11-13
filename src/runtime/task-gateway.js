@@ -3,6 +3,7 @@ import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { buildDiscoveryPlan } from '../core/discovery-engine.js';
+import { ConversationStore } from './conversation-store.js';
 
 const TASK_STATES = new Set(['queued', 'running', 'succeeded', 'failed', 'inconclusive', 'cancelled']);
 const TRANSITIONS = {
@@ -184,7 +185,7 @@ export class TaskStore {
   }
 }
 
-export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, agentFactory = null, multiAgentCoordinator = null, androidBuildService = null, webBuildService = null, webBrowserVerificationService = null, voiceService = null, artifactStore = null, engineeringIssueLedger = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
+export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, agentFactory = null, multiAgentCoordinator = null, androidBuildService = null, webBuildService = null, webBrowserVerificationService = null, voiceService = null, artifactStore = null, engineeringIssueLedger = null, conversationalCore = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
   if (typeof token !== 'string' || token.length < 16) throw new TypeError('a gateway bearer token of at least 16 characters is required');
   if (!Number.isInteger(maxBodyBytes) || maxBodyBytes < 1024) throw new RangeError('maxBodyBytes must be at least 1024');
   if (!Array.isArray(allowedOrigins) || allowedOrigins.some(origin => typeof origin !== 'string' || !isValidOrigin(origin))) throw new TypeError('allowedOrigins must be an array of exact HTTP(S) origins');
@@ -192,7 +193,8 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
   const repositorySeedCatalog = buildDiscoveryPlan({ maxQueries: 500 }).allRepositorySeeds;
   const repositoryCategories = new Set(repositorySeedCatalog.map(item => item.category));
   const repositoryProjectTypes = new Set(repositorySeedCatalog.flatMap(item => [item.projectType, ...(item.projectTypes ?? [])].filter(Boolean)));
-  const ready = store.initialize();
+  const conversations = new ConversationStore({ dataDir, clock });
+  const ready = Promise.all([store.initialize(), conversations.initialize()]);
   const server = createServer(async (request, response) => {
     try {
       await ready;
@@ -381,6 +383,47 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
       if (request.method === 'GET' && url.pathname === '/api/models') {
         if (!agentService || typeof agentService.listModels !== 'function') return send(response, 503, { error: 'model_inventory_unavailable' });
         return send(response, 200, { models: await agentService.listModels() });
+      }
+      if (request.method === 'GET' && url.pathname === '/api/capabilities') {
+        if (!conversationalCore || typeof conversationalCore.getCapabilities !== 'function') return send(response, 503, { error: 'conversational_core_unavailable' });
+        return send(response, 200, { capabilities: conversationalCore.getCapabilities() });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/conversation') {
+        if (!conversationalCore || typeof conversationalCore.respond !== 'function') return send(response, 503, { error: 'conversational_core_unavailable' });
+        try {
+          const body = await readJson(request, maxBodyBytes);
+          const message = body.message;
+          if (typeof message !== 'string' || !message.trim() || message.length > 4000) return send(response, 400, { error: 'message_must_contain_1_to_4000_characters' });
+          let conversationId = body.conversationId;
+          if (conversationId !== undefined) {
+            if (typeof conversationId !== 'string' || !/^[a-f0-9-]{36}$/i.test(conversationId) || !conversations.get(conversationId)) {
+              return send(response, 404, { error: 'conversation_not_found' });
+            }
+          } else {
+            conversationId = conversations.create();
+          }
+          const history = (conversations.get(conversationId)?.messages ?? []).slice(-12).map(item => ({ role: item.role, content: item.content }));
+          const result = await conversationalCore.respond({
+            message,
+            history,
+            model: typeof body.model === 'string' && body.model.trim() ? body.model.trim() : defaultModel,
+          });
+          let taskId = null;
+          if (result.mode === 'plan' && result.requiresApproval === true && result.executionStarted === false) {
+            const task = await store.create({
+              request: message,
+              metadata: { mode: 'conversational-plan', conversationId, approvedPlanSha256: result.approvedPlanSha256 },
+            });
+            taskId = task.id;
+          }
+          await conversations.append(conversationId, [
+            { role: 'user', content: message },
+            { role: 'assistant', content: result.reply ?? 'لم يتم إنشاء رد.' },
+          ]);
+          return send(response, 200, { ...result, conversationId, taskId });
+        } catch (error) {
+          return send(response, error.statusCode ?? 422, { error: 'conversation_failed', details: error.message });
+        }
       }
       if (request.method === 'GET' && url.pathname === '/api/tasks') {
         return send(response, 200, { tasks: store.list() });
@@ -676,5 +719,5 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
       return send(response, error.statusCode ?? 500, { error: error.statusCode ? error.message : 'internal_error' });
     }
   });
-  return { server, store, ready };
+  return { server, store, conversations, ready };
 }
