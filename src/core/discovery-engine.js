@@ -38,7 +38,7 @@ const NON_OPEN_SOURCE_MARKERS = ['BUSL','SSPL','ELASTIC','COMMONS-CLAUSE','SOURC
 
 export function buildDiscoveryPlan({ capabilities = [], keywords = [], maxQueries = 48 } = {}) {
   if (!Array.isArray(capabilities) || !Array.isArray(keywords)) throw new TypeError('capabilities and keywords must be arrays');
-  if (!Number.isInteger(maxQueries) || maxQueries < 1 || maxQueries > 200) throw new RangeError('maxQueries must be between 1 and 200');
+  if (!Number.isInteger(maxQueries) || maxQueries < 1 || maxQueries > 500) throw new RangeError('maxQueries must be between 1 and 500');
   const aliases = {'arabic-rtl':'arabic-localization','arabic':'arabic-localization','android-build':'android','android-app':'android','web-frontend':'web','web-backend':'full-stack','fullstack':'full-stack','ai-agent':'agents','llm-inference':'ai-models','graphics-3d':'graphics','voice':'audio-voice','cloud':'cloud-computing','github-automation':'github-engineering','ios-build':'ios-apple','security-testing':'security','ci-cd':'devops-qa','data-pipeline':'data-engineering'};
   const requested = new Set(capabilities.map(value => String(value).toLowerCase()));
   const requestedDomains = new Set([...requested].map(value => aliases[value] ?? value));
@@ -53,7 +53,8 @@ export function buildDiscoveryPlan({ capabilities = [], keywords = [], maxQuerie
     const selectedTopics = domain.requested ? domain.topics : domain.topics.slice(0, 1);
     for (const topic of selectedTopics) queries.push(`${topic} topic:${topic}`);
   }
-  const deduplicated = [...new Set(queries)].slice(0, maxQueries);
+  const allUniqueQueries = [...new Set(queries)];
+  const deduplicated = allUniqueQueries.slice(0, maxQueries);
   const vendorQueries = VENDORS.flatMap(vendor => vendor.orgs.map(org => `tooling org:${org}`));
   return {
     generatedAt: new Date().toISOString(),
@@ -61,6 +62,9 @@ export function buildDiscoveryPlan({ capabilities = [], keywords = [], maxQuerie
     domains,
     vendorSeeds: VENDORS,
     queries: deduplicated,
+    totalQueryCount: allUniqueQueries.length,
+    omittedQueries: allUniqueQueries.slice(maxQueries),
+    queryCatalogComplete: allUniqueQueries.length <= maxQueries,
     vendorQueries,
     searchSources: ['GitHub repository search API','GitHub organization repositories','GitHub topics','official project documentation','official release metadata'],
   };
