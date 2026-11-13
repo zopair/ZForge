@@ -13,12 +13,12 @@ function validateProjectPath(value) {
 }
 
 export class AndroidBuildService {
-  constructor({ runtime, artifactStore, androidHome = null, javaHome = null, path = null, timeoutMs = 1200000, maxArtifacts = 20 } = {}) {
+  constructor({ runtime, artifactStore, androidHome = null, javaHome = null, path = null, timeoutMs = 840000, maxArtifacts = 20 } = {}) {
     if (!runtime || typeof runtime.createWorkspace !== 'function' || typeof runtime.listFiles !== 'function' || typeof runtime.execute !== 'function') {
       throw new TypeError('runtime must support workspace creation, file listing and process execution');
     }
     if (!artifactStore || typeof artifactStore.publishFromWorkspace !== 'function') throw new TypeError('artifactStore.publishFromWorkspace is required');
-    if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 1800000) throw new RangeError('timeoutMs must be between 1000 and 1800000');
+    if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 900000) throw new RangeError('timeoutMs must be between 1000 and 900000');
     if (!Number.isInteger(maxArtifacts) || maxArtifacts < 1 || maxArtifacts > 100) throw new RangeError('maxArtifacts must be between 1 and 100');
     this.runtime = runtime;
     this.artifactStore = artifactStore;
