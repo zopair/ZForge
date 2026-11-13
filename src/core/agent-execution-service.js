@@ -144,9 +144,9 @@ export class AgentExecutionService {
                 break;
               }
               const completed = { status: 'completed', completed: true, workspaceId, summary: args.summary.trim(), steps: step, evidence: validEvidence, trace };
-              await emitProgress('agent.completed', { step, evidenceCount: validEvidence.length });
               trace.push({ id: callId, name: call.name, ok: true });
               await finishExperiment('succeeded', [args.summary.trim()], { steps: step, evidenceCount: validEvidence.length });
+              await emitProgress('agent.completed', { step, evidenceCount: validEvidence.length });
               return completed;
             }
             default:
