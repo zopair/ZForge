@@ -145,7 +145,7 @@ export class TaskStore {
   }
 }
 
-export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, artifactStore = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
+export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, agentFactory = null, artifactStore = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
   if (typeof token !== 'string' || token.length < 16) throw new TypeError('a gateway bearer token of at least 16 characters is required');
   if (!Number.isInteger(maxBodyBytes) || maxBodyBytes < 1024) throw new RangeError('maxBodyBytes must be at least 1024');
   if (!Array.isArray(allowedOrigins) || allowedOrigins.some(origin => typeof origin !== 'string' || !isValidOrigin(origin))) throw new TypeError('allowedOrigins must be an array of exact HTTP(S) origins');
@@ -179,6 +179,49 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
       const supplied = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
       if (!supplied || !safeEqual(supplied, token)) return send(response, 401, { error: 'unauthorized' });
 
+      if (request.method === 'GET' && url.pathname === '/api/agents') {
+        if (!agentFactory) return send(response, 503, { error: 'agent_factory_unavailable' });
+        return send(response, 200, { agents: await agentFactory.listAgents() });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/agents') {
+        if (!agentFactory) return send(response, 503, { error: 'agent_factory_unavailable' });
+        try {
+          const body = await readJson(request, maxBodyBytes);
+          return send(response, 201, await agentFactory.proposeAgent(body));
+        } catch (error) {
+          return send(response, error.message.includes('already exists') ? 409 : 400, { error: error.message });
+        }
+      }
+      const agentProfileMatch = url.pathname.match(/^\/api\/agents\/([A-Za-z0-9._-]{1,64})\/profile$/);
+      const agentTestsMatch = url.pathname.match(/^\/api\/agents\/([A-Za-z0-9._-]{1,64})\/tests$/);
+      const agentReviewsMatch = url.pathname.match(/^\/api\/agents\/([A-Za-z0-9._-]{1,64})\/reviews$/);
+      const agentActivationMatch = url.pathname.match(/^\/api\/agents\/([A-Za-z0-9._-]{1,64})\/activate$/);
+      const agentDetailMatch = url.pathname.match(/^\/api\/agents\/([A-Za-z0-9._-]{1,64})$/);
+      if (agentProfileMatch && request.method === 'GET') {
+        if (!agentFactory) return send(response, 503, { error: 'agent_factory_unavailable' });
+        try { return send(response, 200, await agentFactory.getExecutionProfile(agentProfileMatch[1])); }
+        catch (error) { return send(response, 409, { error: error.message }); }
+      }
+      if (agentTestsMatch && request.method === 'POST') {
+        if (!agentFactory) return send(response, 503, { error: 'agent_factory_unavailable' });
+        try { return send(response, 200, await agentFactory.recordTestResult({ ...(await readJson(request, maxBodyBytes)), agentId: agentTestsMatch[1] })); }
+        catch (error) { return send(response, 400, { error: error.message }); }
+      }
+      if (agentReviewsMatch && request.method === 'POST') {
+        if (!agentFactory) return send(response, 503, { error: 'agent_factory_unavailable' });
+        try { return send(response, 200, await agentFactory.recordReview({ ...(await readJson(request, maxBodyBytes)), agentId: agentReviewsMatch[1] })); }
+        catch (error) { return send(response, 400, { error: error.message }); }
+      }
+      if (agentActivationMatch && request.method === 'POST') {
+        if (!agentFactory) return send(response, 503, { error: 'agent_factory_unavailable' });
+        try { return send(response, 200, await agentFactory.activate({ ...(await readJson(request, maxBodyBytes)), agentId: agentActivationMatch[1] })); }
+        catch (error) { return send(response, 400, { error: error.message }); }
+      }
+      if (agentDetailMatch && request.method === 'GET') {
+        if (!agentFactory) return send(response, 503, { error: 'agent_factory_unavailable' });
+        try { return send(response, 200, await agentFactory.getAgent(agentDetailMatch[1])); }
+        catch (error) { return send(response, 404, { error: error.message }); }
+      }
       if (request.method === 'GET' && url.pathname === '/api/artifacts') {
         if (!artifactStore) return send(response, 503, { error: 'artifact_store_unavailable' });
         return send(response, 200, { artifacts: artifactStore.listArtifacts() });
@@ -250,7 +293,13 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
         const body = await readJson(request, maxBodyBytes);
         if (body.confirmExecution !== true) return send(response, 409, { error: 'explicit_execution_confirmation_required' });
         const model = typeof body.model === 'string' && body.model.trim() ? body.model.trim() : defaultModel;
-        await store.transition(task.id, 'running', { details: { mode: 'local-agent', model } });
+        let executionProfile = null;
+        if (body.agentId) {
+          if (!agentFactory) return send(response, 503, { error: 'agent_factory_unavailable' });
+          try { executionProfile = await agentFactory.getExecutionProfile(body.agentId); }
+          catch (error) { return send(response, 409, { error: error.message }); }
+        }
+        await store.transition(task.id, 'running', { details: { mode: 'local-agent', model, agentId: body.agentId ?? null } });
         try {
           const capabilities = Array.isArray(body.capabilities) ? body.capabilities.slice(0, 20).map(String) : [];
           const keywords = Array.isArray(body.keywords)
@@ -264,8 +313,10 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
             model,
             workspaceId: task.workspaceId,
             plan: planning?.plan ?? (typeof body.approvedPlan === 'string' ? body.approvedPlan : null),
+            allowedTools: executionProfile?.allowedTools ?? null,
+            resourceLimits: executionProfile?.resourceLimits ?? null,
           });
-          const result = { ...execution, planning: planning ? {
+          const result = { ...execution, agentProfile: executionProfile ? { agentId: executionProfile.agentId, name: executionProfile.name, version: executionProfile.version } : null, planning: planning ? {
             status: planning.status,
             discoveryStatus: planning.discoveryStatus,
             candidatesConsidered: planning.candidatesConsidered,
