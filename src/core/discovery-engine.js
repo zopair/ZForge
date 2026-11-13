@@ -1,4 +1,4 @@
-import { CURATED_REPOSITORY_SEEDS } from './curated-repository-catalog.js';
+import { CURATED_REPOSITORY_SEEDS, UNRESOLVED_REPOSITORY_REFERENCES } from './curated-repository-catalog.js';
 const DOMAINS = Object.freeze([
   { id:'cloud-computing', label:'Cloud & Computing', topics:['cloud','kubernetes','containers','distributed-systems'], terms:['cloud computing','distributed systems','containers','Kubernetes','virtualization','serverless','storage','networking','infrastructure as code','edge computing'] },
   { id:'github-engineering', label:'GitHub Engineering', topics:['github-actions','github-api','github-apps','octokit'], terms:['GitHub API','GitHub Actions','GitHub CLI','GitHub Apps','Octokit','runners','repository automation','release automation'] },
@@ -69,7 +69,7 @@ export function buildDiscoveryPlan({ capabilities = [], keywords = [], maxQuerie
     vendorSeeds: VENDORS,
     curatedRepositorySeeds: CURATED_REPOSITORY_SEEDS,
     curatedRepositoryQueries,
-    unresolvedRepositoryReferences: [],
+    unresolvedRepositoryReferences: UNRESOLVED_REPOSITORY_REFERENCES,
     queries: deduplicated,
     totalQueryCount: allUniqueQueries.length,
     omittedQueries: allUniqueQueries.slice(maxQueries),
