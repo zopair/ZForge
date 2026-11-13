@@ -31,7 +31,7 @@ function deriveCapabilities(request, failureText) {
 }
 
 function deriveKeywords(request, failureText, maxKeywords = 10) {
-  const words = (request + ' ' + failureText).match(/[\\p{L}\\p{N}][\\p{L}\\p{N}._+/-]{2,}/gu) ?? [];
+  const words = (request + ' ' + failureText).match(/[\p{L}\p{N}][\p{L}\p{N}._+/-]{2,}/gu) ?? [];
   const unique = [];
   const seen = new Set();
   for (const word of words) {
@@ -95,7 +95,7 @@ export class SelfHealingEngineeringEngine {
       classified.category,
       String(classified.exitCode ?? ''),
       String(classified.command ?? ''),
-      failureText.toLowerCase().replace(/\\s+/g, ' ').trim(),
+      failureText.toLowerCase().replace(/\s+/g, ' ').trim(),
     ].join('|');
     const fingerprint = createHash('sha256').update(fingerprintInput).digest('hex');
     const duplicateFailure = previousAttempts.some(item => item?.fingerprint === fingerprint);
