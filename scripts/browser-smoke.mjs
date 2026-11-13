@@ -65,16 +65,36 @@ try {
       const navigation = await page.goto(origin, { waitUntil: 'networkidle' });
       assert.equal(navigation?.status(), 200, name + ': app document should return HTTP 200');
       assert.match(await page.title(), /BLACK VANTA/);
+      let createdCloudIssue = null;
+      await page.route('https://api.github.com/**', async route => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (url.pathname === '/user') return route.fulfill({ json: { login: 'zopair' } });
+        if (url.pathname === '/repos/zopair/ZForge' && request.method() === 'GET') {
+          return route.fulfill({ json: { permissions: { push: true, admin: false } } });
+        }
+        if (url.pathname === '/repos/zopair/ZForge/issues' && request.method() === 'POST') {
+          createdCloudIssue = request.postDataJSON();
+          return route.fulfill({ status: 201, json: { number: 314, title: createdCloudIssue.title } });
+        }
+        if (url.pathname === '/repos/zopair/ZForge/issues/314/comments') {
+          const correlation = createdCloudIssue?.title?.match(/\\[ZForgeChat:([a-f0-9-]{36})\\]/i)?.[1];
+          return route.fulfill({ json: correlation ? [{ body: '<!-- ZFORGE_CONVERSATION_RESULT_V1:' + correlation + ' -->\\nDirect cloud chat reply verified.' }] : [] });
+        }
+        return route.fulfill({ status: 404, json: { message: 'unexpected GitHub API request' } });
+      });
+      await page.locator('#github-settings > summary').click();
+      await page.locator('#github-token').fill('github_pat_browser_test_token');
+      await page.locator('#github-connect').click();
+      await page.getByText(/تم ربط @zopair/).waitFor({ timeout: 5000 });
       await page.locator('#chat-input').fill('Build a sample PWA');
       await page.locator('#send-button').click();
-      const cloudHandoff = page.locator('.cloud-task-link');
-      await cloudHandoff.waitFor({ timeout: 5000 });
-      const cloudHandoffUrl = new URL(await cloudHandoff.getAttribute('href'));
-      assert.equal(cloudHandoffUrl.origin, 'https://github.com', name + ': cloud handoff should use GitHub issue creation');
-      assert.equal(cloudHandoffUrl.pathname, '/zopair/ZForge/issues/new', name + ': cloud handoff should target the ZForge repository');
-      assert.match(cloudHandoffUrl.searchParams.get('title') ?? '', /^\[ZForge Cloud Task\]/, name + ': cloud task issue title should carry the execution prefix');
-      assert.match(cloudHandoffUrl.searchParams.get('title') ?? '', /\[ZForgeChat:[a-f0-9-]{36}\]/i, name + ': cloud task issue title should carry a reply correlation id');
-      assert.equal(cloudHandoffUrl.searchParams.get('body'), 'Build a sample PWA', name + ': cloud task body should preserve the user request');
+      await page.getByText('Direct cloud chat reply verified.').waitFor({ timeout: 5000 });
+      assert.ok(createdCloudIssue, name + ': cloud chat should create a GitHub issue automatically');
+      assert.match(createdCloudIssue.title, /^\\[ZForge Cloud Task\\]/, name + ': cloud task issue title should carry the execution prefix');
+      assert.match(createdCloudIssue.title, /\\[ZForgeChat:[a-f0-9-]{36}\\]/i, name + ': cloud task issue title should carry a reply correlation id');
+      assert.equal(createdCloudIssue.body, 'Build a sample PWA\\n\\n<!-- Created automatically by BLACK VANTA cloud chat. -->', name + ': cloud task body should preserve the user request without the token');
+      assert.equal(await page.locator('#github-token').inputValue(), '', name + ': token field should be cleared after successful connection');
       assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
       const visualContract = await page.evaluate(() => {
         const style = selector => getComputedStyle(document.querySelector(selector));
