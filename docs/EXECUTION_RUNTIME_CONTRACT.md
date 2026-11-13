@@ -39,3 +39,7 @@ Use a dedicated GitHub App or fine-grained token with minimum repository scope, 
 ## Operational honesty
 
 A task is complete only when the requested artifact exists and independent verification has passed. Report unavailable runners, quota exhaustion, missing credentials, platform restrictions, and unverified claims as explicit blockers.
+
+
+## Current implementation boundary
+The repository currently has a local Ollama adapter, a Chief Agent draft-planning orchestrator, and Agent Architect manifest/activation validation. These components do not constitute a live autonomous runtime: there is no persistent memory provider, authenticated task gateway, isolated worker, GitHub write broker, scheduler, or Black Phantom live connection. The Chief Agent returns a draft plan only and cannot execute it.
