@@ -9,7 +9,8 @@ const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 const server = createServer(async (request, response) => {
   try {
     const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
-    const target = resolve(root, '.' + pathname);
+    const relativePath = pathname === '/' ? '/index.html' : pathname;
+    const target = resolve(root, '.' + relativePath);
     if (target !== root && !target.startsWith(root + sep)) throw new Error('path outside app root');
     const content = await readFile(target);
     response.writeHead(200, { 'Content-Type': mime[extname(target)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
@@ -21,12 +22,17 @@ const server = createServer(async (request, response) => {
 });
 await new Promise(resolveListen => server.listen(0, '127.0.0.1', resolveListen));
 const origin = 'http://127.0.0.1:' + server.address().port;
+const landing = await fetch(origin);
+const landingHtml = await landing.text();
+assert.equal(landing.status, 200, 'static app should return HTTP 200: ' + landingHtml.slice(0, 200));
+assert.ok(landingHtml.includes('<title>BLACK VANTA | ZForge</title>'), 'static app response should contain the BLACK VANTA title');
 
 try {
   for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) {
-    const browser = await engine.launch({ headless: true });
+    const browser = await engine.launch({ headless: true, args: name === 'chromium' ? ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] : [] });
     try {
-      const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, permissions: name === 'chromium' ? ['microphone'] : [] });
+      const page = await context.newPage();
       const pageErrors = [];
       page.on('pageerror', error => pageErrors.push(error.message));
       page.on('console', message => { if (message.type() === 'error') pageErrors.push(message.text()); });
@@ -36,6 +42,9 @@ try {
         if (url.pathname === '/api/health') return route.fulfill({ json: { status: 'ok' } });
         if (url.pathname === '/api/models') return route.fulfill({ json: { models: ['qwen3:8b'] } });
         if (url.pathname === '/api/agents') return route.fulfill({ json: { agents: [] } });
+        if (url.pathname === '/api/voice/capabilities') return route.fulfill({ json: { capabilities: { transcription: true, synthesis: true, localOnly: true } } });
+        if (url.pathname === '/api/voice/transcribe') return route.fulfill({ json: { text: 'recognized local speech', engine: 'whisper.cpp', local: true } });
+        if (url.pathname === '/api/voice/synthesize') return route.fulfill({ status: 200, contentType: 'audio/wav', body: Buffer.from('RIFF0000WAVEdata') });
         if (url.pathname.endsWith('/events')) return route.fulfill({ json: { taskId: '12345678-1234-4234-8234-123456789012', status: 'succeeded', cursor: 3, events: [{ sequence: 2, type: 'agent.step.started', details: { step: 1 } }, { sequence: 3, type: 'agent.completed', details: { step: 1 } }] } });
         if (url.pathname === '/api/tasks' && method === 'POST') return route.fulfill({ status: 201, json: { id: '12345678-1234-4234-8234-123456789012', status: 'queued' } });
         if (url.pathname.endsWith('/agent-run')) return route.fulfill({ json: { id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { completed: true, summary: 'Browser smoke task verified', steps: 2, evidence: [] } } });
@@ -43,7 +52,8 @@ try {
         if (url.pathname.endsWith('/android-build')) return route.fulfill({ json: { status: 'succeeded', result: { status: 'succeeded', artifacts: [] } } });
         return route.fulfill({ status: 404, json: { error: 'not_found' } });
       });
-      await page.goto(origin, { waitUntil: 'networkidle' });
+      const navigation = await page.goto(origin, { waitUntil: 'networkidle' });
+      assert.equal(navigation?.status(), 200, name + ': app document should return HTTP 200');
       assert.match(await page.title(), /BLACK VANTA/);
       assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
       await page.locator('#runtime-settings summary').click();
@@ -51,12 +61,20 @@ try {
       await page.locator('#runtime-token').fill('browser-test-token-123456');
       await page.locator('#connect-runtime').click();
       await page.getByText(/تم الاتصال بالمحرك/).waitFor();
+      await page.locator('#voice-enabled').check();
       await page.locator('#chat-input').fill('اختبر تطبيق الويب');
       await page.locator('#send-button').click();
       await page.getByText(/Browser smoke task verified/).waitFor();
       await page.locator('#web-build-button').click();
       await page.getByText(/اكتمل بناء تطبيق الويب/).waitFor();
       assert.equal(await page.locator('.artifact-link').count(), 1);
+      if (name === 'chromium') {
+        await page.locator('#voice-record-button').click();
+        await page.waitForTimeout(350);
+        await page.locator('#voice-record-button').click();
+        await page.waitForFunction(() => document.getElementById('chat-input').value === 'recognized local speech', null, { timeout: 10000 });
+        assert.equal(await page.locator('.voice-output').count(), 1);
+      }
       const layout = await page.evaluate(() => ({
         viewport: document.documentElement.clientWidth,
         scroll: document.documentElement.scrollWidth,
@@ -65,7 +83,7 @@ try {
       assert.ok(layout.composerVisible, name + ': composer should be visible');
       assert.ok(layout.scroll <= layout.viewport + 1, name + ': mobile layout should not overflow horizontally');
       assert.deepEqual(pageErrors, [], name + ': browser console and page errors should be empty');
-      await page.close();
+      await context.close();
       process.stdout.write(name + ': BLACK VANTA connection, task execution, web build UI and mobile RTL layout passed\n');
     } finally {
       await browser.close();
