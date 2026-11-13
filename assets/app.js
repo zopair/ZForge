@@ -308,12 +308,17 @@ connectButton.addEventListener("click",async()=>{
       runtimeAgentSelect.append(option);
     }
     runtimeAgentSelect.disabled=false;
-    const voiceInventory=await api("/api/voice/capabilities");
-    voiceCapabilities=voiceInventory.capabilities??{transcription:false,synthesis:false};
+    try{
+      const voiceInventory=await api("/api/voice/capabilities");
+      voiceCapabilities=voiceInventory.capabilities??{transcription:false,synthesis:false};
+    }catch{
+      voiceCapabilities={transcription:false,synthesis:false};
+    }
     voiceEnabledInput.disabled=!(voiceCapabilities.transcription||voiceCapabilities.synthesis);
     voiceRecordButton.disabled=!(voiceCapabilities.transcription&&voiceEnabledInput.checked);
-    voiceStatus.textContent=voiceCapabilities.transcription||voiceCapabilities.synthesis
-      ?"الصوت يعمل محلياً عبر whisper.cpp وPiper حسب المحركات المهيأة."
+    const voiceEngines=[voiceCapabilities.transcription?"whisper.cpp":null,voiceCapabilities.synthesis?"Piper":null].filter(Boolean);
+    voiceStatus.textContent=voiceEngines.length
+      ?"المحركات الصوتية المحلية المتاحة: "+voiceEngines.join(" + ")
       :"ثبّت whisper.cpp وPiper والنماذج المحلية ثم أعد تشغيل المحرك.";
 
     runtimeTokenInput.value="";
