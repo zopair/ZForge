@@ -44,7 +44,7 @@ test('local voice synthesizes a WAV file through configured local Piper executab
   try {
     const model = join(root, 'voice.onnx');
     await writeFile(model, 'model');
-    const piper = await executable(root, 'fake-piper', 'while [ "$#" -gt 0 ]; do if [ "$1" = "--output_file" ]; then shift; output="$1"; fi; shift; done\ncat >/dev/null\nprintf "RIFF0000WAVEdata" > "$output"\n');
+    const piper = await executable(root, 'fake-piper', 'while [ "$#" -gt 0 ]; do if [ "$1" = "-f" ]; then shift; output="$1"; fi; shift; done\nprintf "RIFF0000WAVEdata" > "$output"\n');
     const service = new LocalVoiceService({ piperCommand: piper, piperModelPath: model });
     const result = await service.synthesize({ text: 'مرحبا بالعالم' });
     assert.equal(result.contentType, 'audio/wav');
