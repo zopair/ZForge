@@ -80,6 +80,7 @@ export class MultiAgentCoordinator {
             plan: [task.plan, dependencyContext].filter(Boolean).join('\n\n') || null,
             allowedTools: profile.allowedTools,
             resourceLimits: profile.resourceLimits,
+            onProgress: onProgress ? event => onProgress({ type: event.type, details: { ...event.details, taskId: task.id, agentId: task.agentId } }) : null,
           });
           if (execution?.completed !== true) {
             await emitProgress('agent.task.failed', { taskId: task.id, agentId: task.agentId, reason: 'completion_not_verified' });
