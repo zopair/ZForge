@@ -30,6 +30,8 @@ test('container runtime invokes podman with bounded resources and workspace-only
   assert.equal(result.stdout, 'container-ok');
   assert.equal(invocation.command, 'podman');
   assert.ok(invocation.args.includes('--read-only'));
+  assert.ok(invocation.args.includes('HOME=/tmp'));
+  assert.ok(invocation.args.includes('TMPDIR=/tmp'));
   assert.ok(invocation.args.includes('--cap-drop=ALL'));
   assert.ok(invocation.args.includes('--network=bridge'));
   assert.ok(invocation.args.includes('/tmp/zforge-workspaces/ws-1:/workspace:rw'));
