@@ -1,7 +1,7 @@
 name: ZForge Quality Gate
 on:
   push:
-    branches: [main, feat/persistent-task-gateway-runtime]
+    branches: [main, feat/persistent-task-gateway-runtime, feat/container-artifact-pipeline]
   pull_request:
   workflow_dispatch:
 permissions:

@@ -43,3 +43,7 @@ body{background:#030303;color:#fff}
 .runtime-fields button:disabled{opacity:.55;cursor:wait}
 .connection-state.is-connected i{background:#77bd82;box-shadow:0 0 10px #77bd82}
 @media(max-width:600px){.runtime-settings{margin-top:14px;padding:10px}.runtime-fields{grid-template-columns:1fr}.runtime-fields button{width:100%}}
+
+.artifact-link{display:inline-block;color:#f5d58a;font-size:12px;text-decoration:underline;text-underline-offset:3px}
+.artifact-link:hover{color:#fff}
+.artifact-link[aria-busy="true"]{opacity:.6;pointer-events:none}

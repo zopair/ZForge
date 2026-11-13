@@ -44,6 +44,26 @@ export class LocalExecutionRuntime {
     return { id, path };
   }
 
+  async getWorkspacePath({ workspaceId } = {}) {
+    const path = this.#workspacePath(workspaceId);
+    const info = await lstat(path);
+    if (info.isSymbolicLink() || !info.isDirectory()) throw new Error('workspace is unavailable or is a symbolic link');
+    const actual = await realpath(path);
+    if (actual !== this.rootDir && !actual.startsWith(this.rootDir + sep)) throw new TypeError('workspace resolves outside runtime root');
+    return actual;
+  }
+
+  async readBuffer({ workspaceId, path, maxBytes = 512 * 1024 * 1024 } = {}) {
+    if (!Number.isInteger(maxBytes) || maxBytes < 1) throw new RangeError('maxBytes must be positive');
+    const { workspaceRealPath, target } = await this.#resolveFilePath(workspaceId, path);
+    const info = await lstat(target);
+    if (info.isSymbolicLink() || !info.isFile()) throw new Error('workspace artifact must be a regular file, not a symbolic link');
+    const actual = await realpath(target);
+    if (actual !== workspaceRealPath && !actual.startsWith(workspaceRealPath + sep)) throw new TypeError('artifact resolves outside workspace');
+    if (info.size > maxBytes) throw new RangeError('workspace artifact exceeds read limit');
+    return fsReadFile(actual);
+  }
+
   async #resolveFilePath(workspaceId, filePath) {
     if (typeof filePath !== 'string' || !filePath.trim() || isAbsolute(filePath)) throw new TypeError('file path must be a non-empty relative path');
     const workspacePath = this.#workspacePath(workspaceId);

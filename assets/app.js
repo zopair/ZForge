@@ -42,6 +42,46 @@ function appendMessage(text,kind="assistant"){
   conversation.scrollTop=conversation.scrollHeight;
 }
 
+function appendArtifactLink(artifact){
+  const row=document.createElement("div");
+  row.className="message assistant-message artifact-message";
+  const avatar=document.createElement("span");
+  avatar.className="message-avatar";
+  avatar.textContent="↓";
+  const content=document.createElement("div");
+  content.className="message-content";
+  const link=document.createElement("a");
+  link.className="artifact-link";
+  link.href="#";
+  link.textContent="تحميل "+artifact.filename+" · "+artifact.sizeBytes+" بايت";
+  link.addEventListener("click",async event=>{
+    event.preventDefault();
+    link.setAttribute("aria-busy","true");
+    try{
+      const response=await fetch(runtimeBaseUrl+"/api/artifacts/"+encodeURIComponent(artifact.id)+"/download",{
+        headers:{Authorization:"Bearer "+runtimeToken}
+      });
+      if(!response.ok)throw new Error("تعذر تنزيل الملف.");
+      const objectUrl=URL.createObjectURL(await response.blob());
+      const download=document.createElement("a");
+      download.href=objectUrl;
+      download.download=artifact.filename;
+      document.body.append(download);
+      download.click();
+      download.remove();
+      window.setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
+    }catch(error){
+      appendMessage(error.message);
+    }finally{
+      link.removeAttribute("aria-busy");
+    }
+  });
+  content.append(link);
+  row.append(avatar,content);
+  conversation.append(row);
+  conversation.scrollTop=conversation.scrollHeight;
+}
+
 async function api(path,{method="GET",body}={}){
   const response=await fetch(runtimeBaseUrl+path,{
     method,
@@ -135,6 +175,9 @@ form.addEventListener("submit",async event=>{
     }else{
       const detail=result.message||completed.error||"لم يقدم الوكيل دليلاً كافياً لإعلان الاكتمال.";
       appendMessage("حالة المهمة: "+completed.status+". "+detail+" رقم المهمة: "+completed.id);
+    }
+    for(const item of result.evidence??[]){
+      if(item.artifact)appendArtifactLink(item.artifact);
     }
     executionStatus.textContent=completed.status==="succeeded"?"آخر مهمة مكتملة":"تحتاج إلى متابعة";
   }catch(error){
