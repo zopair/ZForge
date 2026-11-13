@@ -121,6 +121,18 @@ export class ChiefAgent{
         catalogSources:seed.catalogSources??[],
       })),
       unresolvedRepositoryReferences:discovery.plan?.unresolvedRepositoryReferences??[],
+      selfHealingEngineering:{
+        enabled:true,
+        lifecycle:['capture-failure-evidence','classify-root-cause','search-free-open-source-alternatives','evaluate-license-cost-compatibility','test-alternative-in-isolated-workspace','build-minimal-original-micro-tool-only-after-complete-discovery','run-regression-tests','record-success-and-failure-lessons'],
+        zeroBudgetOnly:true,
+        openSourceOnly:true,
+        popularityIsNotEvidence:true,
+        incompleteDiscoveryMustContinue:true,
+        preserveFailedExperiments:true,
+        buildMissingToolsWhenWithinApprovedScope:true,
+        requirePlanExtensionWhenRecoveryExceedsApprovedScope:true,
+        requireVerifiedEvidenceBeforeCompletion:true,
+      },
       workspaceOperatingPrinciples:{
         defaultMode:'experimental',
         freedomByDefault:true,
@@ -151,7 +163,7 @@ export class ChiefAgent{
     };
     const response=await this.modelAdapter.chat({model:this.model,temperature:0.1,messages:[
       {role:'system',content:`${canonicalPrompt}\n\nRuntime execution boundary:\n${SYSTEM_SAFETY}`},
-      {role:'user',content:`Prepare a draft engineering plan from this structured task context. Use experimental workspaces, propose parallel experiments (parallel variants) where useful, and preserve failed or unexpected outcomes as learning. For BUILD_INTERNAL_TOOL, include a concrete implementation plan and tests. When two or more independently active specialist agents are listed and delegation materially improves the result, append one machine-readable <ORCHESTRATION_PLAN> JSON block with 2..8 tasks. Each task must have a unique short lowercase id, an exact agentId from availableAgents, a concrete request, and optional dependsOn and plan. Never invent or use proposed/inactive agent IDs. Omit the block when delegation is unnecessary. Do not claim execution has occurred.\n${JSON.stringify(context)}`},
+      {role:'user',content:`Prepare a draft engineering plan from this structured task context. Include a concrete self-healing strategy: detect and classify likely failures, investigate root causes, discover and compare free/open-source alternatives, test alternatives in isolated workspaces, and build a minimal original micro-tool only after discovery and candidate evaluation are complete. Include repair attempts and regression tests in the approved scope when relevant; if recovery would materially exceed scope, request a plan extension rather than silently expanding scope. Use experimental workspaces, propose parallel experiments (parallel variants) where useful, and preserve failed or unexpected outcomes as learning. For BUILD_INTERNAL_TOOL, include a concrete implementation plan and tests. When two or more independently active specialist agents are listed and delegation materially improves the result, append one machine-readable <ORCHESTRATION_PLAN> JSON block with 2..8 tasks. Each task must have a unique short lowercase id, an exact agentId from availableAgents, a concrete request, and optional dependsOn and plan. Never invent or use proposed/inactive agent IDs. Omit the block when delegation is unnecessary. Do not claim execution has occurred.\n${JSON.stringify(context)}`},
     ]});
     if(typeof response?.content!=='string'||!response.content.trim())throw new Error('local model returned an empty plan');
     const orchestration = extractOrchestrationPlan(response.content, activeAgents);

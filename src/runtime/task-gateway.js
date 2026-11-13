@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { buildDiscoveryPlan } from '../core/discovery-engine.js';
@@ -459,6 +459,22 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
         if (!task) return send(response, 404, { error: 'task_not_found' });
         const body = await readJson(request, maxBodyBytes);
         if (body.confirmExecution !== true) return send(response, 409, { error: 'explicit_execution_confirmation_required' });
+        let planning = null;
+        if (body.approvedPlan !== undefined) {
+          if (typeof body.approvedPlan !== 'string' || !body.approvedPlan.trim()) {
+            return send(response, 400, { error: 'approved_plan_snapshot_required' });
+          }
+          const actualDigest = createHash('sha256').update(body.approvedPlan).digest('hex');
+          if (body.approvedPlanSha256 !== actualDigest) {
+            return send(response, 409, { error: 'approved_plan_fingerprint_mismatch' });
+          }
+          try { planning = JSON.parse(body.approvedPlan); }
+          catch { return send(response, 400, { error: 'approved_plan_snapshot_invalid_json' }); }
+          if (!planning || typeof planning !== 'object' || typeof planning.plan !== 'string'
+            || planning.requiresApproval !== true || planning.executionStarted !== false) {
+            return send(response, 400, { error: 'approved_plan_snapshot_invalid_schema' });
+          }
+        }
         const model = typeof body.model === 'string' && body.model.trim() ? body.model.trim() : defaultModel;
         let executionProfile = null;
         if (body.agentId) {
@@ -475,9 +491,11 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
           const availableAgents = agentFactory && typeof agentFactory.listAgents === 'function'
             ? await agentFactory.listAgents()
             : [];
-          const planning = chiefAgent
-            ? await chiefAgent.planTask({ request: task.request, capabilities, keywords, availableAgents })
-            : null;
+          if (!planning) {
+            planning = chiefAgent
+              ? await chiefAgent.planTask({ request: task.request, capabilities, keywords, availableAgents })
+              : null;
+          }
           let execution;
           if (!body.agentId && multiAgentCoordinator && Array.isArray(planning?.orchestrationTasks) && planning.orchestrationTasks.length >= 2) {
             const delegatedTasks = planning.orchestrationTasks.map((item, index) => ({
@@ -503,7 +521,7 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
               request: task.request,
               model,
               workspaceId: task.workspaceId,
-              plan: planning?.plan ?? (typeof body.approvedPlan === 'string' ? body.approvedPlan : null),
+              plan: planning?.plan ?? null,
               allowedTools: executionProfile?.allowedTools ?? null,
               resourceLimits: executionProfile?.resourceLimits ?? null,
               onProgress: event => store.appendEvent(task.id, event.type, event.details),

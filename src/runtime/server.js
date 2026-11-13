@@ -9,6 +9,7 @@ import { LocalVoiceService } from './local-voice-service.js';
 import { OllamaModelAdapter } from '../adapters/ollama-model-adapter.js';
 import { AgentExecutionService } from '../core/agent-execution-service.js';
 import { ChiefAgent } from '../core/chief-agent.js';
+import { SelfHealingEngineeringEngine } from '../core/self-healing-engine.js';
 import { AgentFactory } from '../core/agent-factory.js';
 import { MultiAgentCoordinator } from '../core/multi-agent-coordinator.js';
 import { LocalAgentRegistry } from './local-agent-registry.js';
@@ -74,13 +75,15 @@ const voiceService = new LocalVoiceService({
 });
 const modelAdapter = new OllamaModelAdapter({ baseUrl: process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434' });
 const workspaceManager = await new PersistentAgentWorkspaceManager({ dataDir }).initialize();
-const agentService = new AgentExecutionService({ modelAdapter, runtime, workspaceManager, artifactStore, maxSteps: Number(process.env.ZFORGE_AGENT_MAX_STEPS ?? 16) });
+
 const discoveryClient = new GitHubDiscoveryClient({ token: process.env.GITHUB_TOKEN ?? null });
 const discoveryService = new UniversalDiscoveryService({ client: discoveryClient });
 const repositoryMemoryStore = new LocalRepositoryMemoryStore({ rootDir: repositoryRoot });
 const taskHistoryMemoryStore = new LocalTaskHistoryMemoryStore({ dataDir });
 const engineeringIssueLedger = await new EngineeringIssueLedger({ dataDir }).initialize();
 const memoryStore = new CompositeMemoryStore({ stores: [repositoryMemoryStore, taskHistoryMemoryStore, engineeringIssueLedger] });
+const selfHealingEngine = new SelfHealingEngineeringEngine({ discoveryService, memoryStore });
+const agentService = new AgentExecutionService({ modelAdapter, runtime, workspaceManager, artifactStore, selfHealingEngine, maxSteps: Number(process.env.ZFORGE_AGENT_MAX_STEPS ?? 16) });
 const promptProvider = new LocalPromptProvider({ rootDir: repositoryRoot });
 const chiefAgent = new ChiefAgent({ modelAdapter, discoveryService, memoryStore, promptProvider, model });
 const agentRegistry = await new LocalAgentRegistry({ dataDir }).initialize();
