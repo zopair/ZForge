@@ -106,10 +106,10 @@ export class LocalVoiceService {
     maxConvertedAudioBytes = 50 * 1024 * 1024,
     maxOutputBytes = 2 * 1024 * 1024,
   } = {}) {
-    for (const [name, value] of Object.entries({ timeoutMs, maxAudioBytes, maxSynthesizedBytes, maxConvertedAudioBytes, maxOutputBytes })) {
+    for (const [name, value] of Object.entries({ timeoutMs, kemetoneTimeoutMs, maxKemetoneWords, maxAudioBytes, maxSynthesizedBytes, maxConvertedAudioBytes, maxOutputBytes })) {
       if (!Number.isInteger(value) || value < 1) throw new RangeError(name + ' must be a positive integer');
     }
-    if (typeof whisperCommand !== 'string' || !whisperCommand.trim() || typeof ffmpegCommand !== 'string' || !ffmpegCommand.trim() || typeof piperCommand !== 'string' || !piperCommand.trim()) throw new TypeError('local voice executable names must be non-empty strings');
+    if ([whisperCommand, ffmpegCommand, piperCommand, kemetonePythonCommand, kemetoneEspeakCommand].some(value => typeof value !== 'string' || !value.trim())) throw new TypeError('local voice executable names must be non-empty strings');
     this.whisperCommand = whisperCommand;
     this.whisperModelPath = whisperModelPath ? resolve(whisperModelPath) : null;
     this.ffmpegCommand = ffmpegCommand;
@@ -130,11 +130,15 @@ export class LocalVoiceService {
   }
 
   capabilities() {
+    const synthesisEngines = [
+      ...(this.kemetoneModelDir ? ['KemeTone Egyptian'] : []),
+      ...(this.piperModelPath ? ['Piper'] : []),
+    ];
     return {
       transcription: Boolean(this.whisperModelPath),
-      synthesis: Boolean(this.piperModelPath),
+      synthesis: synthesisEngines.length > 0,
       localOnly: true,
-      engines: { transcription: this.whisperModelPath ? 'whisper.cpp' : null, synthesis: this.piperModelPath ? 'Piper' : null },
+      engines: { transcription: this.whisperModelPath ? 'whisper.cpp' : null, synthesis: synthesisEngines.join(' + ') || null },
     };
   }
 
@@ -147,8 +151,13 @@ export class LocalVoiceService {
       piperModel: await regularModelFile(this.piperModelPath),
       piperConfig: await regularModelFile(this.piperModelPath ? this.piperModelPath + '.json' : null),
       piperModule: false,
+      kemetoneConfigured: Boolean(this.kemetoneModelDir),
+      kemetonePython: false,
+      kemetoneEspeak: false,
+      kemetoneModel: false,
+      kemetoneModule: false,
     };
-    if (checks.piperInterpreter) {
+    if (checks.piperInterpreter && this.piperModelPath) {
       const directory = await mkdtemp(join(tmpdir(), 'zforge-piper-check-'));
       try {
         await runLocalProcess({
@@ -165,24 +174,68 @@ export class LocalVoiceService {
         await rm(directory, { recursive: true, force: true });
       }
     }
+    if (this.kemetoneModelDir) {
+      checks.kemetonePython = await executableAvailable(this.kemetonePythonCommand);
+      checks.kemetoneEspeak = await executableAvailable(this.kemetoneEspeakCommand);
+      checks.kemetoneModel = await Promise.all([
+        regularModelFile(join(this.kemetoneModelDir, 'config.json')),
+        regularModelFile(join(this.kemetoneModelDir, 'kemetone.pth')),
+        regularModelFile(join(this.kemetoneModelDir, 'voices', 'kemetone.pt')),
+        regularModelFile(join(this.kemetoneModelDir, 'example.py')),
+        directoryAvailable(join(this.kemetoneModelDir, 'kemetone')),
+      ]).then(values => values.every(Boolean));
+      if (checks.kemetonePython && checks.kemetoneEspeak && checks.kemetoneModel) {
+        try {
+          await runLocalProcess({
+            command: this.kemetonePythonCommand,
+            args: ['-c', 'import torch, soundfile; from kokoro import KModel; from kemetone import EgyptianG2P'],
+            cwd: this.kemetoneModelDir,
+            timeoutMs: this.kemetoneTimeoutMs,
+            maxOutputBytes: this.maxOutputBytes,
+            extraEnv: this.kemetoneEspeakLib ? { KEMETONE_ESPEAK_LIB: this.kemetoneEspeakLib } : {},
+          });
+          checks.kemetoneModule = true;
+        } catch {
+          checks.kemetoneModule = false;
+        }
+      }
+    }
+    checks.kemetoneReady = checks.kemetoneConfigured && checks.kemetonePython && checks.kemetoneEspeak && checks.kemetoneModel && checks.kemetoneModule;
+    checks.piperReady = checks.piperInterpreter && checks.piperModule && checks.piperModel && checks.piperConfig;
     const transcription = checks.whisperExecutable && checks.whisperModel && checks.ffmpegExecutable;
-    const synthesis = checks.piperInterpreter && checks.piperModule && checks.piperModel && checks.piperConfig;
+    const synthesis = checks.kemetoneReady || checks.piperReady;
+    const synthesisEngines = [
+      ...(checks.kemetoneReady ? ['KemeTone Egyptian'] : []),
+      ...(checks.piperReady ? ['Piper'] : []),
+    ];
     const issues = [];
     if (!checks.whisperExecutable) issues.push('whisper.cpp executable is missing or not executable');
     if (!checks.whisperModel) issues.push('Whisper model file is missing');
     if (!checks.ffmpegExecutable) issues.push('FFmpeg is required for browser microphone audio');
-    if (!checks.piperInterpreter) issues.push('Piper Python interpreter is missing or not executable');
-    if (checks.piperInterpreter && !checks.piperModule) issues.push('Piper Python module is not installed in the configured interpreter');
-    if (!checks.piperModel) issues.push('Piper ONNX voice model is missing');
-    if (checks.piperModel && !checks.piperConfig) issues.push('Piper ONNX JSON sidecar config is missing');
-    return {
+    if (this.piperModelPath && !checks.piperInterpreter) issues.push('Piper Python interpreter is missing or not executable');
+    if (this.piperModelPath && checks.piperInterpreter && !checks.piperModule) issues.push('Piper Python module is not installed in the configured interpreter');
+    if (this.piperModelPath && !checks.piperModel) issues.push('Piper ONNX voice model is missing');
+    if (this.piperModelPath && checks.piperModel && !checks.piperConfig) issues.push('Piper ONNX JSON sidecar config is missing');
+    if (this.kemetoneModelDir && !checks.kemetonePython) issues.push('KemeTone Python interpreter is missing or not executable');
+    if (this.kemetoneModelDir && !checks.kemetoneEspeak) issues.push('espeak-ng is required by KemeTone');
+    if (this.kemetoneModelDir && !checks.kemetoneModel) issues.push('KemeTone model bundle is incomplete');
+    if (this.kemetoneModelDir && checks.kemetoneModel && checks.kemetonePython && checks.kemetoneEspeak && !checks.kemetoneModule) issues.push('KemeTone Python dependencies are not installed in the configured interpreter');
+    if (!synthesis) issues.push('No local text-to-speech engine is ready');
+    const result = {
       transcription,
       synthesis,
       localOnly: true,
-      engines: { transcription: transcription ? 'whisper.cpp' : null, synthesis: synthesis ? 'Piper' : null },
+      engines: {
+        transcription: transcription ? 'whisper.cpp' : null,
+        synthesis: synthesisEngines.join(' + ') || null,
+        kemetone: checks.kemetoneReady,
+        piper: checks.piperReady,
+      },
       checks,
       issues,
     };
+    this.readinessSnapshot = result;
+    return result;
   }
 
   async transcribe({ audio, contentType } = {}) {
