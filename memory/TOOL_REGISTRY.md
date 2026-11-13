@@ -42,6 +42,15 @@ Canonical index of category-specific evaluations. Popularity is discovery-only a
 - Four shorthand references remain unresolved and are deliberately not guessed: `rea`, `Matt Pocock / Skills for Real Engineers`, `Affaan / ECC`, and `Addy Osmani / agent-skills`.
 - Search resolution: `claude-mem` → `thedotmack/claude-mem`; `gemini-cli` → `google-gemini/gemini-cli`. Resolution identifies the repository only; it is not license or security approval.
 
+## AI Agents Master Library import
+- Canonical source: `src/core/agent-master-library-catalog.js`.
+- Imported the **64 repository identities** from the user-provided Bash library across ten categories: agent frameworks (11), coding agents (8), computer-use agents (8), medical/healthcare (6), finance/cyber (5), robotics/gaming (8), memory/RAG (5), agent skills (4), interoperability protocols (5), and security/benchmarks/reference collections (4).
+- Project types distinguish `FRAMEWORK`, `CODING_AGENT`, `COMPUTER_USE_AGENT`, `DOMAIN_AGENT`, `MEMORY_RAG`, `SKILL_LIBRARY`, `PROTOCOL`, and `REFERENCE_COLLECTION`.
+- Every imported item remains `PENDING_REVIEW`, `installable: false`, and `clonePolicy: ON_DEMAND`. No bulk clone, install, build hook or agent activation is performed by catalogue ingestion.
+- Discovery queries use exact owner/name and remain inside the normal bounded, resumable query budget. Duplicate identities across user catalogues are deduplicated while provenance is retained.
+- Chief Agent receives the imported list and combined repository catalogue as planning context. It may compare candidates and propose follow-up inspection; it cannot convert a seed into an approved tool or active agent.
+- License, dependencies, model/data/asset terms, self-hosting, zero-cost path, runtime compatibility, security, maintenance and reproducible workload evidence remain required before promotion.
+
 ## Third-party registry
 No third-party tools have been benchmarked and approved in this update. Do not invent winners or assign VERIFIED status without reproducible evidence.
 
