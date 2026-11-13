@@ -49,7 +49,7 @@ const androidBuildService = new AndroidBuildService({
   androidHome: process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT ?? null,
   javaHome: process.env.JAVA_HOME ?? null,
   path: process.env.PATH ?? null,
-  timeoutMs: Number(process.env.ZFORGE_ANDROID_BUILD_TIMEOUT_MS ?? 1200000),
+  timeoutMs: Number(process.env.ZFORGE_ANDROID_BUILD_TIMEOUT_MS ?? 840000),
 });
 const modelAdapter = new OllamaModelAdapter({ baseUrl: process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434' });
 const workspaceManager = new AgentWorkspaceManager();
