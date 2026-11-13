@@ -52,7 +52,7 @@ The Piper adapter invokes the maintained CLI as `python -m piper -m MODEL -f OUT
 
 ## API
 
-- `GET /api/voice/capabilities` — authenticated capability report.
+- `GET /api/voice/capabilities` — authenticated readiness report. It checks executable permissions, local model files, Piper's Python module import and the required `.onnx.json` sidecar; the microphone transcription capability also requires FFmpeg. Configured paths alone are not reported as ready.
 - `POST /api/voice/transcribe` — authenticated raw audio body with an audio MIME type.
 - `POST /api/voice/synthesize` — authenticated JSON body `{ "text": "..." }`, returns `audio/wav`.
 
@@ -60,6 +60,6 @@ Accepted input MIME types: WebM, Ogg, WAV, MP4/M4A and MPEG audio. Default maxim
 
 ## BLACK VANTA controls
 
-After connecting to the Task Gateway, enable **الصوت المحلي**. The microphone button records a short clip and places the locally transcribed text in the composer for review before sending. Verified agent replies can be synthesized to a local WAV player when Piper is configured.
+After connecting to the Task Gateway, BLACK VANTA checks the configured binaries, model files and Piper module before enabling **الصوت المحلي**. Missing dependencies are reported separately from ready engines. The microphone button records a short clip and places the locally transcribed text in the composer for review before sending. Verified agent replies can be synthesized to a local WAV player when Piper is configured.
 
 The browser requires microphone permission and a secure context (HTTPS or localhost). WebM/Ogg/MP4/MP3 microphone recordings require FFmpeg on the runtime host; WAV input is passed directly to Whisper.cpp. The PWA itself does not perform transcription or synthesis when the runtime host has not configured the corresponding model and executable.
