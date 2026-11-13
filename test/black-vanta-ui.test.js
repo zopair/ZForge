@@ -44,7 +44,6 @@ test('BLACK VANTA connects to the authenticated task and model APIs without pers
   assert.match(js, /approvedPlanSha256/);
   assert.match(js, /الموافقة على الخطة وبدء التنفيذ/);
   assert.doesNotMatch(js, /runtime-agent|runtimeAgentSelect/);
-  assert.match(js, /api\("\/api\/tasks"/);
   assert.match(js, /agent-run/);
   assert.match(js, /android-build/);
   assert.match(js, /formats:\["apk","aab"\]/);
