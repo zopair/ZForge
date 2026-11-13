@@ -111,6 +111,7 @@ export class LocalExecutionRuntime {
       const children = await readdir(directory, { withFileTypes: true });
       for (const child of children) {
         if (entries.length >= maxEntries) return;
+        if (prefix === '' && child.name === '.tmp') continue;
         const childPath = join(directory, child.name);
         if (child.isSymbolicLink()) throw new Error('workspace listing encountered a symbolic link');
         const relativePath = prefix ? `${prefix}/${child.name}` : child.name;
