@@ -126,7 +126,7 @@ export class TaskStore {
   }
 }
 
-export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock } = {}) {
+export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null } = {}) {
   if (typeof token !== 'string' || token.length < 16) throw new TypeError('a gateway bearer token of at least 16 characters is required');
   if (!Number.isInteger(maxBodyBytes) || maxBodyBytes < 1024) throw new RangeError('maxBodyBytes must be at least 1024');
   const store = new TaskStore({ dataDir, clock });
@@ -144,6 +144,12 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
 
       if (request.method === 'GET' && url.pathname === '/api/tasks') {
         return send(response, 200, { tasks: store.list() });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/workspaces') {
+        if (!runtime) return send(response, 503, { error: 'execution_runtime_unavailable' });
+        const body = await readJson(request, maxBodyBytes);
+        const workspace = await runtime.createWorkspace({ id: body.id });
+        return send(response, 201, { id: workspace.id, ready: true });
       }
       if (request.method === 'POST' && url.pathname === '/api/tasks') {
         const task = await store.create(await readJson(request, maxBodyBytes));
