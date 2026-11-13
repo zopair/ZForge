@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, chmod, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, chmod, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LocalVoiceService } from '../src/runtime/local-voice-service.js';
@@ -131,5 +131,70 @@ test('local voice readiness marks missing FFmpeg and Piper config as unavailable
     assert.equal(status.checks.ffmpegExecutable, false);
     assert.equal(status.checks.piperConfig, false);
     assert.ok(status.issues.length >= 2);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('local voice can synthesize Egyptian Cairene Arabic with optional KemeTone and verify its model bundle', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zforge-kemetone-'));
+  try {
+    const modelDir = join(root, 'kemetone-model');
+    await mkdir(join(modelDir, 'voices'), { recursive: true });
+    await mkdir(join(modelDir, 'kemetone'), { recursive: true });
+    await writeFile(join(modelDir, 'config.json'), '{}');
+    await writeFile(join(modelDir, 'kemetone.pth'), 'weights');
+    await writeFile(join(modelDir, 'voices', 'kemetone.pt'), 'voice embedding');
+    await writeFile(join(modelDir, 'example.py'), '# local example');
+    const python = await executable(root, 'kemetone-python', 'if [ "$1" = "-c" ]; then exit 0; fi\\noutput="$3"\\nprintf "RIFF0000WAVEfmt " > "$output"\\ndd if=/dev/zero bs=28 count=1 >> "$output" 2>/dev/null\\n');
+    const espeak = await executable(root, 'espeak-ng', 'exit 0\\n');
+    const service = new LocalVoiceService({
+      kemetonePythonCommand: python,
+      kemetoneModelDir: modelDir,
+      kemetoneEspeakCommand: espeak,
+    });
+    const status = await service.inspectCapabilities();
+    assert.equal(status.synthesis, true);
+    assert.equal(status.engines.synthesis, 'KemeTone Egyptian');
+    assert.equal(status.checks.kemetoneModel, true);
+    assert.equal(status.checks.kemetoneModule, true);
+    const result = await service.synthesize({ text: 'النَّهَارْدَه الْجَوّ حِلْو أَوِي', engine: 'auto' });
+    assert.equal(result.engine, 'KemeTone Egyptian');
+    assert.equal(result.contentType, 'audio/wav');
+    assert.equal(result.audio.subarray(0, 4).toString(), 'RIFF');
+    assert.equal(result.audio.subarray(8, 12).toString(), 'WAVE');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('automatic voice selection uses Piper for mixed Latin text and refuses unsupported text without a fallback', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zforge-kemetone-fallback-'));
+  try {
+    const modelDir = join(root, 'kemetone-model');
+    await mkdir(join(modelDir, 'voices'), { recursive: true });
+    await mkdir(join(modelDir, 'kemetone'), { recursive: true });
+    for (const [name, content] of [['config.json', '{}'], ['kemetone.pth', 'weights'], ['voices/kemetone.pt', 'voice'], ['example.py', '# local example']]) {
+      const target = join(modelDir, name);
+      await mkdir(join(target, '..'), { recursive: true });
+      await writeFile(target, content);
+    }
+    const kemetonePython = await executable(root, 'kemetone-python', 'if [ "$1" = "-c" ]; then exit 0; fi\\nexit 0\\n');
+    const espeak = await executable(root, 'espeak-ng', 'exit 0\\n');
+    const piperModel = join(root, 'voice.onnx');
+    await writeFile(piperModel, 'model');
+    await writeFile(piperModel + '.json', '{}');
+    const piper = await executable(root, 'fake-piper', 'while [ "$#" -gt 0 ]; do if [ "$1" = "-f" ]; then shift; output="$1"; fi; shift; done\\nprintf "RIFF0000WAVEdata" > "$output"\\n');
+    const service = new LocalVoiceService({
+      kemetonePythonCommand: kemetonePython,
+      kemetoneModelDir: modelDir,
+      kemetoneEspeakCommand: espeak,
+      piperCommand: piper,
+      piperModelPath: piperModel,
+    });
+    const result = await service.synthesize({ text: 'Build complete: 2 tasks', engine: 'auto' });
+    assert.equal(result.engine, 'Piper');
+    const egyptianOnly = new LocalVoiceService({
+      kemetonePythonCommand: kemetonePython,
+      kemetoneModelDir: modelDir,
+      kemetoneEspeakCommand: espeak,
+    });
+    await assert.rejects(() => egyptianOnly.synthesize({ text: 'Build complete: 2 tasks', engine: 'auto' }), /Arabic-only/i);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
