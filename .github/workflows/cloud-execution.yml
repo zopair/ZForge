@@ -69,7 +69,7 @@ jobs:
             body: event.issue?.body,
           });
           const needsModel = !isCapabilityQuestion(request);
-          await appendFile(process.env.GITHUB_OUTPUT, 'needs_model=' + String(needsModel) + '\\n');
+          await appendFile(process.env.GITHUB_OUTPUT, 'needs_model=' + String(needsModel) + '\n');
           NODE
 
       - name: Install Ollama on the ephemeral worker
