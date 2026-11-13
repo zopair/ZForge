@@ -51,6 +51,7 @@ All endpoints except health require `Authorization: Bearer <token>`.
 | POST | `/api/agents/:id/tests` | Record one required test result and evidence |
 | POST | `/api/agents/:id/reviews` | Record independent license/security/permission review |
 | POST | `/api/agents/:id/activate` | Activate only after all gates and a separate approver |
+| POST | `/api/agents/:id/deactivate` | Roll back an active agent with explicit approval and reason |
 | GET | `/api/agents/:id/profile` | Read an active agent's effective tool/resource profile |
 | GET | `/api/artifacts` | List stored build artifacts |
 | GET | `/api/artifacts/:id` | Read artifact metadata |
