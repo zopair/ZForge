@@ -80,3 +80,58 @@ test('agent-run streams persisted progress events while execution is active', as
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('multi-agent orchestration persists specialist lifecycle and worker events for the UI feed', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zforge-orchestration-events-'));
+  const coordinatorEvents = [
+    { type: 'agent.task.started', details: { taskId: 'research', agentId: 'researcher' } },
+    { type: 'agent.step.started', details: { step: 1, taskId: 'research', agentId: 'researcher' } },
+    { type: 'agent.task.completed', details: { taskId: 'research', agentId: 'researcher', evidenceCount: 1 } },
+  ];
+  const multiAgentCoordinator = {
+    executePlan: async ({ onProgress }) => {
+      for (const event of coordinatorEvents) await onProgress(event);
+      return {
+        status: 'completed',
+        workspaceId: 'orchestration-ui',
+        summary: { total: 1, succeeded: 1, failed: 0, skipped: 0 },
+        tasks: [{ id: 'research', agentId: 'researcher', status: 'succeeded', summary: 'Research complete', evidence: [{ id: 'proof' }] }],
+      };
+    },
+  };
+  const gateway = createTaskGateway({
+    dataDir: root,
+    token: 'progress-test-token-123',
+    multiAgentCoordinator,
+  });
+  await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
+  const base = 'http://127.0.0.1:' + gateway.server.address().port;
+  const headers = { Authorization: 'Bearer progress-test-token-123', 'Content-Type': 'application/json' };
+  try {
+    const created = await fetch(base + '/api/tasks', { method: 'POST', headers, body: JSON.stringify({ request: 'coordinate specialist agents' }) });
+    const task = await created.json();
+    const denied = await fetch(base + '/api/tasks/' + task.id + '/orchestrate', {
+      method: 'POST', headers, body: JSON.stringify({ tasks: [{ id: 'research', agentId: 'researcher', request: 'Research' }] }),
+    });
+    assert.equal(denied.status, 409);
+    const run = await fetch(base + '/api/tasks/' + task.id + '/orchestrate', {
+      method: 'POST', headers, body: JSON.stringify({
+        confirmExecution: true,
+        tasks: [{ id: 'research', agentId: 'researcher', request: 'Research' }],
+      }),
+    });
+    assert.equal(run.status, 200);
+    const completed = await run.json();
+    assert.equal(completed.status, 'succeeded');
+    const response = await fetch(base + '/api/tasks/' + task.id + '/events?after=1', { headers });
+    const payload = await response.json();
+    assert.deepEqual(payload.events.map(event => event.type), coordinatorEvents.map(event => event.type));
+    assert.equal(payload.events[0].details.agentId, 'researcher');
+    assert.equal(payload.events[1].details.taskId, 'research');
+    assert.equal(payload.events[2].details.evidenceCount, 1);
+    assert.equal(payload.status, 'succeeded');
+  } finally {
+    await new Promise(resolve => gateway.server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
