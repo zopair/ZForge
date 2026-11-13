@@ -36,3 +36,15 @@ test('workspace file APIs reject traversal, absolute paths and symbolic links', 
     await rm(outside, { recursive: true, force: true });
   }
 });
+
+test('local process runtime terminates an active process when its task is cancelled', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zforge-abort-process-'));
+  try {
+    const runtime = await new LocalExecutionRuntime({ rootDir: root, defaultTimeoutMs: 5000 }).initialize();
+    await runtime.createWorkspace({ id: 'ws-abort' });
+    const controller = new AbortController();
+    const execution = runtime.execute({ workspaceId: 'ws-abort', command: process.execPath, args: ['-e', 'setTimeout(()=>{},10000)'], signal: controller.signal });
+    setTimeout(() => controller.abort('user cancelled'), 50);
+    await assert.rejects(execution, error => error.name === 'AbortError');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
