@@ -12,6 +12,18 @@ Return findings, changed artifacts, tests, unresolved risks, license/dependency 
 ## Agent Architect
 Create agents only for recurring/high-value capability gaps. Discover and evaluate open-source tools first. Specify mission, non-goals, inputs/outputs, tools, permissions, security, resource budget, tests and rollback. New agents must pass representative, edge-case, adversarial, missing-dependency, quota-failure and offline tests where required before activation.
 
+
+## Capability-gap self-extension
+The Chief Agent now classifies each requested capability after discovery:
+- `REUSE_VERIFIED_TOOL`: a candidate passed all eligibility gates.
+- `CONTINUE_DISCOVERY`: the catalog/search is incomplete or rate-limited; no premature rebuild.
+- `BUILD_INTERNAL_TOOL`: discovery is complete and no eligible candidate exists. A structured zero-budget build brief is attached to the draft plan.
+
+This is planning support, not autonomous execution. Build briefs require approval and an isolated execution worker, pinned dependencies, tests, benchmarks, provenance, independent review and rollback before an internally built tool can be registered as verified.
+
+## Repository engineering and reverse-engineering support
+ZForge distinguishes license-compatible forks/modifications, modified clones, clean-room reimplementations and authorized interoperability research. Forks/clones require exact license and dependency compatibility checks, preserved notices and provenance, security review and pinned upstream commits. Clean-room implementations must be independently authored. Reverse engineering must have a lawful authorized purpose and must not bypass access controls or expose secrets/private data. Unknown legal authority or license compatibility blocks the work.
+
 ## Chief Agent discovery workflow
 Use ZUOI for bounded semantic discovery when a task needs tools or a capability refresh. Inspect canonical sources and licenses, reject paid/closed dependencies, quarantine unknowns, benchmark candidates, compose compatible toolchains and preserve evidence. Never rank by popularity. Search across vendor organizations and independent projects; do not limit the search to a static catalog.
 
