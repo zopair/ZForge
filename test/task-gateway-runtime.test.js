@@ -186,3 +186,29 @@ test('task gateway allocates a distinct workspace when none is specified', async
     assert.notEqual(first.workspaceId, second.workspaceId);
   });
 });
+
+test('task gateway exposes authenticated artifact metadata and binary downloads', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zforge-artifact-api-'));
+  const bytes = Buffer.from([0, 1, 2, 255]);
+  const artifact = { id: 'artifact-123', filename: 'release.apk', kind: 'apk', sha256: 'hash', sizeBytes: bytes.length };
+  const artifactStore = {
+    listArtifacts: () => [artifact],
+    getArtifact: id => id === artifact.id ? artifact : null,
+    readArtifact: async id => id === artifact.id ? { metadata: artifact, content: bytes } : null,
+  };
+  const gateway = createTaskGateway({ dataDir: root, token: 'test-secret-token', artifactStore });
+  await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${gateway.server.address().port}`;
+  const headers = { Authorization: 'Bearer test-secret-token' };
+  try {
+    const list = await fetch(`${base}/api/artifacts`, { headers });
+    assert.equal((await list.json()).artifacts[0].id, artifact.id);
+    const download = await fetch(`${base}/api/artifacts/${artifact.id}/download`, { headers });
+    assert.equal(download.status, 200);
+    assert.deepEqual(Buffer.from(await download.arrayBuffer()), bytes);
+    assert.match(download.headers.get('content-disposition'), /release.apk/);
+  } finally {
+    await new Promise(resolve => gateway.server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
