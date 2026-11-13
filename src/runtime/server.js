@@ -9,6 +9,7 @@ import { LocalVoiceService } from './local-voice-service.js';
 import { OllamaModelAdapter } from '../adapters/ollama-model-adapter.js';
 import { AgentExecutionService } from '../core/agent-execution-service.js';
 import { ChiefAgent } from '../core/chief-agent.js';
+import { ConversationalCore } from '../core/conversational-core.js';
 import { SelfHealingEngineeringEngine } from '../core/self-healing-engine.js';
 import { AgentFactory } from '../core/agent-factory.js';
 import { MultiAgentCoordinator } from '../core/multi-agent-coordinator.js';
@@ -86,10 +87,29 @@ const selfHealingEngine = new SelfHealingEngineeringEngine({ discoveryService, m
 const agentService = new AgentExecutionService({ modelAdapter, runtime, workspaceManager, artifactStore, selfHealingEngine, maxSteps: Number(process.env.ZFORGE_AGENT_MAX_STEPS ?? 16) });
 const promptProvider = new LocalPromptProvider({ rootDir: repositoryRoot });
 const chiefAgent = new ChiefAgent({ modelAdapter, discoveryService, memoryStore, promptProvider, model });
+
 const agentRegistry = await new LocalAgentRegistry({ dataDir }).initialize();
 const agentFactory = new AgentFactory({ registry: agentRegistry });
 const multiAgentCoordinator = new MultiAgentCoordinator({ agentFactory, agentService, maxParallel: Number(process.env.ZFORGE_MAX_PARALLEL_AGENTS ?? 3), defaultModel: model });
-const gateway = createTaskGateway({ dataDir, token, runtime, agentService, chiefAgent, agentFactory, multiAgentCoordinator, androidBuildService, webBuildService, webBrowserVerificationService, voiceService, artifactStore, engineeringIssueLedger, defaultModel: model, allowedOrigins });
+const conversationalCore = new ConversationalCore({
+  modelAdapter,
+  chiefAgent,
+  agentFactory,
+  defaultModel: model,
+  capabilities: [
+    { id: 'conversation', label: 'الحوار وفهم السياق', status: 'available', description: 'حوار طبيعي متعدد الأدوار عبر واجهة ZForge المركزية.' },
+    { id: 'engineering-planning', label: 'التخطيط الهندسي', status: chiefAgent ? 'available' : 'unavailable', description: 'تحليل الطلبات وإعداد خطط ثابتة تنتظر الموافقة.' },
+    { id: 'agent-orchestration', label: 'تنسيق الوكلاء المتخصصين', status: multiAgentCoordinator ? 'available' : 'unavailable', description: 'توزيع المهام على الوكلاء النشطين في الخلفية.' },
+    { id: 'open-source-discovery', label: 'اكتشاف الأدوات مفتوحة المصدر', status: discoveryService ? 'available' : 'unavailable', description: 'البحث وتقييم الأدوات المجانية ومصادرها.' },
+    { id: 'web-build', label: 'بناء تطبيقات الويب', status: webBuildService ? 'available' : 'unavailable', description: 'بناء المشاريع وتشغيل اختبارات البناء.' },
+    { id: 'browser-verification', label: 'اختبار المتصفحات', status: webBrowserVerificationService ? 'available' : 'unavailable', description: 'اختبار تطبيقات الويب عبر المتصفحات المدعومة.' },
+    { id: 'android-build', label: 'بناء Android', status: androidBuildService ? 'available' : 'unavailable', description: 'إنتاج APK وAAB عبر عامل البناء عند تهيئته.' },
+    { id: 'local-voice', label: 'الصوت المحلي', status: voiceService ? 'configurable' : 'unavailable', description: 'التعرف على الكلام وتوليد الصوت عبر محركات محلية.' },
+    { id: 'self-healing', label: 'الإصلاح الهندسي الذاتي', status: selfHealingEngine ? 'available' : 'unavailable', description: 'تشخيص الإخفاقات واقتراح بدائل وإصلاحات قابلة للتحقق.' },
+    { id: 'safe-cleanup', label: 'تنظيف المستودع الآمن', status: 'planned', description: 'مؤجل حالياً ولم يبدأ تطويره.' },
+  ],
+});
+const gateway = createTaskGateway({ dataDir, token, runtime, agentService, chiefAgent, agentFactory, multiAgentCoordinator, androidBuildService, webBuildService, webBrowserVerificationService, voiceService, artifactStore, engineeringIssueLedger, conversationalCore, defaultModel: model, allowedOrigins });
 
 await gateway.ready;
 gateway.server.listen(port, host, () => {

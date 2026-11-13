@@ -5,13 +5,18 @@ A zero-budget, open-source-only autonomous engineering platform that converts re
 
 ## Two distinct agents/surfaces
 - **Chief Autonomous Engineer:** internal engineering agent. Reads repository memory, searches tools, composes toolchains, plans and delegates work, operates agent workspaces, verifies changes, proposes repository updates, and maintains version/evidence records.
-- **BLACK VANTA:** human-facing PWA persona with text/voice interaction and a black/gold animated visual identity. It is a presentation/control surface, not the privileged runtime and never holds GitHub or signing credentials.
+- **ZForge Conversational Core:** the single user-facing intelligence layer. It handles dialogue, context, capability questions and intent routing; it creates immutable draft plans for engineering requests and waits for explicit approval before execution.
+- **BLACK VANTA:** human-facing PWA presentation/control surface with text/voice interaction and a black/gold animated visual identity. It is not the privileged runtime and never holds GitHub or signing credentials. The user does not select or address specialist agents; ZForge orchestrates them internally.
 
 ## Logical architecture
 ```
 BLACK VANTA PWA
-   │ authenticated task/event channel
-Task Gateway
+   │ authenticated conversational/task/event channel
+ZForge Conversational Core
+   ├─ Conversation Memory & Capability Registry
+   ├─ Intent Router (dialogue / engineering request)
+   ├─ Plan Preview & Explicit Approval
+   └─ Task Gateway
    │
 Chief Autonomous Engineer
    ├─ Memory & Context Loader

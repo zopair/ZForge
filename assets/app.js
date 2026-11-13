@@ -6,7 +6,6 @@ const conversation=document.getElementById("conversation");
 const runtimeUrlInput=document.getElementById("runtime-url");
 const runtimeTokenInput=document.getElementById("runtime-token");
 const runtimeModelSelect=document.getElementById("runtime-model");
-const runtimeAgentSelect=document.getElementById("runtime-agent");
 const androidProjectPath=document.getElementById("android-project-path");
 const androidBuildButton=document.getElementById("android-build-button");
 const webProjectPath=document.getElementById("web-project-path");
@@ -28,6 +27,7 @@ let runtimeBaseUrl="";
 let runtimeToken="";
 let connected=false;
 let latestTaskId=null;
+let conversationId=null;
 let webBuildReady=false;
 let voiceCapabilities={transcription:false,synthesis:false};
 let activeRecorder=null;
@@ -77,10 +77,10 @@ function appendProgressEvent(event){
   else if(event.type==="agent.needs_action")message="الوكيل يحتاج إلى توجيه إضافي.";
   else if(event.type==="agent.step_limit")message="وصل الوكيل إلى حد خطوات التنفيذ.";
   else if(event.type==="agent.failed")message="تعثر تنفيذ الوكيل.";
-  else if(event.type==="agent.task.started")message="بدأ الوكيل المتخصص: "+String(details.agentId??"");
-  else if(event.type==="agent.task.completed")message="اكتمل الوكيل المتخصص: "+String(details.agentId??"");
-  else if(event.type==="agent.task.failed")message="تعثر الوكيل المتخصص: "+String(details.agentId??"");
-  else if(event.type==="agent.task.skipped")message="تم تجاوز الوكيل التابع لتعثر سابق: "+String(details.agentId??"");
+  else if(event.type==="agent.task.started")message="بدأ أحد الوكلاء الداخليين تنفيذ مهمته.";
+  else if(event.type==="agent.task.completed")message="اكتملت مهمة أحد الوكلاء الداخليين.";
+  else if(event.type==="agent.task.failed")message="تعثر أحد الوكلاء الداخليين؛ يجري تقييم النتيجة.";
+  else if(event.type==="agent.task.skipped")message="تم تجاوز خطوة تابعة لتعثر سابق.";
   if(!message)return;
   const row=document.createElement("p");
   row.className="agent-progress-event";
@@ -365,19 +365,8 @@ connectButton.addEventListener("click",async()=>{
       runtimeModelSelect.append(option);
     }
     runtimeModelSelect.disabled=false;
-    const agentInventory=await api("/api/agents");
-    runtimeAgentSelect.replaceChildren();
-    const defaultAgent=document.createElement("option");
-    defaultAgent.value="";
-    defaultAgent.textContent="Chief Agent — الافتراضي";
-    runtimeAgentSelect.append(defaultAgent);
-    for(const agent of (agentInventory.agents??[]).filter(item=>item.status==="ACTIVE")){
-      const option=document.createElement("option");
-      option.value=agent.id;
-      option.textContent=agent.name+" · "+agent.version;
-      runtimeAgentSelect.append(option);
-    }
-    runtimeAgentSelect.disabled=false;
+    const capabilityInventory=await api("/api/capabilities");
+    appendMessage("تم الاتصال بـ ZForge. النواة الحوارية جاهزة، وعدد القدرات المسجلة: "+(capabilityInventory.capabilities??[]).length+". الوكلاء تتم إدارتهم داخلياً.");
     let voiceInventory={capabilities:{}};
     try{
       voiceInventory=await api("/api/voice/capabilities");
@@ -521,6 +510,74 @@ androidBuildButton.addEventListener("click",async()=>{
   }
 });
 
+async function approveAndExecutePlan(planPayload,button){
+  if(!connected||!planPayload?.taskId||!planPayload?.approvedPlan||!planPayload?.approvedPlanSha256)return;
+  button.disabled=true;
+  button.textContent="جارٍ تنفيذ الخطة المعتمدة...";
+  latestTaskId=planPayload.taskId;
+  androidBuildButton.disabled=false;
+  webBuildButton.disabled=false;
+  webBuildReady=false;
+  webVerifyButton.disabled=true;
+  const progressController=new AbortController();
+  const progressStream=streamTaskEvents(planPayload.taskId,progressController.signal);
+  try{
+    const completed=await api("/api/tasks/"+encodeURIComponent(planPayload.taskId)+"/agent-run",{
+      method:"POST",
+      body:{
+        model:runtimeModelSelect.value,
+        confirmExecution:true,
+        approvedPlan:planPayload.approvedPlan,
+        approvedPlanSha256:planPayload.approvedPlanSha256
+      }
+    });
+    progressController.abort();
+    await progressStream;
+    const result=completed.result??{};
+    if(completed.status==="succeeded"&&result.completed===true){
+      appendMessage("اكتملت المهمة: "+(result.summary||"تم التحقق من النتيجة")+". عدد خطوات التنفيذ: "+(result.steps??0)+".");
+    }else{
+      appendMessage("حالة المهمة: "+completed.status+". "+(result.message||completed.error||"لم يقدم الوكيل دليلاً كافياً لإعلان الاكتمال.")+" رقم المهمة: "+completed.id);
+    }
+    for(const item of result.evidence??[])if(item.artifact)appendArtifactLink(item.artifact);
+    if(voiceEnabledInput.checked&&voiceCapabilities.synthesis){
+      try{await synthesizeLocalSpeech(result.summary||result.message||"اكتملت المهمة.");}
+      catch(error){appendMessage("تعذر إنشاء الرد الصوتي المحلي: "+error.message);}
+    }
+    button.textContent=completed.status==="succeeded"?"اكتمل التنفيذ":"انتهى التنفيذ";
+    executionStatus.textContent=completed.status==="succeeded"?"آخر مهمة مكتملة":"تحتاج إلى متابعة";
+  }catch(error){
+    progressController.abort();
+    await progressStream;
+    appendMessage("تعذر تنفيذ الخطة: "+error.message);
+    button.textContent="تعذر التنفيذ";
+  }
+}
+
+function appendPlanApproval(planPayload){
+  const row=document.createElement("div");
+  row.className="message assistant-message plan-approval-message";
+  const avatar=document.createElement("span");
+  avatar.className="message-avatar";
+  avatar.textContent="Z";
+  const content=document.createElement("div");
+  content.className="message-content";
+  const note=document.createElement("p");
+  note.textContent="هذه خطة مقترحة وليست تنفيذاً. راجعها أعلاه؛ لن يبدأ أي وكيل العمل قبل موافقتك.";
+  const fingerprint=document.createElement("p");
+  fingerprint.className="muted plan-fingerprint";
+  fingerprint.textContent="بصمة الخطة SHA-256: "+planPayload.approvedPlanSha256;
+  const button=document.createElement("button");
+  button.type="button";
+  button.className="plan-approve-button";
+  button.textContent="الموافقة على الخطة وبدء التنفيذ";
+  button.addEventListener("click",()=>approveAndExecutePlan(planPayload,button));
+  content.append(note,fingerprint,button);
+  row.append(avatar,content);
+  conversation.append(row);
+  conversation.scrollTop=conversation.scrollHeight;
+}
+
 form.addEventListener("submit",async event=>{
   event.preventDefault();
   const message=input.value.trim();
@@ -528,51 +585,27 @@ form.addEventListener("submit",async event=>{
   appendMessage(message,"user");
   input.value="";
   if(!connected){
-    appendMessage("المحرك غير متصل. افتح إعداد اتصال المحرك واربط Task Gateway ونموذج Ollama محلياً.");
+    appendMessage("المحرك غير متصل. اربط Task Gateway أولاً لبدء الحوار مع ZForge.");
     return;
   }
   sendButton.disabled=true;
   input.disabled=true;
-  executionStatus.textContent="جارٍ تنفيذ المهمة...";
+  executionStatus.textContent="ZForge يفهم رسالتك...";
   try{
-    const task=await api("/api/tasks",{method:"POST",body:{request:message}});
-    latestTaskId=task.id;
-    webBuildReady=false;
-    webVerifyButton.disabled=true;
-    androidBuildButton.disabled=false;
-    webBuildButton.disabled=false;
-    const runBody={model:runtimeModelSelect.value,confirmExecution:true};
-    if(runtimeAgentSelect.value)runBody.agentId=runtimeAgentSelect.value;
-    const progressController=new AbortController();
-    const progressStream=streamTaskEvents(task.id,progressController.signal);
-    let completed;
-    try{
-      completed=await api("/api/tasks/"+encodeURIComponent(task.id)+"/agent-run",{
-        method:"POST",
-        body:runBody
-      });
-    }finally{
-      progressController.abort();
-      await progressStream;
-    }
-    const result=completed.result??{};
-    if(completed.status==="succeeded"&&result.completed===true){
-      appendMessage("اكتملت المهمة: "+(result.summary||"تم التحقق من النتيجة")+". عدد خطوات الوكيل: "+(result.steps??0)+".");
+    const body={message,model:runtimeModelSelect.value};
+    if(conversationId)body.conversationId=conversationId;
+    const result=await api("/api/conversation",{method:"POST",body});
+    conversationId=result.conversationId;
+    appendMessage(result.reply||"لم يصل رد من ZForge.");
+    if(result.mode==="plan"&&result.requiresApproval===true&&result.executionStarted===false&&result.taskId){
+      appendPlanApproval(result);
+      executionStatus.textContent="الخطة جاهزة وتنتظر موافقتك";
     }else{
-      const detail=result.message||completed.error||"لم يقدم الوكيل دليلاً كافياً لإعلان الاكتمال.";
-      appendMessage("حالة المهمة: "+completed.status+". "+detail+" رقم المهمة: "+completed.id);
+      executionStatus.textContent="ZForge جاهز لمواصلة الحوار";
     }
-    for(const item of result.evidence??[]){
-      if(item.artifact)appendArtifactLink(item.artifact);
-    }
-    if(voiceEnabledInput.checked&&voiceCapabilities.synthesis){
-      try{await synthesizeLocalSpeech(result.summary||result.message||"اكتملت المهمة.");}
-      catch(error){appendMessage("تعذر إنشاء الرد الصوتي المحلي: "+error.message);}
-    }
-    executionStatus.textContent=completed.status==="succeeded"?"آخر مهمة مكتملة":"تحتاج إلى متابعة";
   }catch(error){
-    appendMessage("تعذر تنفيذ المهمة: "+error.message);
-    executionStatus.textContent="تعذر التنفيذ";
+    appendMessage("تعذر إكمال الحوار: "+error.message);
+    executionStatus.textContent="تعذر معالجة الرسالة";
   }finally{
     sendButton.disabled=false;
     input.disabled=false;

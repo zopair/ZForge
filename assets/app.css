@@ -132,3 +132,9 @@ body{background:#000000!important;color:#ffffff!important}
  .system-strip{margin-top:12px}
 }
 @media(prefers-reduced-motion:reduce){.chat-panel{animation:none}}
+
+.plan-approval-message .message-content{display:flex;flex-direction:column;gap:10px}
+.plan-fingerprint{overflow-wrap:anywhere;font-size:11px;opacity:.75}
+.plan-approve-button{align-self:flex-start;border:1px solid #d9ad55;border-radius:24px;background:#d9ad55;color:#fff;padding:11px 18px;font-weight:700;cursor:pointer}
+.plan-approve-button:disabled{opacity:.6;cursor:wait}
+.message-content p{white-space:pre-wrap}

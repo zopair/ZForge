@@ -30,6 +30,7 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - [Local Voice Runtime and Readiness](docs/LOCAL_VOICE.md)
 - [Tool evaluation protocol](docs/TOOL_EVALUATION.md)
 - [Agent operating system](docs/AGENT_OPERATING_SYSTEM.md)
+- [Conversational Core](docs/CONVERSATIONAL_CORE.md)
 
 ## Internal components
 - Discovery planner, strict license/zero-cost gates and toolchain composition: src/core/discovery-engine.js
@@ -42,6 +43,8 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - Approval-gated GitHub task branch/file and draft-PR writer: src/adapters/github-repository-writer.js
 - Chief Agent draft planner and validated active-specialist DAG proposals: src/core/chief-agent.js
 - Bounded parallel specialist orchestration with dependency-aware scheduling: src/core/multi-agent-coordinator.js
+- Central conversational interface, intent routing, capability registry and immutable approval-gated task planning: src/core/conversational-core.js
+- Durable conversational sessions: src/runtime/conversation-store.js
 - Authenticated task gateway, durable task ledger and cursor-based progress events: src/runtime/task-gateway.js
 - Local-only whisper.cpp transcription, Piper TTS and optional Egyptian Cairene KemeTone TTS with readiness checks and automatic language-aware fallback: src/runtime/local-voice-service.js
 - Self-hosted web build and Chromium/Firefox/WebKit generated-app verification workers: src/runtime/web-build-service.js and src/runtime/web-browser-verification-service.js

@@ -19,6 +19,8 @@ const server = createServer(async (request, response) => {
     if (request.method !== 'GET' && request.method !== 'HEAD') { for await (const _chunk of request) {} }
     if (pathname === '/api/health') return json({ status: 'ok' });
     if (pathname === '/api/models') return json({ models: ['qwen3:8b'] });
+    if (pathname === '/api/capabilities') return json({ capabilities: [{ id: 'conversation', label: 'الحوار', status: 'available' }] });
+    if (pathname === '/api/conversation' && request.method === 'POST') return json({ conversationId: '12345678-1234-4234-8234-123456789099', mode: 'plan', intent: 'engineering_request', reply: 'تم إعداد خطة اختبارية ولم يبدأ التنفيذ.', taskId: '12345678-1234-4234-8234-123456789012', approvedPlan: '{"plan":"Browser smoke approved plan"}', approvedPlanSha256: 'a'.repeat(64), requiresApproval: true, executionStarted: false });
     if (pathname === '/api/agents') return json({ agents: [] });
     if (pathname === '/api/voice/capabilities') return json({ capabilities: { transcription: true, synthesis: true, localOnly: true, engines: { transcription: 'whisper.cpp', synthesis: 'Piper', kemetone: false, piper: true }, checks: { whisperExecutable: true, whisperModel: true, ffmpegExecutable: true, piperInterpreter: true, piperModule: true, piperModel: true, piperConfig: true, piperReady: true, kemetoneConfigured: true, kemetonePython: true, kemetoneEspeak: false, kemetoneModel: true, kemetoneModule: false, kemetoneReady: false }, issues: ['espeak-ng is required by KemeTone', 'KemeTone Python dependencies are not installed in the configured interpreter'] } });
     if (pathname === '/api/voice/transcribe') return json({ text: 'recognized local speech', engine: 'whisper.cpp', local: true });
@@ -117,10 +119,17 @@ try {
       assert.match(voiceDiagnostics, /Piper.*جاهز/);
       await page.locator('#chat-input').fill('اختبر تطبيق الويب');
       await page.locator('#send-button').click();
+      await page.locator('.plan-approve-button').waitFor({ timeout: 10000 });
+      assert.ok((await page.locator('#conversation').innerText()).includes('تم إعداد خطة اختبارية ولم يبدأ التنفيذ.'), name + ': engineering requests should produce a plan before execution');
+      assert.ok((await page.locator('#conversation').innerText()).includes('بصمة الخطة SHA-256'), name + ': plan approval must display its immutable fingerprint');
+      await page.locator('.plan-approve-button').click();
       await page.getByText(/Browser smoke task verified/).waitFor();
       await page.locator('.agent-progress-event').first().waitFor({ timeout: 10000 });
       assert.ok(await page.locator('.agent-progress-event').count() >= 3, name + ': specialist lifecycle and step events should be rendered');
-      assert.ok((await page.locator('#agent-progress-feed').innerText()).includes('researcher'), name + ': specialist identity should be visible in the live feed');
+      const progressFeed = await page.locator('#agent-progress-feed').innerText();
+      assert.match(progressFeed, /أحد الوكلاء الداخليين/, name + ': internal agent lifecycle should be summarized through ZForge');
+      assert.match(progressFeed, /الوكيل ينفذ الخطوة/, name + ': execution step progress should be visible');
+      assert.doesNotMatch(progressFeed, /researcher|agentId|taskId/, name + ': internal agent identifiers must not leak into the user-facing feed');
       await page.locator('.voice-output').waitFor({ timeout: 10000 });
       await page.locator('#web-build-button').click();
       await page.getByText(/اكتمل بناء تطبيق الويب/).waitFor();
