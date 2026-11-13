@@ -53,6 +53,25 @@ export class LocalExecutionRuntime {
     return { workspaceRealPath, target };
   }
 
+  async #ensureWorkspaceDirectory(workspaceRealPath, directory) {
+    const segments = relative(workspaceRealPath, directory).split(sep).filter(Boolean);
+    let current = workspaceRealPath;
+    for (const segment of segments) {
+      current = join(current, segment);
+      try {
+        const info = await lstat(current);
+        if (info.isSymbolicLink() || !info.isDirectory()) throw new Error('workspace parent must not contain symbolic links or non-directory entries');
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+        await mkdir(current);
+      }
+      const actual = await realpath(current);
+      if (actual !== workspaceRealPath && !actual.startsWith(workspaceRealPath + sep)) throw new TypeError('workspace parent resolves outside workspace');
+      current = actual;
+    }
+    return current;
+  }
+
   async readFile({ workspaceId, path, maxBytes = 256 * 1024 } = {}) {
     if (!Number.isInteger(maxBytes) || maxBytes < 1) throw new RangeError('maxBytes must be positive');
     const { workspaceRealPath, target } = await this.#resolveFilePath(workspaceId, path);
@@ -69,9 +88,7 @@ export class LocalExecutionRuntime {
     if (!Number.isInteger(maxBytes) || maxBytes < 1 || Buffer.byteLength(content) > maxBytes) throw new RangeError('workspace file exceeds write limit');
     const { workspaceRealPath, target } = await this.#resolveFilePath(workspaceId, path);
     const parent = dirname(target);
-    await mkdir(parent, { recursive: true });
-    const realParent = await realpath(parent);
-    if (realParent !== workspaceRealPath && !realParent.startsWith(workspaceRealPath + sep)) throw new TypeError('file parent resolves outside workspace');
+    const realParent = await this.#ensureWorkspaceDirectory(workspaceRealPath, parent);
     try {
       const existing = await lstat(target);
       if (existing.isSymbolicLink() || !existing.isFile()) throw new Error('workspace target must be a regular file, not a symbolic link');
@@ -86,10 +103,7 @@ export class LocalExecutionRuntime {
 
   async listFiles({ workspaceId, path = '.', maxEntries = 500 } = {}) {
     if (!Number.isInteger(maxEntries) || maxEntries < 1 || maxEntries > 5000) throw new RangeError('maxEntries must be between 1 and 5000');
-    const { workspaceRealPath, target } = await this.#resolveFilePath(workspaceId, path === '.' ? 'index.placeholder' : path).then(value => {
-      if (path === '.') return { ...value, target: value.workspaceRealPath };
-      return value;
-    });
+    const { workspaceRealPath, target } = await this.#resolveFilePath(workspaceId, path);
     const rootInfo = await lstat(target);
     if (rootInfo.isSymbolicLink() || !rootInfo.isDirectory()) throw new Error('workspace directory must be a real directory, not a symbolic link');
     const entries = [];
