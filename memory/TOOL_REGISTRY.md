@@ -13,9 +13,9 @@ Canonical index of category-specific evaluations. Popularity is discovery-only a
 ## Internal discovery components (implementation status, not third-party approval)
 | Component | Location | State | Evidence |
 |---|---|---|---|
-| Discovery taxonomy/query planner | src/core/discovery-engine.js | Implemented; CI pending | test/discovery-engine.test.js |
+| Discovery taxonomy/query planner | src/core/discovery-engine.js | Implemented; CI passed 39/39 | test/discovery-engine.test.js |
 | Bounded discovery orchestration/cache | src/core/discovery-service.js | Implemented; process-local cache only | test/discovery-service.test.js |
-| Bounded discovery orchestration/cache | src/core/discovery-service.js | Implemented; process-local cache only; CI pending | test/discovery-service.test.js |
+| Bounded discovery orchestration/cache | src/core/discovery-service.js | Implemented; process-local cache only; CI passed 39/39 | test/discovery-service.test.js |
 | License classifier and eligibility gates | src/core/discovery-engine.js | Implemented; conservative allowlist | test/discovery-engine.test.js |
 | Toolchain compatibility composer | src/core/discovery-engine.js | Implemented; basic capability/conflict graph | test/discovery-engine.test.js |
 | GitHub public repository search | src/adapters/github-discovery.js | Implemented; read-only, rate-limit-aware, includes public organization enumeration | test/github-discovery.test.js |
