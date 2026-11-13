@@ -134,6 +134,7 @@ export const CURATED_REPOSITORY_SEEDS = Object.freeze(
     list.trim().split(/\\s+/).filter(Boolean).map(fullName => Object.freeze({
       fullName,
       category,
+      usageClass: category === 'learning-reference' ? 'REFERENCE_ONLY' : category === 'local-ai-model-runtime' ? 'RUNTIME_OR_MODEL' : category === 'image-generation-and-creative-ai' ? 'MEDIA_TOOL_OR_MODEL' : 'SOFTWARE_CANDIDATE',
       status: 'PENDING_REVIEW',
       installable: false,
       source: 'USER_SUPPLIED_CURATED_LIST',
