@@ -37,3 +37,14 @@ test('GitHub discovery can enumerate public repositories in a vendor organizatio
   assert.match(requested,/orgs\/google\/repos/);
   assert.match(requested,/type=public/);
 });
+
+test('GitHub discovery exposes continuation pages when a bounded search is truncated',async()=>{
+  const pages=[];
+  const client=new GitHubDiscoveryClient({perPage:2,maxPages:1,fetchImpl:async url=>{const page=Number(new URL(url).searchParams.get('page'));pages.push(page);return{ok:true,status:200,json:async()=>({total_count:5,items:[{id:page*10+1,full_name:`org/tool-${page}-a`},{id:page*10+2,full_name:`org/tool-${page}-b`}]})};}});
+  const first=await client.searchRepositories('agent',{maxResults:2});
+  const second=await client.searchRepositories('agent',{maxResults:2,page:first.nextPage});
+  assert.equal(first.truncated,true);
+  assert.equal(first.nextPage,2);
+  assert.equal(second.nextPage,3);
+  assert.deepEqual(pages,[1,2]);
+});
