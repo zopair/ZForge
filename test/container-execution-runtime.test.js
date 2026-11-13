@@ -34,7 +34,7 @@ test('container runtime invokes podman with bounded resources and workspace-only
   assert.ok(invocation.args.includes('--cap-drop=ALL'));
   assert.ok(invocation.args.includes('--network=bridge'));
   assert.ok(invocation.args.includes('/tmp/zforge-workspaces/ws-1:/workspace:rw'));
-  assert.deepEqual(invocation.args.slice(-3), ['node', '--version']);
+  assert.deepEqual(invocation.args.slice(-2), ['node', '--version']);
 });
 
 test('container runtime rejects unsupported engines and workspace cwd traversal', async () => {
