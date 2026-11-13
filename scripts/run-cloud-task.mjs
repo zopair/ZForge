@@ -12,6 +12,7 @@ const port = '8787';
 const model = 'qwen2.5:1.5b';
 let server;
 let logs = '';
+let taskWorkspacePath = null;
 
 async function saveReport(report) {
   await mkdir(outputDir, { recursive: true });
