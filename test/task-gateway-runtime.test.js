@@ -81,3 +81,28 @@ test('execution runtime rejects workspace path traversal and enforces timeout', 
     await assert.rejects(() => runtime.execute({ workspaceId: 'ws-timeout', command: process.execPath, args: ['-e', 'setTimeout(()=>{},10000)'], timeoutMs: 100 }), /timed out/i);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('authenticated gateway provisions a workspace and executes a task through the runtime', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zforge-full-runtime-'));
+  const { LocalExecutionRuntime } = await import('../src/runtime/local-execution-runtime.js');
+  const runtime = await new LocalExecutionRuntime({ rootDir: join(root, 'workspaces') }).initialize();
+  const gateway = createTaskGateway({ dataDir: join(root, 'data'), token: 'test-secret', runtime });
+  await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${gateway.server.address().port}`;
+  const headers = { Authorization: 'Bearer test-secret', 'Content-Type': 'application/json' };
+  try {
+    const workspaceResponse = await fetch(`${base}/api/workspaces`, { method: 'POST', headers, body: JSON.stringify({ id: 'ws-api' }) });
+    assert.equal(workspaceResponse.status, 201);
+    const created = await fetch(`${base}/api/tasks`, { method: 'POST', headers, body: JSON.stringify({ request: 'Run a local test command', workspaceId: 'ws-api' }) });
+    const task = await created.json();
+    const execution = await fetch(`${base}/api/tasks/${task.id}/execute`, { method: 'POST', headers, body: JSON.stringify({ command: process.execPath, args: ['-e', 'process.stdout.write("gateway-executed")'] }) });
+    assert.equal(execution.status, 200);
+    const result = await execution.json();
+    assert.equal(result.status, 'succeeded');
+    assert.equal(result.result.stdout, 'gateway-executed');
+  } finally {
+    await new Promise(resolve => gateway.server.close(resolve));
+    await runtime.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
