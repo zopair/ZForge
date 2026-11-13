@@ -14,6 +14,7 @@ const server = createServer(async (request, response) => {
     response.end(JSON.stringify(payload));
   };
   if (pathname.startsWith('/api/')) {
+    if (request.method !== 'GET' && request.method !== 'HEAD') { for await (const _chunk of request) {} }
     if (pathname === '/api/health') return json({ status: 'ok' });
     if (pathname === '/api/models') return json({ models: ['qwen3:8b'] });
     if (pathname === '/api/agents') return json({ agents: [] });
