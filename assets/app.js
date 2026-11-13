@@ -1,0 +1,2 @@
+/* Static PWA shell only. No credentials, model calls, or privileged actions run in the browser. */
+if("serviceWorker"in navigator&&location.protocol.startsWith("http")){window.addEventListener("load",()=>{navigator.serviceWorker.register("./sw.js").catch(()=>{});});}
