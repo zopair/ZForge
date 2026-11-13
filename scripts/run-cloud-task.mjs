@@ -142,6 +142,7 @@ try {
     status: completed.status,
     taskId: task.id,
     model,
+    workspaceArchive: workspaceArchive ? 'workspace-snapshot.tar.gz' : null,
     summary: String(result.summary ?? result.message ?? '').slice(0, 4000),
     error: String(completed.error ?? result.error ?? '').slice(0, 3000),
     steps: Number.isInteger(result.steps) ? result.steps : 0,
@@ -172,6 +173,7 @@ try {
   await saveReport({
     status: 'failed',
     summary: '',
+    workspaceArchive: workspaceArchive ? 'workspace-snapshot.tar.gz' : null,
     error: String(error?.message ?? error).slice(0, 5000),
     runtimeLogs: logs.slice(-5000),
     generatedAt: new Date().toISOString(),
