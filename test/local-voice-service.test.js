@@ -74,7 +74,7 @@ test('local voice refuses blank synthesis text and rejects missing WAV output', 
   try {
     const model = join(root, 'voice.onnx');
     await writeFile(model, 'model');
-    const piper = await executable(root, 'fake-piper', 'while [ "$#" -gt 0 ]; do if [ "$1" = "--output_file" ]; then shift; output="$1"; fi; shift; done\ncat >/dev/null\nprintf "not-wave" > "$output"\n');
+    const piper = await executable(root, 'fake-piper', 'while [ "$#" -gt 0 ]; do if [ "$1" = "-f" ]; then shift; output="$1"; fi; shift; done\nprintf "not-wave" > "$output"\n');
     const service = new LocalVoiceService({ piperCommand: piper, piperModelPath: model });
     await assert.rejects(() => service.synthesize({ text: '   ' }), /text/i);
     await assert.rejects(() => service.synthesize({ text: 'test' }), /valid WAV/i);
