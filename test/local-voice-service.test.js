@@ -17,6 +17,7 @@ test('local voice transcribes accepted audio using configured local whisper exec
   try {
     const model = join(root, 'whisper-model.bin');
     await writeFile(model, 'model');
+    await writeFile(model + '.json', '{}');
     const whisper = await executable(root, 'fake-whisper', 'printf "local transcript from whisper"\n');
     const ffmpeg = await executable(root, 'fake-ffmpeg', 'for arg in "$@"; do output="$arg"; done\nprintf "RIFF0000WAVEfmt " > "$output"\ndd if=/dev/zero bs=28 count=1 >> "$output" 2>/dev/null\n');
     const service = new LocalVoiceService({ whisperCommand: whisper, whisperModelPath: model, ffmpegCommand: ffmpeg });
@@ -32,6 +33,7 @@ test('local voice accepts WAV directly without requiring FFmpeg', async () => {
   try {
     const model = join(root, 'whisper-model.bin');
     await writeFile(model, 'model');
+    await writeFile(model + '.json', '{}');
     const whisper = await executable(root, 'fake-whisper', "printf '%s\\n' 'wav transcript'\n");
     const service = new LocalVoiceService({ whisperCommand: whisper, whisperModelPath: model, ffmpegCommand: join(root, 'ffmpeg-not-installed') });
     const result = await service.transcribe({ audio: Buffer.from('RIFF0000WAVEdata'), contentType: 'audio/wav' });
@@ -44,6 +46,7 @@ test('local voice synthesizes a WAV file through configured local Piper executab
   try {
     const model = join(root, 'voice.onnx');
     await writeFile(model, 'model');
+    await writeFile(model + '.json', '{}');
     const piper = await executable(root, 'fake-piper', 'if [ "$1" = "-c" ]; then exit 0; fi\nwhile [ "$#" -gt 0 ]; do if [ "$1" = "-f" ]; then shift; output="$1"; fi; shift; done\nprintf "RIFF0000WAVEdata" > "$output"\n');
     const service = new LocalVoiceService({ piperCommand: piper, piperModelPath: model });
     const result = await service.synthesize({ text: 'مرحبا بالعالم' });
@@ -59,6 +62,7 @@ test('local voice rejects unsupported audio, empty payloads and missing local mo
   try {
     const model = join(root, 'whisper-model.bin');
     await writeFile(model, 'model');
+    await writeFile(model + '.json', '{}');
     const whisper = await executable(root, 'fake-whisper', 'printf "transcript"\n');
     const service = new LocalVoiceService({ whisperCommand: whisper, whisperModelPath: model, maxAudioBytes: 32 });
     await assert.rejects(() => service.transcribe({ audio: Buffer.from('x'), contentType: 'application/json' }), /unsupported audio/i);
@@ -74,6 +78,7 @@ test('local voice refuses blank synthesis text and rejects missing WAV output', 
   try {
     const model = join(root, 'voice.onnx');
     await writeFile(model, 'model');
+    await writeFile(model + '.json', '{}');
     const piper = await executable(root, 'fake-piper', 'if [ "$1" = "-c" ]; then exit 0; fi\nwhile [ "$#" -gt 0 ]; do if [ "$1" = "-f" ]; then shift; output="$1"; fi; shift; done\nprintf "not-wave" > "$output"\n');
     const service = new LocalVoiceService({ piperCommand: piper, piperModelPath: model });
     await assert.rejects(() => service.synthesize({ text: '   ' }), /text/i);
