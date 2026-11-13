@@ -212,7 +212,7 @@ export class LocalVoiceService {
             cwd: this.kemetoneModelDir,
             timeoutMs: this.kemetoneTimeoutMs,
             maxOutputBytes: this.maxOutputBytes,
-            extraEnv: this.kemetoneEspeakLib ? { KEMETONE_ESPEAK_LIB: this.kemetoneEspeakLib } : {},
+            extraEnv: { HF_HUB_OFFLINE: '1', TRANSFORMERS_OFFLINE: '1', ...(this.kemetoneEspeakLib ? { KEMETONE_ESPEAK_LIB: this.kemetoneEspeakLib } : {}) },
           });
           checks.kemetoneModule = true;
         } catch {
