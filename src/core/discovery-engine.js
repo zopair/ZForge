@@ -46,7 +46,8 @@ export function buildDiscoveryPlan({ capabilities = [], keywords = [], maxQuerie
   const queries = [];
   for (const capability of capabilities) if (String(capability).trim()) queries.push(`(${String(capability).trim()}) in:name,description,readme`);
   for (const keyword of keywords) if (String(keyword).trim()) queries.push(`(${String(keyword).trim()}) in:name,description,readme`);
-  for (const domain of domains) {
+  const orderedDomains = [...domains.filter(domain => domain.requested), ...domains.filter(domain => !domain.requested)];
+  for (const domain of orderedDomains) {
     const selected = domain.requested ? domain.terms : domain.terms.slice(0, 2);
     for (const term of selected) queries.push(`(${term}) in:name,description,readme`);
     const selectedTopics = domain.requested ? domain.topics : domain.topics.slice(0, 1);
