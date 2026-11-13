@@ -35,6 +35,10 @@ jobs:
           set -euo pipefail
           docker info
           docker build --pull -f .github/cloud-worker/Dockerfile -t zforge-cloud-worker:latest .github/cloud-worker
+          docker run --rm zforge-cloud-worker:latest node --version
+          docker run --rm zforge-cloud-worker:latest java -version
+          docker run --rm zforge-cloud-worker:latest sdkmanager --version
+          docker run --rm zforge-cloud-worker:latest python3 --version
 
       - name: Install Ollama on the ephemeral worker
         shell: bash
