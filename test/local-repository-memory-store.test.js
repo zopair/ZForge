@@ -22,8 +22,10 @@ test('local prompt provider reads the canonical Chief Agent instructions',async(
   try{
     await mkdir(join(root,'prompts'),{recursive:true});
     await writeFile(join(root,'prompts','CHIEF_AGENT.md'),'Canonical policy');
+    await writeFile(join(root,'prompts','AGENT_ARCHITECT.md'),'Agent factory policy');
     const provider=new LocalPromptProvider({rootDir:root});
     assert.equal(await provider.getChiefAgentPrompt(),'Canonical policy');
+    assert.equal(await provider.getAgentArchitectPrompt(),'Agent factory policy');
   }finally{await rm(root,{recursive:true,force:true});}
 });
 test('memory store rejects unsafe file size configuration',()=>{
