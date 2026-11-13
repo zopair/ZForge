@@ -83,6 +83,7 @@ try {
     ZFORGE_CONTAINER_CPUS: '2',
     ZFORGE_CONTAINER_MEMORY: '4g',
     ZFORGE_CONTAINER_PIDS: '256',
+    ZFORGE_CONTAINER_TMPFS: '1g',
     ANDROID_HOME: '/opt/android-sdk-linux',
     ANDROID_SDK_ROOT: '/opt/android-sdk-linux',
     JAVA_HOME: '/usr/lib/jvm/java-21-openjdk-amd64',
