@@ -427,14 +427,14 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
           return send(response, 200, failed);
         }
       }
-      const planMatch = url.pathname.match(/^\\/api\\/tasks\\/([a-f0-9-]{36})\\/plan$/i);
+      const planMatch = url.pathname.match(/^\/api\/tasks\/([a-f0-9-]{36})\/plan$/i);
       if (planMatch && request.method === 'POST') {
         if (!chiefAgent || typeof chiefAgent.planTask !== 'function') return send(response, 503, { error: 'chief_agent_planning_unavailable' });
         const task = store.get(planMatch[1]);
         if (!task) return send(response, 404, { error: 'task_not_found' });
         const body = await readJson(request, maxBodyBytes);
         const capabilities = Array.isArray(body.capabilities) ? body.capabilities.slice(0, 20).map(String) : [];
-        const keywords = [...new Set(task.request.match(/[\\p{L}\\p{N}._+-]{3,}/gu) ?? [])].slice(0, 12);
+        const keywords = [...new Set(task.request.match(/[\p{L}\p{N}._+-]{3,}/gu) ?? [])].slice(0, 12);
         const availableAgents = agentFactory && typeof agentFactory.listAgents === 'function'
           ? await agentFactory.listAgents()
           : [];
