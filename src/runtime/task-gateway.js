@@ -238,6 +238,7 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
         );
         const items = filtered.slice(offset, offset + limit).map(item => ({
           ...item,
+          projectType: item.projectType ?? item.projectTypes?.[0] ?? null,
           htmlUrl: `https://github.com/${item.fullName}`,
           installable: false,
           status: item.status ?? 'PENDING_REVIEW',
