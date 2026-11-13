@@ -37,16 +37,30 @@ test('rejects malformed correlation identifiers', () => {
   assert.throws(() => extractCloudConversationReply([], 'not-an-id'), /correlation id/i);
 });
 
-test('browser correlation search uses the same colon-delimited issue title marker', async () => {
+
+test('cloud chat creates the issue directly with an authenticated owner token', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../assets/cloud-execution.js', import.meta.url), 'utf8');
-  assert.match(source, /in:title \"ZForgeChat:/);
-  assert.match(source, /ZForgeChat:/);
-  assert.doesNotMatch(source, /ZForgeChat-/);
+  assert.match(source, /POST.*\/issues|method:\s*'POST'/s);
+  assert.match(source, /Authorization:\s*'Bearer '\s*\+/);
+  assert.match(source, /githubToken/);
+  assert.doesNotMatch(source, /issues\/new/);
+  assert.doesNotMatch(source, /فتح طلب التنفيذ السحابي/);
 });
 
-test('browser polling stays within unauthenticated GitHub API rate limits', async () => {
+test('cloud chat polls the created issue directly and allows the full worker timeout', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../assets/cloud-execution.js', import.meta.url), 'utf8');
-  assert.match(source, /POLL_INTERVAL_MS = 60000/);
+  assert.match(source, /POLL_INTERVAL_MS\s*=\s*15000/);
+  assert.match(source, /MAX_WAIT_MS\s*=\s*45\s*\*\s*60\s*\*\s*1000/);
+  assert.match(source, /\/issues\/.*\/comments/);
+  assert.doesNotMatch(source, /search\/issues/);
+});
+
+test('GitHub access token is held in page memory and can be cleared explicitly', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../assets/cloud-execution.js', import.meta.url), 'utf8');
+  assert.match(source, /let githubToken\s*=\s*''/);
+  assert.match(source, /githubToken\s*=\s*''/);
+  assert.doesNotMatch(source, /localStorage|sessionStorage/);
 });
