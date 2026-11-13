@@ -1,6 +1,6 @@
 # Browser QA
 
-The browser smoke suite runs against the real BLACK VANTA static files served over localhost and verifies the primary user-facing path in Chromium, Firefox and WebKit.
+The browser smoke suite runs against the real BLACK VANTA static files served over localhost and verifies the primary user-facing path in Chromium, Firefox and WebKit. It also invokes `WebBrowserVerificationService` against a separate generated static app fixture in all three real engines, so the preview server and verification logic are exercised end to end.
 
 ## Covered flow
 
@@ -12,7 +12,7 @@ The browser smoke suite runs against the real BLACK VANTA static files served ov
 6. Check mobile viewport layout for horizontal overflow and a visible composer.
 7. Fail on browser page exceptions or console errors.
 
-The suite does not use a paid browser cloud or external test service. Playwright is installed only in the ephemeral GitHub Actions runner; it is not a production runtime dependency. The gateway responses are deterministic fixtures, so this suite verifies browser integration and UI behavior, not a live Ollama inference, production voice-model quality or a production server connection. A separate web-build integration test runs actual npm test/build scripts through LocalExecutionRuntime and verifies the published artifact's bytes and SHA-256 metadata.
+The suite does not use a paid browser cloud or external test service. For the runtime-side generated app verification API and host setup, see [Generated Web App Browser Verification](WEB_BROWSER_VERIFICATION.md). Playwright is installed only in the ephemeral GitHub Actions runner; it is not a production runtime dependency. The gateway responses are deterministic fixtures, so this suite verifies browser integration and UI behavior, not a live Ollama inference, production voice-model quality or a production server connection. A separate web-build integration test runs actual npm test/build scripts through LocalExecutionRuntime and verifies the published artifact's bytes and SHA-256 metadata.
 
 Run locally after installing Playwright and its three browser engines:
 
