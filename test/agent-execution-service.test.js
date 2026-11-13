@@ -81,3 +81,25 @@ test('agent execution records experiment outcomes and tool observations in the w
   assert.equal(workspace.experiments[0].status, 'succeeded');
   assert.equal(workspace.observations.length, 1);
 });
+
+test('agent can publish a verified workspace artifact into the durable artifact store', async () => {
+  let published = null;
+  const artifactStore = {
+    publishFromWorkspace: async input => { published = input; return { id: 'artifact-123', filename: 'app.apk', kind: 'apk', sha256: 'abc', sizeBytes: 7 }; },
+  };
+  let turn = 0;
+  const modelAdapter = { chat: async ({ messages, tools }) => {
+    assert.ok(tools.some(tool => tool.function.name === 'publish_artifact'));
+    turn += 1;
+    if (turn === 1) return { toolCalls: [{ id: 'publish-1', name: 'publish_artifact', arguments: { sourcePath: 'build/app.apk', filename: 'app.apk', kind: 'apk' } }] };
+    const evidence = JSON.parse(messages.find(message => message.role === 'tool').content);
+    return { toolCalls: [{ id: 'finish-1', name: 'finish_task', arguments: { summary: 'APK saved', evidenceIds: [evidence.id] } }] };
+  } };
+  const runtime = { createWorkspace: async () => ({}), execute: async () => ({ exitCode: 0 }) };
+  const agent = new AgentExecutionService({ modelAdapter, runtime, artifactStore });
+  const result = await agent.runTask({ request: 'Build and save APK', model: 'local', workspaceId: 'ws-artifact' });
+  assert.equal(result.completed, true);
+  assert.equal(published.sourcePath, 'build/app.apk');
+  assert.equal(published.filename, 'app.apk');
+  assert.equal(result.evidence[0].artifact.id, 'artifact-123');
+});
