@@ -155,6 +155,38 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
         const task = await store.create(await readJson(request, maxBodyBytes));
         return send(response, 201, task);
       }
+      const executeMatch = url.pathname.match(/^\/api\/tasks\/([a-f0-9-]{36})\/execute$/i);
+      if (executeMatch && request.method === 'POST') {
+        if (!runtime) return send(response, 503, { error: 'execution_runtime_unavailable' });
+        const task = store.get(executeMatch[1]);
+        if (!task) return send(response, 404, { error: 'task_not_found' });
+        const body = await readJson(request, maxBodyBytes);
+        await runtime.createWorkspace({ id: task.workspaceId });
+        await store.transition(task.id, 'running', { details: { command: body.command } });
+        try {
+          const result = await runtime.execute({
+            workspaceId: task.workspaceId,
+            command: body.command,
+            args: body.args ?? [],
+            env: body.env ?? {},
+            timeoutMs: body.timeoutMs,
+            cwd: body.cwd ?? '.',
+          });
+          const status = result.exitCode === 0 ? 'succeeded' : 'failed';
+          const completed = await store.transition(task.id, status, {
+            result,
+            error: result.exitCode === 0 ? null : `process exited with code ${result.exitCode}`,
+            details: { exitCode: result.exitCode, signal: result.signal },
+          });
+          return send(response, 200, completed);
+        } catch (error) {
+          const failed = await store.transition(task.id, 'failed', {
+            error: error.message,
+            details: { timedOut: /timed out/i.test(error.message) },
+          });
+          return send(response, 200, failed);
+        }
+      }
       const match = url.pathname.match(/^\/api\/tasks\/([a-f0-9-]{36})$/i);
       if (match && request.method === 'GET') {
         const task = store.get(match[1]);
