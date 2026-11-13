@@ -64,6 +64,29 @@ try {
       assert.equal(navigation?.status(), 200, name + ': app document should return HTTP 200');
       assert.match(await page.title(), /BLACK VANTA/);
       assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
+      const visualContract = await page.evaluate(() => {
+        const style = selector => getComputedStyle(document.querySelector(selector));
+        const panel = document.querySelector('.chat-panel');
+        const panelRect = panel.getBoundingClientRect();
+        const send = style('#send-button');
+        const arrow = style('#send-button svg');
+        return {
+          pageBackground: style('body').backgroundColor,
+          panelVisible: panelRect.width > 0 && panelRect.height > 0 && panelRect.top < innerHeight,
+          panelAnimation: style('.chat-panel').animationName,
+          composerBorder: style('.composer').borderTopWidth,
+          sendShape: send.borderRadius,
+          sendBackground: send.backgroundColor,
+          arrowColor: arrow.stroke,
+        };
+      });
+      assert.equal(visualContract.pageBackground, 'rgb(0, 0, 0)', name + ': BLACK VANTA must be true black');
+      assert.equal(visualContract.panelVisible, true, name + ': chat window must be visible in the first mobile viewport');
+      assert.equal(visualContract.panelAnimation, 'vanta-border-flow', name + ': chat frame must have animated gold glow');
+      assert.notEqual(visualContract.composerBorder, '0px', name + ': composer must have a visible frame');
+      assert.equal(visualContract.sendShape, '50%', name + ': send control must be circular');
+      assert.equal(visualContract.sendBackground, 'rgb(217, 173, 85)', name + ': send control must be gold');
+      assert.equal(visualContract.arrowColor, 'rgb(255, 255, 255)', name + ': send arrow must be white');
       await page.locator('#runtime-settings > summary').click();
       await page.locator('#runtime-url').fill(origin);
       await page.locator('#runtime-token').fill('browser-test-token-123456');
