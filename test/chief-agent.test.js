@@ -27,7 +27,7 @@ test('Chief Agent includes a proposed zero-cost internal build brief when comple
   let submittedPrompt = '';
   const agent = new ChiefAgent({
     modelAdapter: { chat: async ({ messages }) => { submittedPrompt = messages[1].content; return { content: 'Build the missing tool in an isolated task branch.' }; } },
-    discoveryService: { discover: async () => ({ status: 'BATCH_COMPLETE', queryCatalogComplete: true, results: [] }) },
+    discoveryService: { discover: async () => ({ status: 'COMPLETE', complete: true, results: [] }) },
     memoryStore: { loadRelevant: async () => ({}) },
     promptProvider: { getChiefAgentPrompt: async () => 'Canonical instructions' },
     model: 'local-model',
