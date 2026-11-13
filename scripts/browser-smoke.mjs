@@ -64,7 +64,7 @@ try {
       assert.equal(navigation?.status(), 200, name + ': app document should return HTTP 200');
       assert.match(await page.title(), /BLACK VANTA/);
       assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
-      await page.locator('#runtime-settings summary').click();
+      await page.locator('#runtime-settings > summary').click();
       await page.locator('#runtime-url').fill(origin);
       await page.locator('#runtime-token').fill('browser-test-token-123456');
       await page.locator('#connect-runtime').click();
