@@ -67,6 +67,7 @@ try {
   const event = JSON.parse(await readFile(eventPath, 'utf8'));
   const { phase } = getCloudTaskPhase({ action: event.action, issue: event.issue, comment: event.comment });
   let approvedPlanSnapshot = null;
+  let executionClaim = null;
   if (phase === 'execute') {
     const repository = process.env.GITHUB_REPOSITORY;
     const githubToken = process.env.GITHUB_TOKEN;
@@ -90,10 +91,7 @@ try {
     const claimMarker = '<!-- ZFORGE_EXECUTION_CLAIM_V1:' + digest + ' -->';
     const alreadyClaimed = comments.some(comment => comment?.user?.login === 'github-actions[bot]' && comment.body?.includes(claimMarker));
     if (alreadyClaimed) throw new Error('This exact plan has already been claimed for execution; create a new plan to run it again.');
-    await githubApi(repository, githubToken, '/issues/' + event.issue.number + '/comments', {
-      method: 'POST',
-      body: { body: claimMarker + '\nExecution claim for plan ' + digest + ' (approval comment #' + event.comment.id + ').' },
-    });
+    executionClaim = { repository, token: githubToken, marker: claimMarker, digest };
   }
   const { request } = normalizeCloudTaskRequest({
     author: event.issue?.user?.login,
@@ -195,6 +193,11 @@ try {
       generatedAt: new Date().toISOString(),
     });
   } else {
+    if (!executionClaim) throw new Error('The approved execution claim was not prepared.');
+    await githubApi(executionClaim.repository, executionClaim.token, '/issues/' + event.issue.number + '/comments', {
+      method: 'POST',
+      body: { body: executionClaim.marker + '\nExecution claim for plan ' + executionClaim.digest + ' (approval comment #' + event.comment.id + ').' },
+    });
     const completed = await api(baseUrl, token, '/api/tasks/' + encodeURIComponent(task.id) + '/agent-run', {
       method: 'POST',
       body: {
