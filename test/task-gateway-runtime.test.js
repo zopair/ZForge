@@ -8,7 +8,7 @@ import { LocalExecutionRuntime } from '../src/runtime/local-execution-runtime.js
 
 async function withGateway(run) {
   const root = await mkdtemp(join(tmpdir(), 'zforge-gateway-'));
-  const gateway = createTaskGateway({ dataDir: root, token: 'test-secret' });
+  const gateway = createTaskGateway({ dataDir: root, token: 'test-secret-token' });
   await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
   const address = gateway.server.address();
   try { await run(`http://127.0.0.1:${address.port}`, gateway, root); }
@@ -35,14 +35,14 @@ test('task gateway requires bearer authentication for task operations', async ()
 test('task gateway creates and retrieves durable task records', async () => {
   await withGateway(async (base, gateway, root) => {
     const created = await fetch(`${base}/api/tasks`, {
-      method: 'POST', headers: { Authorization: 'Bearer test-secret', 'Content-Type': 'application/json' },
+      method: 'POST', headers: { Authorization: 'Bearer test-secret-token', 'Content-Type': 'application/json' },
       body: JSON.stringify({ request: 'Inspect this workspace', workspaceId: 'ws-a' }),
     });
     assert.equal(created.status, 201);
     const task = await created.json();
     assert.equal(task.status, 'queued');
     assert.equal(task.request, 'Inspect this workspace');
-    const fetched = await fetch(`${base}/api/tasks/${task.id}`, { headers: { Authorization: 'Bearer test-secret' } });
+    const fetched = await fetch(`${base}/api/tasks/${task.id}`, { headers: { Authorization: 'Bearer test-secret-token' } });
     assert.equal(fetched.status, 200);
     assert.equal((await fetched.json()).id, task.id);
     const persisted = JSON.parse(await readFile(join(root, 'tasks.json'), 'utf8'));
@@ -52,7 +52,7 @@ test('task gateway creates and retrieves durable task records', async () => {
 
 test('task gateway validates task input and rejects malformed JSON', async () => {
   await withGateway(async (base) => {
-    const headers = { Authorization: 'Bearer test-secret', 'Content-Type': 'application/json' };
+    const headers = { Authorization: 'Bearer test-secret-token', 'Content-Type': 'application/json' };
     const empty = await fetch(`${base}/api/tasks`, { method: 'POST', headers, body: JSON.stringify({ request: ' ' }) });
     assert.equal(empty.status, 400);
     const malformed = await fetch(`${base}/api/tasks`, { method: 'POST', headers, body: '{' });
@@ -86,10 +86,10 @@ test('authenticated gateway provisions a workspace and executes a task through t
   const root = await mkdtemp(join(tmpdir(), 'zforge-full-runtime-'));
   const { LocalExecutionRuntime } = await import('../src/runtime/local-execution-runtime.js');
   const runtime = await new LocalExecutionRuntime({ rootDir: join(root, 'workspaces') }).initialize();
-  const gateway = createTaskGateway({ dataDir: join(root, 'data'), token: 'test-secret', runtime });
+  const gateway = createTaskGateway({ dataDir: join(root, 'data'), token: 'test-secret-token', runtime });
   await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${gateway.server.address().port}`;
-  const headers = { Authorization: 'Bearer test-secret', 'Content-Type': 'application/json' };
+  const headers = { Authorization: 'Bearer test-secret-token', 'Content-Type': 'application/json' };
   try {
     const workspaceResponse = await fetch(`${base}/api/workspaces`, { method: 'POST', headers, body: JSON.stringify({ id: 'ws-api' }) });
     assert.equal(workspaceResponse.status, 201);
