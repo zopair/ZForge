@@ -37,29 +37,30 @@ test('rejects malformed correlation identifiers', () => {
   assert.throws(() => extractCloudConversationReply([], 'not-an-id'), /correlation id/i);
 });
 
+
 test('cloud chat creates the issue directly with an authenticated owner token', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../assets/cloud-execution.js', import.meta.url), 'utf8');
-  assert.match(source, /POST.*\\/issues|method:\\s*'POST'/s);
-  assert.match(source, /Authorization:\\s*'Bearer '\\s*\\+/);
-  assert.match(source, /githubToken/);
-  assert.doesNotMatch(source, /issues\\/new/);
-  assert.doesNotMatch(source, /فتح طلب التنفيذ السحابي/);
+  assert.ok(source.includes("method: 'POST'"));
+  assert.ok(source.includes("Authorization: 'Bearer ' + githubToken"));
+  assert.ok(source.includes("githubToken"));
+  assert.equal(source.includes('issues/new'), false);
+  assert.equal(source.includes('فتح طلب التنفيذ السحابي'), false);
 });
 
 test('cloud chat polls the created issue directly and allows the full worker timeout', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../assets/cloud-execution.js', import.meta.url), 'utf8');
-  assert.match(source, /POLL_INTERVAL_MS\\s*=\\s*15000/);
-  assert.match(source, /MAX_WAIT_MS\\s*=\\s*49\\s*\\*\\s*60\\s*\\*\\s*1000/);
-  assert.match(source, /\\/issues\\/.*\\/comments/);
-  assert.doesNotMatch(source, /search\\/issues/);
+  assert.ok(source.includes('const POLL_INTERVAL_MS = 15000;'));
+  assert.ok(source.includes('const MAX_WAIT_MS = 49 * 60 * 1000;'));
+  assert.ok(source.includes("'/issues/' + issueNumber + '/comments?per_page=100'"));
+  assert.equal(source.includes('search/issues'), false);
 });
 
 test('GitHub access token is held in page memory and can be cleared explicitly', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../assets/cloud-execution.js', import.meta.url), 'utf8');
-  assert.match(source, /let githubToken\\s*=\\s*''/);
-  assert.match(source, /githubToken\\s*=\\s*''/);
+  assert.ok(source.includes("let githubToken = '';"));
+  assert.ok(source.includes("githubToken = '';"));
   assert.doesNotMatch(source, /localStorage|sessionStorage/);
 });
