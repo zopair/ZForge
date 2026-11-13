@@ -8,7 +8,7 @@ const DOMAINS = Object.freeze([
   { id:'ai-models', label:'AI Models & Inference', terms:['open weights model','local inference','LLM runtime','multimodal model','RAG','vector database','model quantization','model evaluation'] },
   { id:'agents', label:'Agents & Orchestration', terms:['AI agent framework','agent orchestration','MCP server','agent skills','tool calling','computer use','browser agent','agent memory'] },
   { id:'graphics', label:'Graphics & Visual Computing', terms:['SVG','Canvas','WebGL','WebGPU','Three.js','2D graphics','3D rendering','animation','visual effects','Blender'] },
-  { id:'arabic-localization', label:'Arabic & Localization', terms:['Arabic shaping','Arabic typography','RTL layout','Arabic NLP','Arabic OCR','Arabic speech','Arabic search','Unicode bidi','Arabic fonts'] },
+  { id:'arabic-localization', label:'Arabic & Localization', terms:['Arabic shaping','Arabic typography','RTL layout','Arabic NLP','Arabic OCR','Arabic speech','Arabic search','Unicode bidi','Arabic fonts','اللغة العربية','دعم العربية','الكتابة من اليمين لليسار','خطوط عربية','تشكيل الحروف العربية','معالجة الكلام العربي'] },
   { id:'audio-voice', label:'Audio & Voice', terms:['speech to text','text to speech','voice activity detection','audio processing','streaming audio','offline speech recognition'] },
   { id:'security', label:'Security & Supply Chain', terms:['SAST','DAST','dependency scanning','SBOM','secret scanning','sandbox','container security','software supply chain'] },
   { id:'devops-qa', label:'DevOps & Quality Engineering', terms:['CI CD','test automation','Playwright','performance testing','observability','OpenTelemetry','deployment rollback','release engineering'] },
@@ -49,12 +49,14 @@ export function buildDiscoveryPlan({ capabilities = [], keywords = [], maxQuerie
   for (const keyword of keywords) if (String(keyword).trim()) queries.push(`(${String(keyword).trim()}) in:name,description,readme`);
   for (const capability of capabilities) queries.push(`(${String(capability).trim()}) in:name,description,readme`);
   const deduplicated = [...new Set(queries)].slice(0, maxQueries);
+  const vendorQueries = VENDORS.flatMap(vendor => vendor.orgs.map(org => `tooling org:${org}`));
   return {
     generatedAt: new Date().toISOString(),
     policy: 'public-github-search-only; open-source-and-zero-cost-gates-required; no popularity-based scoring',
     domains,
     vendorSeeds: VENDORS,
     queries: deduplicated,
+    vendorQueries,
     searchSources: ['GitHub repository search API','GitHub organization repositories','GitHub topics','official project documentation','official release metadata'],
   };
 }
@@ -121,6 +123,13 @@ export function composeToolchain(candidates, { requiredCapabilities = [] } = {})
     for (const conflict of candidate.conflicts ?? []) if (provided.has(conflict)) conflicts.push({ tool:candidate.fullName, conflict });
   }
   for (const requirement of requiredCapabilities) if (!provided.has(requirement)) unresolvedRequirements.push({ tool:'toolchain', requirement });
+  const packagePins = new Map();
+  for (const candidate of eligible) {
+    for (const [name, version] of Object.entries(candidate.packagePins ?? {})) {
+      if (packagePins.has(name) && packagePins.get(name).version !== version) conflicts.push({ tool:candidate.fullName, conflict:`PACKAGE_VERSION_CONFLICT:${name}`, versions:[packagePins.get(name).version,version] });
+      else packagePins.set(name,{version,tool:candidate.fullName});
+    }
+  }
   const duplicateIds = new Set();
   const seen = new Set();
   for (const item of eligible) {
@@ -132,6 +141,7 @@ export function composeToolchain(candidates, { requiredCapabilities = [] } = {})
   return {
     compatible: rejected.length===0 && conflicts.length===0 && unresolvedRequirements.length===0 && eligible.length===candidates.length,
     selected: eligible.map(item => item.fullName ?? item.id),
+    packagePins:Object.fromEntries([...packagePins].map(([name,record])=>[name,record.version])),
     rejected, conflicts, unresolvedRequirements,
   };
 }
