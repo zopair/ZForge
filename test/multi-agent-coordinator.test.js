@@ -93,3 +93,25 @@ test('coordinator uses the configured local model when a task does not override 
   await coordinator.executePlan({ workspaceId: 'model-default', tasks: [{ id: 'one', agentId: 'reader', request: 'Read docs' }] });
   assert.equal(model, 'qwen3:8b');
 });
+
+test('coordinator forwards live specialist events with agent and task identity', async () => {
+  const events = [];
+  const coordinator = new MultiAgentCoordinator({
+    agentFactory: { getExecutionProfile: async agentId => ({ agentId, allowedTools: ['read_file', 'finish_task'], resourceLimits: {} }) },
+    agentService: {
+      runTask: async ({ onProgress }) => {
+        await onProgress({ type: 'agent.step.started', details: { step: 1 } });
+        return { completed: true, summary: 'specialist verified', evidence: [{ id: 'proof' }] };
+      },
+    },
+  });
+  const result = await coordinator.executePlan({
+    workspaceId: 'live-events',
+    tasks: [{ id: 'research', agentId: 'researcher', request: 'Research the component' }],
+    onProgress: async event => events.push(event),
+  });
+  assert.equal(result.status, 'completed');
+  assert.ok(events.some(event => event.type === 'agent.task.started' && event.details.agentId === 'researcher'));
+  assert.ok(events.some(event => event.type === 'agent.step.started' && event.details.taskId === 'research' && event.details.agentId === 'researcher'));
+  assert.ok(events.some(event => event.type === 'agent.task.completed' && event.details.taskId === 'research'));
+});
