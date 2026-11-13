@@ -51,6 +51,49 @@ function appendMessage(text,kind="assistant"){
   conversation.scrollTop=conversation.scrollHeight;
 }
 
+function appendProgressEvent(event){
+  const feed=document.getElementById("agent-progress-feed");
+  if(!feed)return;
+  const details=event.details??{};
+  let message=null;
+  if(event.type==="agent.started")message="بدأ الوكيل المحلي التنفيذ.";
+  else if(event.type==="agent.step.started")message="الوكيل ينفذ الخطوة "+details.step+" من "+(details.maxSteps??"")+" .";
+  else if(event.type==="agent.tool.started")message="بدأ استخدام الأداة: "+String(details.toolName??"unknown")+".";
+  else if(event.type==="agent.tool.completed")message="انتهت الأداة "+String(details.toolName??"")+(details.ok===true?" بنجاح.":" مع تعثر.");
+  else if(event.type==="agent.completed")message="اكتمل عمل الوكيل بعد التحقق من الأدلة.";
+  else if(event.type==="agent.needs_action")message="الوكيل يحتاج إلى توجيه إضافي.";
+  else if(event.type==="agent.step_limit")message="وصل الوكيل إلى حد خطوات التنفيذ.";
+  else if(event.type==="agent.failed")message="تعثر تنفيذ الوكيل.";
+  else if(event.type==="agent.task.started")message="بدأ الوكيل المتخصص: "+String(details.agentId??"");
+  else if(event.type==="agent.task.completed")message="اكتمل الوكيل المتخصص: "+String(details.agentId??"");
+  else if(event.type==="agent.task.failed")message="تعثر الوكيل المتخصص: "+String(details.agentId??"");
+  else if(event.type==="agent.task.skipped")message="تم تجاوز الوكيل التابع لتعثر سابق: "+String(details.agentId??"");
+  if(!message)return;
+  const row=document.createElement("p");
+  row.className="agent-progress-event";
+  row.textContent=message;
+  feed.append(row);
+  while(feed.children.length>24)feed.firstElementChild.remove();
+  feed.scrollTop=feed.scrollHeight;
+  executionStatus.textContent=message;
+}
+
+async function streamTaskEvents(taskId,signal){
+  let cursor=0;
+  while(!signal.aborted){
+    try{
+      const payload=await api("/api/tasks/"+encodeURIComponent(taskId)+"/events?after="+cursor);
+      for(const event of payload.events??[])appendProgressEvent(event);
+      cursor=payload.cursor??cursor;
+      if(["succeeded","failed","inconclusive","cancelled"].includes(payload.status))break;
+    }catch(error){
+      if(!signal.aborted)executionStatus.textContent="توقف بث التقدم: "+error.message;
+      break;
+    }
+    await new Promise(resolve=>window.setTimeout(resolve,800));
+  }
+}
+
 function appendArtifactLink(artifact){
   const row=document.createElement("div");
   row.className="message assistant-message artifact-message";
@@ -251,10 +294,18 @@ form.addEventListener("submit",async event=>{
     webBuildButton.disabled=false;
     const runBody={model:runtimeModelSelect.value,confirmExecution:true};
     if(runtimeAgentSelect.value)runBody.agentId=runtimeAgentSelect.value;
-    const completed=await api("/api/tasks/"+encodeURIComponent(task.id)+"/agent-run",{
-      method:"POST",
-      body:runBody
-    });
+    const progressController=new AbortController();
+    const progressStream=streamTaskEvents(task.id,progressController.signal);
+    let completed;
+    try{
+      completed=await api("/api/tasks/"+encodeURIComponent(task.id)+"/agent-run",{
+        method:"POST",
+        body:runBody
+      });
+    }finally{
+      progressController.abort();
+      await progressStream;
+    }
     const result=completed.result??{};
     if(completed.status==="succeeded"&&result.completed===true){
       appendMessage("اكتملت المهمة: "+(result.summary||"تم التحقق من النتيجة")+". عدد خطوات الوكيل: "+(result.steps??0)+".");
