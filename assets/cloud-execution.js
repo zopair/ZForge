@@ -21,7 +21,7 @@
     warning.textContent = 'تنبيه: مستودع GitHub عام؛ لا تضع كلمات مرور أو مفاتيح API أو بيانات خاصة في الطلب.';
     const link = document.createElement('a');
     link.className = 'cloud-task-link';
-    const titleText = request.replace(/\\s+/g, ' ').slice(0, 72);
+    const titleText = request.replace(/\s+/g, ' ').slice(0, 72);
     const issueUrl = new URL('https://github.com/zopair/ZForge/issues/new');
     issueUrl.searchParams.set('title', '[ZForge Cloud Task] ' + titleText);
     issueUrl.searchParams.set('body', request);
