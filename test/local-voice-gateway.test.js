@@ -11,7 +11,8 @@ test('voice gateway authenticates and routes audio to local transcription and sy
   const wav = Buffer.from('RIFF0000WAVEdata');
   const voiceService = {
     maxAudioBytes: 1024,
-    capabilities: () => ({ transcription: true, synthesis: true, localOnly: true }),
+    capabilities: () => ({ transcription: false, synthesis: false, localOnly: true }),
+    inspectCapabilities: async () => ({ transcription: true, synthesis: true, localOnly: true, checks: { whisperExecutable: true, piperModule: true } }),
     transcribe: async input => { received.audio = input.audio; received.contentType = input.contentType; return { text: 'local words', engine: 'whisper.cpp', local: true }; },
     synthesize: async input => { received.text = input.text; return { audio: wav, contentType: 'audio/wav' }; },
   };
