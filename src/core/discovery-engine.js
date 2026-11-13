@@ -47,6 +47,7 @@ export function buildDiscoveryPlan({ capabilities = [], keywords = [], maxQuerie
     for (const term of selected) queries.push(`(${term}) in:name,description,readme`);
   }
   for (const keyword of keywords) if (String(keyword).trim()) queries.push(`(${String(keyword).trim()}) in:name,description,readme`);
+  for (const capability of capabilities) queries.push(`(${String(capability).trim()}) in:name,description,readme`);
   const deduplicated = [...new Set(queries)].slice(0, maxQueries);
   return {
     generatedAt: new Date().toISOString(),
