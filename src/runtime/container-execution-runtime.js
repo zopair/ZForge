@@ -3,6 +3,12 @@ import { posix } from 'node:path';
 const ENGINES = new Set(['podman', 'docker']);
 const NETWORKS = new Set(['bridge', 'none']);
 
+function memoryLimitMb(value) {
+  const amount = Number.parseInt(value, 10);
+  const unit = value.slice(-1).toLowerCase();
+  return unit === 'g' ? amount * 1024 : unit === 'k' ? Math.max(1, amount / 1024) : amount;
+}
+
 export class ContainerExecutionRuntime {
   constructor({
     hostRuntime,
@@ -58,8 +64,8 @@ export class ContainerExecutionRuntime {
     }
     const workspacePath = await this.hostRuntime.getWorkspacePath({ workspaceId });
     const cpuLimit = Number.isFinite(resourceLimits?.cpu) ? Math.min(this.cpuLimit, resourceLimits.cpu) : this.cpuLimit;
-    const globalMemoryMb = this.memoryLimit.toLowerCase().endsWith('g') ? Number.parseInt(this.memoryLimit, 10) * 1024 : Number.parseInt(this.memoryLimit, 10);
-    const memoryMb = Number.isFinite(resourceLimits?.memoryMb) ? Math.max(64, Math.min(globalMemoryMb, resourceLimits.memoryMb)) : globalMemoryMb;
+    const globalMemoryMb = memoryLimitMb(this.memoryLimit);
+    const memoryMb = Number.isFinite(resourceLimits?.memoryMb) ? Math.max(1, Math.min(globalMemoryMb, resourceLimits.memoryMb)) : globalMemoryMb;
     const effectiveMemory = `${Math.floor(memoryMb)}m`;
     const argsForEngine = [
       'run', '--rm', '--init',
