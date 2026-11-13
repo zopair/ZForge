@@ -330,8 +330,9 @@ connectButton.addEventListener("click",async()=>{
       runtimeAgentSelect.append(option);
     }
     runtimeAgentSelect.disabled=false;
+    let voiceInventory={capabilities:{}};
     try{
-      const voiceInventory=await api("/api/voice/capabilities");
+      voiceInventory=await api("/api/voice/capabilities");
       voiceCapabilities=voiceInventory.capabilities??{transcription:false,synthesis:false};
     }catch{
       voiceCapabilities={transcription:false,synthesis:false};
