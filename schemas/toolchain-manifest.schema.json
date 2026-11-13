@@ -1,0 +1,19 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://github.com/zopair/ZForge/blob/main/schemas/toolchain-manifest.schema.json",
+  "title":"ZForge Toolchain Manifest",
+  "type":"object",
+  "required":["id","workload","components","requiredCapabilities","status","evidence"],
+  "properties":{
+    "id":{"type":"string","minLength":1},
+    "workload":{"type":"string","minLength":1},
+    "components":{"type":"array","minItems":1,"items":{"type":"object","required":["repository","version","capabilities","licenseStatus"],"properties":{"repository":{"type":"string","format":"uri"},"version":{"type":"string"},"commit":{"type":"string"},"capabilities":{"type":"array","items":{"type":"string"}},"requires":{"type":"array","items":{"type":"string"}},"conflicts":{"type":"array","items":{"type":"string"}},"packagePins":{"type":"object","additionalProperties":{"type":"string"}},"licenseStatus":{"enum":["OPEN_SOURCE_VERIFIED","UNKNOWN","NOT_OPEN_SOURCE"]},"selfHosted":{"type":["boolean","null"]},"paidDependency":{"type":["boolean","null"]}}}},
+    "requiredCapabilities":{"type":"array","items":{"type":"string"}},
+    "runtime":{"type":"object"},
+    "resourceProfile":{"type":"object"},
+    "status":{"enum":["PROPOSED","QUARANTINED","TESTING","VERIFIED","REJECTED"]},
+    "evidence":{"type":"array","items":{"type":"string","format":"uri"}},
+    "rollback":{"type":"string"}
+  },
+  "additionalProperties":false
+}

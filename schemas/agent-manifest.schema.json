@@ -1,0 +1,25 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://github.com/zopair/ZForge/blob/main/schemas/agent-manifest.schema.json",
+  "title":"ZForge Specialist Agent Manifest",
+  "type":"object",
+  "required":["id","name","version","status","mission","nonGoals","inputs","outputs","tools","permissions","resourceLimits","tests","rollback"],
+  "properties":{
+    "id":{"type":"string","minLength":1},
+    "name":{"type":"string","minLength":1},
+    "version":{"type":"string","pattern":"^\\d+\\.\\d+\\.\\d+$"},
+    "status":{"enum":["PROPOSED","SPECIFIED","TESTING","ACTIVE","REVIEW","DEPRECATED","RETIRED"]},
+    "mission":{"type":"string","minLength":1},
+    "nonGoals":{"type":"array","items":{"type":"string"}},
+    "inputs":{"type":"object"},
+    "outputs":{"type":"object"},
+    "tools":{"type":"array","items":{"type":"object","required":["id","capability"],"properties":{"id":{"type":"string"},"capability":{"type":"string"},"version":{"type":"string"},"licenseEvidence":{"type":"string","format":"uri"}}}},
+    "permissions":{"type":"object","required":["allow","deny","approvalRequired"],"properties":{"allow":{"type":"array","items":{"type":"string"}},"deny":{"type":"array","items":{"type":"string"}},"approvalRequired":{"type":"array","items":{"type":"string"}}}},
+    "resourceLimits":{"type":"object","required":["cpu","memoryMb","storageMb","timeoutSeconds"],"properties":{"cpu":{"type":"number","minimum":0},"memoryMb":{"type":"integer","minimum":1},"storageMb":{"type":"integer","minimum":1},"timeoutSeconds":{"type":"integer","minimum":1}}},
+    "tests":{"type":"array","items":{"type":"string"},"minItems":1},
+    "rollback":{"type":"string","minLength":1},
+    "licenseInventory":{"type":"array","items":{"type":"object"}},
+    "createdAt":{"type":"string","format":"date-time"}
+  },
+  "additionalProperties":false
+}

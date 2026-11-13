@@ -1,12 +1,14 @@
 {
-  "name": "ZForge — Autonomous Engineering",
+  "name": "ZForge — Black Phantom",
   "short_name": "ZForge",
-  "description": "Evidence-driven autonomous engineering control plane.",
+  "description": "Black Phantom user interface for the ZForge autonomous engineering system.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#101827",
-  "theme_color": "#101827",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "lang": "ar",
+  "dir": "rtl",
   "icons": [
     {
       "src": "./assets/icon.svg",
