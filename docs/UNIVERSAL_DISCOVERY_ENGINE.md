@@ -48,6 +48,7 @@ These organizations are discovery seeds only. Their repositories, dependencies, 
 4. Search beyond GitHub where needed for authoritative license texts, release notes, security advisories, package registries, and platform documentation. Record source URLs and retrieval date.
 5. Bound each run: explicit query budget, page/result cap, vendor-organization batch size, continuation offsets, timeout, cache TTL, and rate-limit stop behavior. Preserve query-page and organization-page cursors so truncated results can resume without silently skipping data. Never evade quotas, rotate accounts/tokens, scrape behind access controls, or use unofficial proxy services.
 6. Deduplicate by canonical repository identity and compare forks against upstream. A fork is not treated as a distinct product unless it demonstrates material independent capability.
+7. GitHub is too large for a truthful claim of exhaustive one-shot crawling. ZUOI covers the configured domain/topic catalogue, vendor organizations and independent public repository search in bounded resumable batches; it records incomplete windows and cursors rather than claiming every public repository has been inspected.
 7. Read LICENSE and relevant per-directory licenses, model/data/font/asset licenses, dependency manifests, install scripts, CI, release history, security policy, and documented hosted-service requirements.
 8. Return candidates with evidence and unknowns. Discovery never directly authorizes installation or execution.
 
