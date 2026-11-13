@@ -17,12 +17,14 @@ function parseArguments(value) {
 }
 
 export class AgentExecutionService {
-  constructor({ modelAdapter, runtime, maxSteps = 16, systemPrompt = null } = {}) {
+  constructor({ modelAdapter, runtime, workspaceManager = null, maxSteps = 16, systemPrompt = null } = {}) {
     if (!modelAdapter || typeof modelAdapter.chat !== 'function') throw new TypeError('modelAdapter.chat is required');
     if (!runtime || typeof runtime.createWorkspace !== 'function' || typeof runtime.execute !== 'function') throw new TypeError('a compatible workspace execution runtime is required');
     if (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 64) throw new RangeError('maxSteps must be between 1 and 64');
     this.modelAdapter = modelAdapter;
+    if (workspaceManager && (typeof workspaceManager.createWorkspace !== 'function' || typeof workspaceManager.startExperiment !== 'function' || typeof workspaceManager.finishExperiment !== 'function')) throw new TypeError('workspaceManager must implement the AgentWorkspaceManager contract');
     this.runtime = runtime;
+    this.workspaceManager = workspaceManager;
     this.maxSteps = maxSteps;
     this.systemPrompt = systemPrompt ?? [
       'You are the ZForge autonomous engineering worker operating inside one assigned workspace.',
@@ -45,6 +47,17 @@ export class AgentExecutionService {
     if (typeof model !== 'string' || !model.trim()) throw new TypeError('a local model name is required');
     if (typeof workspaceId !== 'string' || !workspaceId.trim()) throw new TypeError('workspaceId is required');
     await this.runtime.createWorkspace({ id: workspaceId });
+    let experimentId = null;
+    if (this.workspaceManager) {
+      if (!this.workspaceManager.getWorkspace(workspaceId)) this.workspaceManager.createWorkspace({ id: workspaceId, name: `Task ${workspaceId}`, agentId: 'chief-agent', purpose: request, profile: 'engineering' });
+      experimentId = `task-${randomUUID()}`;
+      this.workspaceManager.startExperiment(workspaceId, { id: experimentId, title: request.trim().slice(0, 120), hypothesis: 'The requested task can be completed and verified in this workspace.' });
+    }
+    const finishExperiment = (outcome, findings, metrics = {}) => {
+      if (!this.workspaceManager || !experimentId) return;
+      this.workspaceManager.finishExperiment(workspaceId, experimentId, { outcome, findings, metrics });
+      this.workspaceManager.setWorkspaceStatus(workspaceId, 'ready');
+    };
     const messages = [
       { role: 'system', content: this.systemPrompt },
       { role: 'user', content: `Task: ${request.trim()}\nWorkspace: ${workspaceId}${plan ? `\nApproved implementation plan:\n${plan}` : ''}` },
@@ -52,9 +65,16 @@ export class AgentExecutionService {
     const evidence = new Map();
     const trace = [];
     for (let step = 1; step <= this.maxSteps; step += 1) {
-      const response = await this.modelAdapter.chat({ model, messages, temperature: 0.1, tools: EXECUTION_TOOLS });
+      let response;
+      try {
+        response = await this.modelAdapter.chat({ model, messages, temperature: 0.1, tools: EXECUTION_TOOLS });
+      } catch (error) {
+        finishExperiment('failed', [`Model execution failed: ${error.message}`], { step });
+        throw error;
+      }
       const toolCalls = Array.isArray(response?.toolCalls) ? response.toolCalls : [];
       if (!toolCalls.length) {
+        finishExperiment('inconclusive', ['Model returned no executable tool call.'], { step });
         return { status: 'needs_action', completed: false, workspaceId, steps: step, message: response?.content ?? '', trace };
       }
       const rawCalls = response.rawToolCalls ?? toolCalls.map((call, index) => ({
@@ -92,6 +112,7 @@ export class AgentExecutionService {
               }
               const completed = { status: 'completed', completed: true, workspaceId, summary: args.summary.trim(), steps: step, evidence: validEvidence, trace };
               trace.push({ id: callId, name: call.name, ok: true });
+              finishExperiment('succeeded', [args.summary.trim()], { steps: step, evidenceCount: validEvidence.length });
               return completed;
             }
             default:
@@ -103,9 +124,11 @@ export class AgentExecutionService {
         const record = { id: callId, name: call.name, ...result };
         evidence.set(callId, record);
         trace.push({ id: callId, name: call.name, ok: result.ok === true });
+        if (this.workspaceManager) this.workspaceManager.addObservation(workspaceId, { id: callId, kind: 'tool-result', note: `${call.name}: ${result.ok === true ? 'succeeded' : 'failed'}`, evidence: [{ tool: call.name, ok: result.ok === true }] });
         messages.push({ role: 'tool', tool_name: call.name, content: JSON.stringify(record) });
       }
     }
+    finishExperiment('inconclusive', ['Agent reached the configured tool-call step limit.'], { steps: this.maxSteps });
     return { status: 'step_limit', completed: false, workspaceId, steps: this.maxSteps, trace };
   }
 }
