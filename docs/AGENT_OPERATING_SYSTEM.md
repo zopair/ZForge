@@ -15,9 +15,10 @@ Create agents only for recurring/high-value capability gaps. Discover and evalua
 
 ## Capability-gap self-extension
 The Chief Agent now classifies each requested capability after discovery:
-- `REUSE_VERIFIED_TOOL`: a candidate passed all eligibility gates.
+- `REUSE_VERIFIED_TOOL`: a candidate passed all eligibility gates and matches the requested capability.
 - `CONTINUE_DISCOVERY`: the catalog/search is incomplete or rate-limited; no premature rebuild.
-- `BUILD_INTERNAL_TOOL`: discovery is complete and no eligible candidate exists. A structured zero-budget build brief is attached to the draft plan.
+- `EVALUATE_DISCOVERED_CANDIDATES`: search is complete but one or more candidates still need exact license, dependency, cost, security, maintenance and compatibility review.
+- `BUILD_INTERNAL_TOOL`: discovery and candidate evaluation are complete and no eligible candidate exists. A structured zero-budget build brief is attached to the draft plan.
 
 This is planning support, not autonomous execution. Build briefs require approval and an isolated execution worker, pinned dependencies, tests, benchmarks, provenance, independent review and rollback before an internally built tool can be registered as verified.
 
