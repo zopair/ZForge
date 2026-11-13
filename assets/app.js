@@ -9,6 +9,9 @@ const runtimeModelSelect=document.getElementById("runtime-model");
 const runtimeAgentSelect=document.getElementById("runtime-agent");
 const androidProjectPath=document.getElementById("android-project-path");
 const androidBuildButton=document.getElementById("android-build-button");
+const webProjectPath=document.getElementById("web-project-path");
+const webOutputDirectory=document.getElementById("web-output-directory");
+const webBuildButton=document.getElementById("web-build-button");
 const connectButton=document.getElementById("connect-runtime");
 const runtimeBadge=document.getElementById("runtime-badge");
 const chiefStatus=document.getElementById("chief-status");
@@ -27,6 +30,7 @@ function setConnectionState(value){
   chiefStatus.textContent=value?"النموذج المحلي متصل":"بانتظار الاتصال";
   executionStatus.textContent=value?"جاهز لتنفيذ المهام":"بانتظار الاتصال";
   androidBuildButton.disabled=!(value&&latestTaskId);
+  webBuildButton.disabled=!(value&&latestTaskId);
   document.querySelector(".connection-state")?.classList.toggle("is-connected",value);
 }
 
@@ -168,6 +172,35 @@ connectButton.addEventListener("click",async()=>{
   }
 });
 
+webBuildButton.addEventListener("click",async()=>{
+  if(!connected||!latestTaskId)return;
+  webBuildButton.disabled=true;
+  const originalLabel=webBuildButton.textContent;
+  webBuildButton.textContent="جارٍ اختبار وبناء تطبيق الويب...";
+  executionStatus.textContent="جارٍ اختبار وبناء تطبيق الويب...";
+  try{
+    const completed=await api("/api/tasks/"+encodeURIComponent(latestTaskId)+"/web-build",{
+      method:"POST",
+      body:{confirmExecution:true,projectPath:webProjectPath.value.trim()||".",outputDirectory:webOutputDirectory.value,runTests:true}
+    });
+    const result=completed.result??{};
+    if(completed.status==="succeeded"&&result.status==="succeeded"){
+      appendMessage("اكتمل بناء تطبيق الويب باستخدام "+result.manager+". تم نشر "+(result.artifacts??[]).length+" ملفاً مع بصمات SHA-256.");
+      for(const artifact of result.artifacts??[])appendArtifactLink(artifact);
+      executionStatus.textContent="بناء الويب مكتمل";
+    }else{
+      appendMessage("فشل بناء تطبيق الويب: "+(result.error||completed.error||"لم يتم إنشاء مخرجات ثابتة."));
+      executionStatus.textContent="بناء الويب فشل";
+    }
+  }catch(error){
+    appendMessage("تعذر بناء تطبيق الويب: "+error.message);
+    executionStatus.textContent="تعذر بناء الويب";
+  }finally{
+    webBuildButton.textContent=originalLabel;
+    webBuildButton.disabled=!(connected&&latestTaskId);
+  }
+});
+
 androidBuildButton.addEventListener("click",async()=>{
   if(!connected||!latestTaskId)return;
   androidBuildButton.disabled=true;
@@ -215,6 +248,7 @@ form.addEventListener("submit",async event=>{
     const task=await api("/api/tasks",{method:"POST",body:{request:message}});
     latestTaskId=task.id;
     androidBuildButton.disabled=false;
+    webBuildButton.disabled=false;
     const runBody={model:runtimeModelSelect.value,confirmExecution:true};
     if(runtimeAgentSelect.value)runBody.agentId=runtimeAgentSelect.value;
     const completed=await api("/api/tasks/"+encodeURIComponent(task.id)+"/agent-run",{
