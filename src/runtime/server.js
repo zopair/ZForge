@@ -44,6 +44,7 @@ const runtime = executionBackend === 'container'
       cpuLimit: Number(process.env.ZFORGE_CONTAINER_CPUS ?? 2),
       memoryLimit: process.env.ZFORGE_CONTAINER_MEMORY ?? '4g',
       pidsLimit: Number(process.env.ZFORGE_CONTAINER_PIDS ?? 256),
+      tmpfsSize: process.env.ZFORGE_CONTAINER_TMPFS ?? '1g',
     }).initialize()
   : hostRuntime;
 const artifactStore = await new LocalArtifactStore({ rootDir: artifactDir }).initialize();
