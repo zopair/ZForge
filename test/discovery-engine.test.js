@@ -36,6 +36,9 @@ test('license classifier distinguishes approved open source, non-open source, an
   assert.equal(classifyLicense('AGPL-3.0-only').status, 'OPEN_SOURCE');
   assert.equal(classifyLicense('BUSL-1.1').status, 'NOT_OPEN_SOURCE');
   assert.equal(classifyLicense('BSL-1.0').status, 'OPEN_SOURCE');
+  assert.equal(classifyLicense('CC0-1.0').status, 'UNKNOWN');
+  assert.equal(classifyLicense('CERN-OHL-P-2.0').status, 'UNKNOWN');
+  assert.equal(classifyLicense('WTFPL').status, 'UNKNOWN');
   assert.equal(classifyLicense(null).status, 'UNKNOWN');
 });
 
