@@ -36,6 +36,7 @@ try {
         if (url.pathname === '/api/health') return route.fulfill({ json: { status: 'ok' } });
         if (url.pathname === '/api/models') return route.fulfill({ json: { models: ['qwen3:8b'] } });
         if (url.pathname === '/api/agents') return route.fulfill({ json: { agents: [] } });
+        if (url.pathname.endsWith('/events')) return route.fulfill({ json: { taskId: '12345678-1234-4234-8234-123456789012', status: 'succeeded', cursor: 3, events: [{ sequence: 2, type: 'agent.step.started', details: { step: 1 } }, { sequence: 3, type: 'agent.completed', details: { step: 1 } }] } });
         if (url.pathname === '/api/tasks' && method === 'POST') return route.fulfill({ status: 201, json: { id: '12345678-1234-4234-8234-123456789012', status: 'queued' } });
         if (url.pathname.endsWith('/agent-run')) return route.fulfill({ json: { id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { completed: true, summary: 'Browser smoke task verified', steps: 2, evidence: [] } } });
         if (url.pathname.endsWith('/web-build')) return route.fulfill({ json: { id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { status: 'succeeded', manager: 'npm', artifacts: [{ id: 'artifact-web-1', filename: 'index.html', sizeBytes: 512 }] } } });
