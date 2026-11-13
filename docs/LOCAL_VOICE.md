@@ -19,12 +19,36 @@ Install the free local executables on the runtime host and set environment varia
 ZFORGE_WHISPER_BIN=/usr/local/bin/whisper-cli
 ZFORGE_WHISPER_MODEL=/opt/models/ggml-small.bin
 ZFORGE_FFMPEG_BIN=/usr/bin/ffmpeg
-ZFORGE_PIPER_BIN=/usr/local/bin/piper
+ZFORGE_PIPER_BIN=/usr/bin/python3
 ZFORGE_PIPER_MODEL=/opt/models/ar_JO-kareem-medium.onnx
 ZFORGE_VOICE_TIMEOUT_MS=120000
 ```
 
 The Arabic Piper voice catalog includes `ar_JO-kareem` in low and medium quality. It is Jordanian Arabic, not an Egyptian-accent voice. Download the `.onnx` model, its matching `.onnx.json` configuration, and inspect the voice's `MODEL_CARD` before use; voice model licenses can differ. The official Whisper.cpp model catalog provides multilingual models such as `tiny`, `base`, `small`, `medium` and `large-v3`; select a model without the `.en` suffix for Arabic. Larger models generally require more disk, memory and compute. Actual Egyptian-dialect recognition quality and speech naturalness must be tested on the target host.
+
+
+## Reproducible free setup (Linux example)
+
+Build whisper.cpp from its maintained source and download a multilingual model:
+
+```sh
+git clone https://github.com/ggml-org/whisper.cpp
+cd whisper.cpp
+cmake -B build
+cmake --build build --config Release -j
+./models/download-ggml-model.sh small
+```
+
+Install FFmpeg from the host distribution's free package repository. Install Piper from the maintained Open Home Foundation project and download the Jordanian Arabic voice plus its configuration:
+
+```sh
+python3 -m pip install --user piper-tts
+python3 -m piper.download_voices ar_JO-kareem-medium --data-dir /opt/models
+```
+
+Set `ZFORGE_WHISPER_BIN` to the built `whisper-cli`, `ZFORGE_WHISPER_MODEL` to `models/ggml-small.bin`, `ZFORGE_FFMPEG_BIN` to the host FFmpeg executable, `ZFORGE_PIPER_BIN` to the Python interpreter used for the Piper installation (for example `/usr/bin/python3`), and `ZFORGE_PIPER_MODEL` to `/opt/models/ar_JO-kareem-medium.onnx`. Keep the matching `.onnx.json` file beside the model. Verify the actual paths on the host before starting ZForge.
+
+The Piper adapter invokes the maintained CLI as `python -m piper -m MODEL -f OUTPUT.wav -- TEXT`; text is passed as a distinct process argument, never interpolated into a shell command. The Piper engine repository is GPL-3.0; inspect its distribution obligations and the separate voice `MODEL_CARD` before redistributing either engine or model.
 
 ## API
 
