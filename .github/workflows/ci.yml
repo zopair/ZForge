@@ -1,7 +1,7 @@
 name: ZForge Quality Gate
 on:
   push:
-    branches: [main, feat/persistent-task-gateway-runtime, feat/container-artifact-pipeline, feat/agent-factory-registry, feat/multi-agent-orchestration, feat/android-build-worker, feat/persistent-experiment-memory, feat/web-build-worker, feat/browser-qa, feat/live-agent-progress]
+    branches: [main, feat/persistent-task-gateway-runtime, feat/container-artifact-pipeline, feat/agent-factory-registry, feat/multi-agent-orchestration, feat/android-build-worker, feat/persistent-experiment-memory, feat/web-build-worker, feat/browser-qa, feat/live-agent-progress, feat/local-voice-runtime, feat/local-voice-runtime-rebased]
   pull_request:
   workflow_dispatch:
 permissions:
