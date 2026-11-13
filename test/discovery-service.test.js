@@ -45,3 +45,16 @@ test('discovery service enumerates vendor organizations in bounded batches',asyn
   assert.equal(result.nextVendorOffset,2);
   assert.ok(result.remainingVendorOrganizations>0);
 });
+
+test('discovery service resumes the same query at the next page before advancing',async()=>{
+  const calls=[];
+  const client={searchRepositories:async(query,{page})=>{calls.push({query,page});return page===1?{results:[{id:1,fullName:'org/one'}],complete:false,nextPage:2,totalCount:2}:{results:[{id:2,fullName:'org/two'}],complete:true,nextPage:null,totalCount:2};}};
+  const service=new UniversalDiscoveryService({client,maxQueriesPerRun:1});
+  const first=await service.discover({keywords:['pagination-case'],includeVendorSeeds:false});
+  const second=await service.discover({keywords:['pagination-case'],includeVendorSeeds:false,queryOffset:first.nextOffset,queryPage:first.nextQueryPage});
+  assert.equal(first.nextOffset,0);
+  assert.equal(first.nextQueryPage,2);
+  assert.equal(second.nextOffset,1);
+  assert.equal(second.nextQueryPage,1);
+  assert.deepEqual(calls.map(call=>call.page),[1,2]);
+});
