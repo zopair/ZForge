@@ -58,14 +58,14 @@ export class AgentExecutionService {
     await this.runtime.createWorkspace({ id: workspaceId });
     let experimentId = null;
     if (this.workspaceManager) {
-      if (!this.workspaceManager.getWorkspace(workspaceId)) this.workspaceManager.createWorkspace({ id: workspaceId, name: `Task ${workspaceId}`, agentId: 'chief-agent', purpose: request, profile: 'engineering' });
+      if (!await this.workspaceManager.getWorkspace(workspaceId)) await this.workspaceManager.createWorkspace({ id: workspaceId, name: `Task ${workspaceId}`, agentId: 'chief-agent', purpose: request, profile: 'engineering' });
       experimentId = `task-${randomUUID()}`;
-      this.workspaceManager.startExperiment(workspaceId, { id: experimentId, title: request.trim().slice(0, 120), hypothesis: 'The requested task can be completed and verified in this workspace.' });
+      await this.workspaceManager.startExperiment(workspaceId, { id: experimentId, title: request.trim().slice(0, 120), hypothesis: 'The requested task can be completed and verified in this workspace.' });
     }
-    const finishExperiment = (outcome, findings, metrics = {}) => {
+    const finishExperiment = async (outcome, findings, metrics = {}) => {
       if (!this.workspaceManager || !experimentId) return;
-      this.workspaceManager.finishExperiment(workspaceId, experimentId, { outcome, findings, metrics });
-      this.workspaceManager.setWorkspaceStatus(workspaceId, 'ready');
+      await this.workspaceManager.finishExperiment(workspaceId, experimentId, { outcome, findings, metrics });
+      await this.workspaceManager.setWorkspaceStatus(workspaceId, 'ready');
     };
     const messages = [
       { role: 'system', content: this.systemPrompt },
@@ -78,12 +78,12 @@ export class AgentExecutionService {
       try {
         response = await this.modelAdapter.chat({ model, messages, temperature: 0.1, tools: availableTools });
       } catch (error) {
-        finishExperiment('failed', [`Model execution failed: ${error.message}`], { step });
+        await finishExperiment('failed', [`Model execution failed: ${error.message}`], { step });
         throw error;
       }
       const toolCalls = Array.isArray(response?.toolCalls) ? response.toolCalls : [];
       if (!toolCalls.length) {
-        finishExperiment('inconclusive', ['Model returned no executable tool call.'], { step });
+        await finishExperiment('inconclusive', ['Model returned no executable tool call.'], { step });
         return { status: 'needs_action', completed: false, workspaceId, steps: step, message: response?.content ?? '', trace };
       }
       const rawCalls = response.rawToolCalls ?? toolCalls.map((call, index) => ({
@@ -137,7 +137,7 @@ export class AgentExecutionService {
               }
               const completed = { status: 'completed', completed: true, workspaceId, summary: args.summary.trim(), steps: step, evidence: validEvidence, trace };
               trace.push({ id: callId, name: call.name, ok: true });
-              finishExperiment('succeeded', [args.summary.trim()], { steps: step, evidenceCount: validEvidence.length });
+              await finishExperiment('succeeded', [args.summary.trim()], { steps: step, evidenceCount: validEvidence.length });
               return completed;
             }
             default:
@@ -149,11 +149,11 @@ export class AgentExecutionService {
         const record = { id: callId, name: call.name, ...result };
         evidence.set(callId, record);
         trace.push({ id: callId, name: call.name, ok: result.ok === true });
-        if (this.workspaceManager) this.workspaceManager.addObservation(workspaceId, { id: callId, kind: 'tool-result', note: `${call.name}: ${result.ok === true ? 'succeeded' : 'failed'}`, evidence: [{ tool: call.name, ok: result.ok === true }] });
+        if (this.workspaceManager) await this.workspaceManager.addObservation(workspaceId, { id: callId, kind: 'tool-result', note: `${call.name}: ${result.ok === true ? 'succeeded' : 'failed'}`, evidence: [{ tool: call.name, ok: result.ok === true }] });
         messages.push({ role: 'tool', tool_name: call.name, content: JSON.stringify(record) });
       }
     }
-    finishExperiment('inconclusive', ['Agent reached the configured tool-call step limit.'], { steps: this.maxSteps });
+    await finishExperiment('inconclusive', ['Agent reached the configured tool-call step limit.'], { steps: this.maxSteps });
     return { status: 'step_limit', completed: false, workspaceId, steps: this.maxSteps, trace };
   }
 }

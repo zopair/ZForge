@@ -9,7 +9,7 @@ import { ChiefAgent } from '../core/chief-agent.js';
 import { AgentFactory } from '../core/agent-factory.js';
 import { MultiAgentCoordinator } from '../core/multi-agent-coordinator.js';
 import { LocalAgentRegistry } from './local-agent-registry.js';
-import { AgentWorkspaceManager } from '../core/agent-workspace-manager.js';
+import { PersistentAgentWorkspaceManager } from './persistent-agent-workspace-manager.js';
 import { UniversalDiscoveryService } from '../core/discovery-service.js';
 import { GitHubDiscoveryClient } from '../adapters/github-discovery.js';
 import { LocalRepositoryMemoryStore, LocalPromptProvider } from '../adapters/local-repository-memory-store.js';
@@ -52,7 +52,7 @@ const androidBuildService = new AndroidBuildService({
   timeoutMs: Number(process.env.ZFORGE_ANDROID_BUILD_TIMEOUT_MS ?? 840000),
 });
 const modelAdapter = new OllamaModelAdapter({ baseUrl: process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434' });
-const workspaceManager = new AgentWorkspaceManager();
+const workspaceManager = await new PersistentAgentWorkspaceManager({ dataDir }).initialize();
 const agentService = new AgentExecutionService({ modelAdapter, runtime, workspaceManager, artifactStore, maxSteps: Number(process.env.ZFORGE_AGENT_MAX_STEPS ?? 16) });
 const discoveryClient = new GitHubDiscoveryClient({ token: process.env.GITHUB_TOKEN ?? null });
 const discoveryService = new UniversalDiscoveryService({ client: discoveryClient });

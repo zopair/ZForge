@@ -1,13 +1,20 @@
 name: ZForge Quality Gate
 on:
   push:
-    branches: [main, feat/persistent-task-gateway-runtime, feat/container-artifact-pipeline, feat/agent-factory-registry, feat/multi-agent-orchestration, feat/android-build-worker]
+    branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
+
+# One active validation per PR; newer commits supersede stale in-progress runs.
+concurrency:
+  group: zforge-quality-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   unit-tests:
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
