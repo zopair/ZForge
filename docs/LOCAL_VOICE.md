@@ -53,7 +53,7 @@ The Piper adapter invokes the maintained CLI as `python -m piper -m MODEL -f OUT
 
 ## Optional Egyptian Cairene voice: KemeTone
 
-For Egyptian Arabic output, ZForge also supports **KemeTone**, an optional local CPU-capable TTS model. The published model card describes an 81.8M-parameter, 24 kHz single female Cairene voice, with a 327 MB model weight file and Apache-2.0 license. It is based on a real speaker, has no voice-cloning feature, and must not be used for impersonation. Disclose that generated speech is synthetic when listeners could otherwise mistake it for a real recording.
+For Egyptian Arabic output, ZForge also supports **[KemeTone](https://huggingface.co/Rabe3/kemetone)**, an optional local CPU-capable TTS model. The published model card describes an 81.8M-parameter, 24 kHz single female Cairene voice, with a 327 MB model weight file and Apache-2.0 license. It is based on a real speaker, has no voice-cloning feature, and must not be used for impersonation. Disclose that generated speech is synthetic when listeners could otherwise mistake it for a real recording.
 
 KemeTone works best with Arabic text carrying diacritics (tashkeel). It does not support Latin words, digits or code-switched English, and its context window is 510 tokens. ZForge conservatively limits automatic KemeTone routing to 400 whitespace-separated words; mixed-language text falls back to Piper when Piper is ready.
 
