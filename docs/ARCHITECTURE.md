@@ -60,6 +60,9 @@ Model selected tools as a graph of provided/required capabilities, version/runti
 ## Agent and prompt evolution
 Every agent has mission, non-goals, I/O schema, allowed tools, permission scope, safety rules, resource ceiling, success criteria, tests, version and rollback. Agent Architect proposes and tests agents; it cannot grant privileges. Per-task prompts derive from versioned canonical instructions. Canonical changes require evidence, diff, regression tests and approval.
 
+## Curated repository intelligence
+The user-supplied catalogue is a discovery seed source, not an allowlist. It includes 128 canonical repository identities, grouped by engineering role and surfaced to the Chief Agent with `PENDING_REVIEW` status. The bounded discovery planner queries them by owner and repository name over resumable batches. Knowledge collections are treated as references; model checkpoints and media assets require independent license and resource review. Four incomplete shorthand references remain unresolved rather than guessed.
+
 ## Self-extension and repository engineering
 After universal discovery, the Chief Agent evaluates each requested capability:
 - Reuse only a candidate whose eligibility gates passed and whose declared capabilities match.
