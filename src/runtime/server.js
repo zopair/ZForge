@@ -6,6 +6,7 @@ import { ChiefAgent } from '../core/chief-agent.js';
 import { UniversalDiscoveryService } from '../core/discovery-service.js';
 import { GitHubDiscoveryClient } from '../adapters/github-discovery.js';
 import { LocalRepositoryMemoryStore, LocalPromptProvider } from '../adapters/local-repository-memory-store.js';
+import { LocalTaskHistoryMemoryStore, CompositeMemoryStore } from '../adapters/local-task-history-memory-store.js';
 
 const token = process.env.ZFORGE_GATEWAY_TOKEN;
 if (!token || token.length < 16) {
@@ -24,7 +25,9 @@ const modelAdapter = new OllamaModelAdapter({ baseUrl: process.env.OLLAMA_BASE_U
 const agentService = new AgentExecutionService({ modelAdapter, runtime, maxSteps: Number(process.env.ZFORGE_AGENT_MAX_STEPS ?? 16) });
 const discoveryClient = new GitHubDiscoveryClient({ token: process.env.GITHUB_TOKEN ?? null });
 const discoveryService = new UniversalDiscoveryService({ client: discoveryClient });
-const memoryStore = new LocalRepositoryMemoryStore({ rootDir: repositoryRoot });
+const repositoryMemoryStore = new LocalRepositoryMemoryStore({ rootDir: repositoryRoot });
+const taskHistoryMemoryStore = new LocalTaskHistoryMemoryStore({ dataDir });
+const memoryStore = new CompositeMemoryStore({ stores: [repositoryMemoryStore, taskHistoryMemoryStore] });
 const promptProvider = new LocalPromptProvider({ rootDir: repositoryRoot });
 const chiefAgent = new ChiefAgent({ modelAdapter, discoveryService, memoryStore, promptProvider, model });
 const gateway = createTaskGateway({ dataDir, token, runtime, agentService, chiefAgent, defaultModel: model, allowedOrigins });
