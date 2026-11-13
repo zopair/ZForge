@@ -2,7 +2,7 @@
 
 ## Separation of duties
 
-1. PWA / Black Phantom: untrusted client presentation only.
+1. BLACK VANTA PWA: untrusted client presentation only.
 2. Task Gateway: authentication, task envelope, approval state, event stream.
 3. Chief Agent: planning and bounded delegation; no raw long-lived secrets.
 4. Discovery service: read-only public metadata and license evidence.
@@ -15,7 +15,7 @@
 
 ## Zero-budget runtime options
 
-Prefer user-controlled local execution first. GitHub Actions may be used for bounded on-demand jobs within the account's actual free quota; it is not a persistent backend. GitHub Pages hosts only static assets. No free hosted service may be assumed permanent or unlimited.
+For phone-only use, prefer the owner-scoped ephemeral GitHub Actions worker described in CLOUD_EXECUTION.md. It starts the existing ZForge runtime and local model inside a disposable runner, then discards them. GitHub Actions may be used for bounded on-demand jobs within the actual free quota; it is not a persistent backend. GitHub Pages hosts only static assets. No free hosted service may be assumed permanent or unlimited. Optional self-hosted execution remains available for development and long-running work.
 
 ## Worker isolation
 
@@ -42,4 +42,4 @@ A task is complete only when the requested artifact exists and independent verif
 
 
 ## Current implementation boundary
-The repository currently has a local Ollama adapter, a Chief Agent draft-planning orchestrator, Agent Architect manifest/activation validation, a bounded local memory/prompt provider, and an approval-gated GitHub task-branch/file/draft-PR writer. The writer has no merge-to-main method. These components do not constitute a live autonomous runtime: there is no persistent memory provider, authenticated task gateway, isolated worker, GitHub write broker, scheduler, or Black Phantom live connection. The Chief Agent returns a draft plan only and cannot execute it.
+The repository includes a local Ollama adapter, Chief Agent planning, Agent Factory, authenticated Task Gateway, task execution service, container runtime adapter and an issue-triggered cloud execution worker. The cloud worker is event-driven and ephemeral; it is not a persistent runtime or direct live connection from the PWA. Its current phone handoff uses public GitHub issues and reports results back to the issue. The worker does not have permission to push to the canonical repository or merge changes.
