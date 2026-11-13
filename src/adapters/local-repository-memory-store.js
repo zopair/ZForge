@@ -1,4 +1,5 @@
 import { readFile, stat } from 'node:fs/promises';
+import { Buffer } from 'node:buffer';
 import { resolve, join } from 'node:path';
 
 const MEMORY_FILES=['TOOL_REGISTRY.md','ISSUES.md','SOLUTIONS.md','FAILED_APPROACHES.md','WORKAROUNDS.md','AGENT_LEARNINGS.md','RESOURCE_LIMITS.md','COMPATIBILITY_MATRIX.md','VERSION_REGISTRY.md','DISCOVERY_RUNS.md','REJECTED_CANDIDATES.md'];
