@@ -64,6 +64,7 @@ All endpoints except health require `Authorization: Bearer <token>`.
 | POST | `/api/workspaces` | Create a workspace: `{ "id": "..." }` |
 | POST | `/api/tasks/:id/execute` | Run an explicit command in that task's workspace |
 | POST | `/api/tasks/:id/agent-run` | Run Chief Agent planning followed by the local model tool loop; requires `confirmExecution: true` |
+| POST | `/api/tasks/:id/orchestrate` | Execute a bounded multi-agent dependency graph; requires `confirmExecution: true` and ACTIVE specialist agents |
 
 Execution body example:
 
