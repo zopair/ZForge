@@ -27,7 +27,8 @@ test('authenticated conversational API preserves session context and only drafts
       return { mode: 'conversation', reply: 'يمكننا مناقشة ذلك.', executionStarted: false };
     },
   };
-  const gateway = createTaskGateway({ dataDir: root, token: 'test-secret-token', conversationCore });
+  let executionCalls = 0;
+  const gateway = createTaskGateway({ dataDir: root, token: 'test-secret-token', conversationCore, agentService: { runTask: async () => { executionCalls += 1; return { completed: true, summary: 'done' }; } } });
   await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
   const base = 'http://127.0.0.1:' + gateway.server.address().port;
   const headers = { Authorization: 'Bearer test-secret-token', 'Content-Type': 'application/json' };
@@ -53,6 +54,13 @@ test('authenticated conversational API preserves session context and only drafts
     assert.equal(observed[1].history.length, 2);
     assert.equal(gateway.store.get(secondResult.taskId).status, 'queued');
     assert.equal(gateway.store.list().length, 1);
+    const rejectedApproval = await fetch(base + '/api/tasks/' + secondResult.taskId + '/agent-run', {
+      method: 'POST', headers,
+      body: JSON.stringify({ confirmExecution: true, approvedPlan, approvedPlanSha256: '0'.repeat(64) }),
+    });
+    assert.equal(rejectedApproval.status, 409);
+    assert.equal(gateway.store.get(secondResult.taskId).status, 'queued');
+    assert.equal(executionCalls, 0);
   } finally {
     await new Promise(resolve => gateway.server.close(resolve));
     await rm(root, { recursive: true, force: true });

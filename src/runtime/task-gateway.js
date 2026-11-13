@@ -502,6 +502,9 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
         if (!task) return send(response, 404, { error: 'task_not_found' });
         const body = await readJson(request, maxBodyBytes);
         if (body.confirmExecution !== true) return send(response, 409, { error: 'explicit_execution_confirmation_required' });
+        if (task.metadata?.mode === 'conversational-plan' && task.metadata.approvedPlanSha256 !== body.approvedPlanSha256) {
+          return send(response, 409, { error: 'approved_plan_does_not_match_conversation_snapshot' });
+        }
         let planning = null;
         if (body.approvedPlan !== undefined) {
           if (typeof body.approvedPlan !== 'string' || !body.approvedPlan.trim()) {
