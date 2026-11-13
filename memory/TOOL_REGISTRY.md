@@ -14,13 +14,17 @@ Canonical index of category-specific evaluations. Popularity is discovery-only a
 | Component | Location | State | Evidence |
 |---|---|---|---|
 | Discovery taxonomy/query planner | src/core/discovery-engine.js | Implemented; CI pending | test/discovery-engine.test.js |
+| Bounded discovery orchestration/cache | src/core/discovery-service.js | Implemented; process-local cache only | test/discovery-service.test.js |
 | Bounded discovery orchestration/cache | src/core/discovery-service.js | Implemented; process-local cache only; CI pending | test/discovery-service.test.js |
 | License classifier and eligibility gates | src/core/discovery-engine.js | Implemented; conservative allowlist | test/discovery-engine.test.js |
 | Toolchain compatibility composer | src/core/discovery-engine.js | Implemented; basic capability/conflict graph | test/discovery-engine.test.js |
 | GitHub public repository search | src/adapters/github-discovery.js | Implemented; read-only and rate-limit-aware | test/github-discovery.test.js |
 | Repository metadata/license/manifest inspection | src/adapters/github-repository-inspector.js | Implemented; no code execution; manual review still required | test/github-repository-inspector.test.js |
 | Official GitHub release metadata | src/adapters/github-release-monitor.js | Implemented; read-only | test/github-release-monitor.test.js |
-| Release update review | src/core/release-monitor.js | Implemented; review-only, no auto-upgrade | test/discovery-engine.test.js |\n| Local Ollama model adapter | src/adapters/ollama-model-adapter.js | Implemented; loopback-only; model license checked separately | test/ollama-model-adapter.test.js |\n| Chief Agent draft planner | src/core/chief-agent.js | Implemented; memory + discovery + local model; no execution or repository writes | test/chief-agent.test.js |\n| Agent Architect manifest/activation gates | src/core/agent-architect.js | Implemented; activation always requires independent approval | test/agent-architect.test.js |
+| Release update review | src/core/release-monitor.js | Implemented; review-only, no auto-upgrade | test/discovery-engine.test.js |
+| Local Ollama model adapter | src/adapters/ollama-model-adapter.js | Implemented; loopback-only; model license checked separately | test/ollama-model-adapter.test.js |
+| Chief Agent draft planner | src/core/chief-agent.js | Implemented; memory + discovery + local model; no execution or repository writes | test/chief-agent.test.js |
+| Agent Architect manifest/activation gates | src/core/agent-architect.js | Implemented; activation always requires independent approval | test/agent-architect.test.js |\n| Local Ollama model adapter | src/adapters/ollama-model-adapter.js | Implemented; loopback-only; model license checked separately | test/ollama-model-adapter.test.js |\n| Chief Agent draft planner | src/core/chief-agent.js | Implemented; memory + discovery + local model; no execution or repository writes | test/chief-agent.test.js |\n| Agent Architect manifest/activation gates | src/core/agent-architect.js | Implemented; activation always requires independent approval | test/agent-architect.test.js |
 | Chief Agent / Agent Architect policies | prompts/ | Updated; runtime not connected | docs/ARCHITECTURE.md |
 | Black Phantom UI | index.html, assets/app.css, assets/app.js | Static Arabic RTL visual shell implemented; voice/chat runtime not connected | docs/BLACK_PHANTOM_UI.md |
 
