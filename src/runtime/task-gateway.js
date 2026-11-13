@@ -48,6 +48,18 @@ function send(response, status, payload) {
   response.end(body);
 }
 
+async function readRaw(request, maxBodyBytes) {
+  let size = 0;
+  const chunks = [];
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > maxBodyBytes) throw Object.assign(new Error('request body too large'), { statusCode: 413 });
+    chunks.push(chunk);
+  }
+  if (size === 0) throw Object.assign(new Error('request body is empty'), { statusCode: 400 });
+  return Buffer.concat(chunks);
+}
+
 async function readJson(request, maxBodyBytes) {
   let size = 0;
   const chunks = [];
@@ -171,7 +183,7 @@ export class TaskStore {
   }
 }
 
-export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, agentFactory = null, multiAgentCoordinator = null, androidBuildService = null, webBuildService = null, artifactStore = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
+export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, agentFactory = null, multiAgentCoordinator = null, androidBuildService = null, webBuildService = null, voiceService = null, artifactStore = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
   if (typeof token !== 'string' || token.length < 16) throw new TypeError('a gateway bearer token of at least 16 characters is required');
   if (!Number.isInteger(maxBodyBytes) || maxBodyBytes < 1024) throw new RangeError('maxBodyBytes must be at least 1024');
   if (!Array.isArray(allowedOrigins) || allowedOrigins.some(origin => typeof origin !== 'string' || !isValidOrigin(origin))) throw new TypeError('allowedOrigins must be an array of exact HTTP(S) origins');
@@ -267,6 +279,35 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
         }
         const artifact = artifactStore.getArtifact(artifactMatch[1]);
         return artifact ? send(response, 200, artifact) : send(response, 404, { error: 'artifact_not_found' });
+      }
+      if (request.method === 'GET' && url.pathname === '/api/voice/capabilities') {
+        return send(response, 200, { capabilities: voiceService?.capabilities?.() ?? { transcription: false, synthesis: false, localOnly: true } });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/voice/transcribe') {
+        if (!voiceService || typeof voiceService.transcribe !== 'function') return send(response, 503, { error: 'local_transcription_unavailable' });
+        try {
+          const audio = await readRaw(request, voiceService.maxAudioBytes ?? 25 * 1024 * 1024);
+          const result = await voiceService.transcribe({ audio, contentType: request.headers['content-type'] ?? '' });
+          return send(response, 200, result);
+        } catch (error) {
+          return send(response, error.statusCode ?? 400, { error: error.message });
+        }
+      }
+      if (request.method === 'POST' && url.pathname === '/api/voice/synthesize') {
+        if (!voiceService || typeof voiceService.synthesize !== 'function') return send(response, 503, { error: 'local_synthesis_unavailable' });
+        try {
+          const body = await readJson(request, maxBodyBytes);
+          const result = await voiceService.synthesize({ text: body.text });
+          response.writeHead(200, {
+            'Content-Type': result.contentType ?? 'audio/wav',
+            'Content-Length': result.audio.length,
+            'Cache-Control': 'no-store',
+            'X-Content-Type-Options': 'nosniff',
+          });
+          return response.end(result.audio);
+        } catch (error) {
+          return send(response, error.statusCode ?? 400, { error: error.message });
+        }
       }
       if (request.method === 'GET' && url.pathname === '/api/models') {
         if (!agentService || typeof agentService.listModels !== 'function') return send(response, 503, { error: 'model_inventory_unavailable' });
