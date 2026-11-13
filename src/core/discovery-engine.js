@@ -1,3 +1,4 @@
+import { CURATED_REPOSITORY_SEEDS } from './curated-repository-catalog.js';
 const DOMAINS = Object.freeze([
   { id:'cloud-computing', label:'Cloud & Computing', topics:['cloud','kubernetes','containers','distributed-systems'], terms:['cloud computing','distributed systems','containers','Kubernetes','virtualization','serverless','storage','networking','infrastructure as code','edge computing'] },
   { id:'github-engineering', label:'GitHub Engineering', topics:['github-actions','github-api','github-apps','octokit'], terms:['GitHub API','GitHub Actions','GitHub CLI','GitHub Apps','Octokit','runners','repository automation','release automation'] },
@@ -53,6 +54,11 @@ export function buildDiscoveryPlan({ capabilities = [], keywords = [], maxQuerie
     const selectedTopics = domain.requested ? domain.topics : domain.topics.slice(0, 1);
     for (const topic of selectedTopics) queries.push(`${topic} topic:${topic}`);
   }
+  const curatedRepositoryQueries = CURATED_REPOSITORY_SEEDS.map(({ fullName }) => {
+    const [owner, name] = fullName.split('/');
+    return `${name} in:name user:${owner}`;
+  });
+  queries.push(...curatedRepositoryQueries);
   const allUniqueQueries = [...new Set(queries)];
   const deduplicated = allUniqueQueries.slice(0, maxQueries);
   const vendorQueries = VENDORS.flatMap(vendor => vendor.orgs.map(org => `tooling org:${org}`));
@@ -61,6 +67,9 @@ export function buildDiscoveryPlan({ capabilities = [], keywords = [], maxQuerie
     policy: 'public-github-search-only; open-source-and-zero-cost-gates-required; no popularity-based scoring',
     domains,
     vendorSeeds: VENDORS,
+    curatedRepositorySeeds: CURATED_REPOSITORY_SEEDS,
+    curatedRepositoryQueries,
+    unresolvedRepositoryReferences: [],
     queries: deduplicated,
     totalQueryCount: allUniqueQueries.length,
     omittedQueries: allUniqueQueries.slice(maxQueries),
