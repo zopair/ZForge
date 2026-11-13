@@ -18,6 +18,7 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - [Universal Open-Source Discovery Engine](docs/UNIVERSAL_DISCOVERY_ENGINE.md)
 - [Secure Execution Runtime Contract](docs/EXECUTION_RUNTIME_CONTRACT.md)
 - [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
+- [Local Model Registry](memory/MODEL_REGISTRY.md)
 - [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
 - [Black Phantom UI](docs/BLACK_PHANTOM_UI.md)
 - [Tool evaluation protocol](docs/TOOL_EVALUATION.md)
