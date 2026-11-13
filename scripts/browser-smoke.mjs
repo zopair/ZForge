@@ -21,7 +21,7 @@ const server = createServer(async (request, response) => {
     if (pathname === '/api/voice/capabilities') return json({ capabilities: { transcription: true, synthesis: true, localOnly: true } });
     if (pathname === '/api/voice/transcribe') return json({ text: 'recognized local speech', engine: 'whisper.cpp', local: true });
     if (pathname === '/api/voice/synthesize') { response.writeHead(200, { 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' }); return response.end(Buffer.from('RIFF0000WAVEdata')); }
-    if (pathname.endsWith('/events')) return json({ taskId: '12345678-1234-4234-8234-123456789012', status: 'succeeded', cursor: 3, events: [{ sequence: 2, type: 'agent.step.started', details: { step: 1 } }, { sequence: 3, type: 'agent.completed', details: { step: 1 } }] });
+    if (pathname.endsWith('/events')) return json({ taskId: '12345678-1234-4234-8234-123456789012', status: 'succeeded', cursor: 4, events: [{ sequence: 2, type: 'agent.task.started', details: { taskId: 'research', agentId: 'researcher' } }, { sequence: 3, type: 'agent.step.started', details: { step: 1 } }, { sequence: 4, type: 'agent.task.completed', details: { taskId: 'research', agentId: 'researcher' } }] });
     if (pathname === '/api/tasks' && request.method === 'POST') return json({ id: '12345678-1234-4234-8234-123456789012', status: 'queued' }, 201);
     if (pathname.endsWith('/agent-run')) return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { completed: true, summary: 'Browser smoke task verified', steps: 2, evidence: [] } });
     if (pathname.endsWith('/web-build')) return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { status: 'succeeded', manager: 'npm', artifacts: [{ id: 'artifact-web-1', filename: 'index.html', sizeBytes: 512 }] } });
@@ -71,6 +71,8 @@ try {
       await page.locator('#send-button').click();
       await page.getByText(/Browser smoke task verified/).waitFor();
       await page.locator('.agent-progress-event').first().waitFor({ timeout: 10000 });
+      assert.ok(await page.locator('.agent-progress-event').count() >= 3, name + ': specialist lifecycle and step events should be rendered');
+      assert.ok((await page.locator('#agent-progress-feed').innerText()).includes('researcher'), name + ': specialist identity should be visible in the live feed');
       await page.locator('.voice-output').waitFor({ timeout: 10000 });
       await page.locator('#web-build-button').click();
       await page.getByText(/اكتمل بناء تطبيق الويب/).waitFor();
