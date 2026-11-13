@@ -118,6 +118,6 @@ The current GitHub adapter is read-only discovery. It does not install repositor
 
 ## Current implementation status
 
-- Implemented: domain/vendor query catalogue, conservative license classification, candidate quarantine/rejection gates, evidence-neutral ranking, toolchain requirement/conflict checks, release-update review decisions, bounded GitHub repository search adapter.
+- Implemented: domain/vendor query catalogue, conservative license classification, candidate quarantine/rejection gates, evidence-neutral ranking, toolchain requirement/conflict and exact package-pin checks, bounded cached GitHub discovery orchestration, read-only repository metadata/license/manifest inspection, official release metadata lookup, and review-only release-update decisions.
 - Not implemented: full license-text/dependency scanner, package resolver, sandbox executor, model/asset license resolver, continuous scheduler, GitHub write adapter, autonomous agent runtime, Android/iOS build workers, voice model runtime.
 - All discovered repositories remain CANDIDATE until inspected and tested. This document does not declare any third-party project approved.
