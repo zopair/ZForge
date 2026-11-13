@@ -20,8 +20,17 @@ test('rejects approval comments from non-owners', () => {
   assert.throws(() => getCloudTaskPhase({
     action: 'created',
     issue,
-    comment: { user: { login: 'someone-else' }, body: '/approve-plan' },
+    comment: { user: { login: 'someone-else' }, body: '/approve-plan ' + 'a'.repeat(64) },
   }), /not authorized/);
+});
+
+
+test('rejects malformed approval digests from the owner', () => {
+  assert.throws(() => getCloudTaskPhase({
+    action: 'created',
+    issue,
+    comment: { user: { login: 'zopair' }, body: '/approve-plan abc123' },
+  }), /not an approval command/);
 });
 
 test('rejects comments that do not explicitly approve the plan', () => {
