@@ -1,19 +1,35 @@
 name: ZForge Quality Gate
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
+
+# Keep only the newest pending/in-progress validation for the same PR or ref.
+# Different PRs remain independent; a main-branch run cannot cancel a PR run.
+concurrency:
+  group: zforge-quality-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
+
 jobs:
   unit-tests:
+    name: Unit tests (Node.js 24)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
         with:
           node-version: 24
-      - name: Run dependency-free unit tests
+
+      - name: Run complete dependency-free test suite
         run: npm test
