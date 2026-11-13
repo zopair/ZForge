@@ -78,8 +78,8 @@ try {
           return route.fulfill({ status: 201, json: { number: 314, title: createdCloudIssue.title } });
         }
         if (url.pathname === '/repos/zopair/ZForge/issues/314/comments') {
-          const correlation = createdCloudIssue?.title?.match(/\\[ZForgeChat:([a-f0-9-]{36})\\]/i)?.[1];
-          return route.fulfill({ json: correlation ? [{ body: '<!-- ZFORGE_CONVERSATION_RESULT_V1:' + correlation + ' -->\\nDirect cloud chat reply verified.' }] : [] });
+          const correlation = createdCloudIssue?.title?.match(/\[ZForgeChat:([a-f0-9-]{36})\]/i)?.[1];
+          return route.fulfill({ json: correlation ? [{ body: '<!-- ZFORGE_CONVERSATION_RESULT_V1:' + correlation + ' -->\nDirect cloud chat reply verified.' }] : [] });
         }
         return route.fulfill({ status: 404, json: { message: 'unexpected GitHub API request' } });
       });
@@ -91,9 +91,9 @@ try {
       await page.locator('#send-button').click();
       await page.getByText('Direct cloud chat reply verified.').waitFor({ timeout: 5000 });
       assert.ok(createdCloudIssue, name + ': cloud chat should create a GitHub issue automatically');
-      assert.match(createdCloudIssue.title, /^\\[ZForge Cloud Task\\]/, name + ': cloud task issue title should carry the execution prefix');
-      assert.match(createdCloudIssue.title, /\\[ZForgeChat:[a-f0-9-]{36}\\]/i, name + ': cloud task issue title should carry a reply correlation id');
-      assert.equal(createdCloudIssue.body, 'Build a sample PWA\\n\\n<!-- Created automatically by BLACK VANTA cloud chat. -->', name + ': cloud task body should preserve the user request without the token');
+      assert.match(createdCloudIssue.title, /^\[ZForge Cloud Task\]/, name + ': cloud task issue title should carry the execution prefix');
+      assert.match(createdCloudIssue.title, /\[ZForgeChat:[a-f0-9-]{36}\]/i, name + ': cloud task issue title should carry a reply correlation id');
+      assert.equal(createdCloudIssue.body, 'Build a sample PWA\n\n<!-- Created automatically by BLACK VANTA cloud chat. -->', name + ': cloud task body should preserve the user request without the token');
       assert.equal(await page.locator('#github-token').inputValue(), '', name + ': token field should be cleared after successful connection');
       assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
       const visualContract = await page.evaluate(() => {
@@ -210,4 +210,4 @@ const verification = await verifier.verify({
 });
 assert.equal(verification.status, 'passed', 'generated web preview should pass all engines: ' + JSON.stringify(verification));
 assert.deepEqual(verification.summary, { total: 3, passed: 3, failed: 0 });
-process.stdout.write('generated web app preview: Chromium, Firefox and WebKit passed\\n');
+process.stdout.write('generated web app preview: Chromium, Firefox and WebKit passed\n');
