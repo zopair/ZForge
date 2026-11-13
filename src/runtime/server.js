@@ -5,6 +5,8 @@ import { LocalArtifactStore } from './artifact-store.js';
 import { OllamaModelAdapter } from '../adapters/ollama-model-adapter.js';
 import { AgentExecutionService } from '../core/agent-execution-service.js';
 import { ChiefAgent } from '../core/chief-agent.js';
+import { AgentFactory } from '../core/agent-factory.js';
+import { LocalAgentRegistry } from './local-agent-registry.js';
 import { AgentWorkspaceManager } from '../core/agent-workspace-manager.js';
 import { UniversalDiscoveryService } from '../core/discovery-service.js';
 import { GitHubDiscoveryClient } from '../adapters/github-discovery.js';
@@ -49,7 +51,9 @@ const taskHistoryMemoryStore = new LocalTaskHistoryMemoryStore({ dataDir });
 const memoryStore = new CompositeMemoryStore({ stores: [repositoryMemoryStore, taskHistoryMemoryStore] });
 const promptProvider = new LocalPromptProvider({ rootDir: repositoryRoot });
 const chiefAgent = new ChiefAgent({ modelAdapter, discoveryService, memoryStore, promptProvider, model });
-const gateway = createTaskGateway({ dataDir, token, runtime, agentService, chiefAgent, artifactStore, defaultModel: model, allowedOrigins });
+const agentRegistry = await new LocalAgentRegistry({ dataDir }).initialize();
+const agentFactory = new AgentFactory({ registry: agentRegistry });
+const gateway = createTaskGateway({ dataDir, token, runtime, agentService, chiefAgent, agentFactory, artifactStore, defaultModel: model, allowedOrigins });
 
 await gateway.ready;
 gateway.server.listen(port, host, () => {

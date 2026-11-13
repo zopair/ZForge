@@ -3,6 +3,12 @@ import { posix } from 'node:path';
 const ENGINES = new Set(['podman', 'docker']);
 const NETWORKS = new Set(['bridge', 'none']);
 
+function memoryLimitMb(value) {
+  const amount = Number.parseInt(value, 10);
+  const unit = value.slice(-1).toLowerCase();
+  return unit === 'g' ? amount * 1024 : unit === 'k' ? Math.max(1, amount / 1024) : amount;
+}
+
 export class ContainerExecutionRuntime {
   constructor({
     hostRuntime,
@@ -47,7 +53,7 @@ export class ContainerExecutionRuntime {
   listFiles(input) { return this.hostRuntime.listFiles(input); }
   close() { return this.hostRuntime.close?.(); }
 
-  async execute({ workspaceId, command, args = [], cwd = '.', env = {}, timeoutMs } = {}) {
+  async execute({ workspaceId, command, args = [], cwd = '.', env = {}, timeoutMs, resourceLimits = null } = {}) {
     if (typeof command !== 'string' || !command.trim()) throw new TypeError('command is required');
     if (!Array.isArray(args) || args.some(value => typeof value !== 'string')) throw new TypeError('args must be an array of strings');
     if (typeof cwd !== 'string' || !cwd.trim() || posix.isAbsolute(cwd)) throw new TypeError('container cwd must be a relative path');
@@ -57,12 +63,16 @@ export class ContainerExecutionRuntime {
       throw new TypeError('env must be a string-valued environment object');
     }
     const workspacePath = await this.hostRuntime.getWorkspacePath({ workspaceId });
+    const cpuLimit = Number.isFinite(resourceLimits?.cpu) ? Math.min(this.cpuLimit, resourceLimits.cpu) : this.cpuLimit;
+    const globalMemoryMb = memoryLimitMb(this.memoryLimit);
+    const memoryMb = Number.isFinite(resourceLimits?.memoryMb) ? Math.max(1, Math.min(globalMemoryMb, resourceLimits.memoryMb)) : globalMemoryMb;
+    const effectiveMemory = `${Math.max(1, Math.floor(memoryMb))}m`;
     const argsForEngine = [
       'run', '--rm', '--init',
       '--workdir', normalizedCwd === '.' ? '/workspace' : posix.join('/workspace', normalizedCwd),
       '--volume', `${workspacePath}:/workspace:rw`,
-      '--cpus', String(this.cpuLimit),
-      '--memory', this.memoryLimit,
+      '--cpus', String(cpuLimit),
+      '--memory', effectiveMemory,
       '--pids-limit', String(this.pidsLimit),
       '--read-only',
       '--tmpfs', `/tmp:rw,nosuid,size=${this.tmpfsSize}`,
