@@ -196,6 +196,7 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
       const agentTestsMatch = url.pathname.match(/^\/api\/agents\/([A-Za-z0-9._-]{1,64})\/tests$/);
       const agentReviewsMatch = url.pathname.match(/^\/api\/agents\/([A-Za-z0-9._-]{1,64})\/reviews$/);
       const agentActivationMatch = url.pathname.match(/^\/api\/agents\/([A-Za-z0-9._-]{1,64})\/activate$/);
+      const agentDeactivateMatch = url.pathname.match(/^\/api\/agents\/([A-Za-z0-9._-]{1,64})\/deactivate$/);
       const agentDetailMatch = url.pathname.match(/^\/api\/agents\/([A-Za-z0-9._-]{1,64})$/);
       if (agentProfileMatch && request.method === 'GET') {
         if (!agentFactory) return send(response, 503, { error: 'agent_factory_unavailable' });
@@ -215,6 +216,11 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
       if (agentActivationMatch && request.method === 'POST') {
         if (!agentFactory) return send(response, 503, { error: 'agent_factory_unavailable' });
         try { return send(response, 200, await agentFactory.activate({ ...(await readJson(request, maxBodyBytes)), agentId: agentActivationMatch[1] })); }
+        catch (error) { return send(response, 400, { error: error.message }); }
+      }
+      if (agentDeactivateMatch && request.method === 'POST') {
+        if (!agentFactory) return send(response, 503, { error: 'agent_factory_unavailable' });
+        try { return send(response, 200, await agentFactory.deactivateAgent({ ...(await readJson(request, maxBodyBytes)), agentId: agentDeactivateMatch[1] })); }
         catch (error) { return send(response, 400, { error: error.message }); }
       }
       if (agentDetailMatch && request.method === 'GET') {
