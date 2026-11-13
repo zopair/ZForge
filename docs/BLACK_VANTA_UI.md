@@ -10,7 +10,7 @@ BLACK VANTA is the Arabic-first, mobile-ready user interface for ZForge.
 - RTL Arabic layout, responsive mobile sizing, keyboard-accessible form and reduced-motion support.
 
 ## Runtime truth
-The current Pages interface is an interactive local preview. It accepts text and renders local messages, but it does not claim to invoke an AI model or execute tasks. A real assistant requires a self-hosted Task Gateway, model runtime, authenticated session handling, event streaming and execution workers. No secrets belong in browser assets.
+The Pages interface is a client-only control surface. When an optional self-hosted Task Gateway is connected, it uses that runtime. When disconnected, it offers an owner-authorized GitHub issue handoff to the ephemeral cloud worker described in CLOUD_EXECUTION.md. The issue must be reviewed and submitted by the user; task text is public. No GitHub token, model credential or privileged secret belongs in browser assets. Cloud results are posted to the issue and downloadable from the workflow run; the current handoff does not stream results directly into the page.
 
 ## Deployment
 The GitHub Pages workflow deploys the repository root when changes reach main. Feature branches and pull requests do not replace the published site automatically.

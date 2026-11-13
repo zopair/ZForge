@@ -1,7 +1,7 @@
 name: ZForge Quality Gate
 on:
   push:
-    branches: [main]
+    branches: [main, 'feat/**']
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
@@ -23,6 +23,13 @@ jobs:
           node-version: 24
       - name: Run dependency-free unit tests
         run: npm test
+      - name: Validate cloud execution entrypoints
+        run: |
+          node --check src/core/cloud-task-contract.js
+          node --check src/runtime/server.js
+          node --check scripts/run-cloud-task.mjs
+          node --check scripts/post-cloud-task-result.mjs
+          node --check assets/cloud-execution.js
       - name: Validate offline KemeTone Python adapter syntax
         run: python3 -m py_compile scripts/kemetone-inference.py
 

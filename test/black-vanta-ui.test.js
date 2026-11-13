@@ -51,7 +51,7 @@ test('BLACK VANTA connects to the authenticated task and model APIs without pers
   assert.ok(js.includes('/api/artifacts/'));
   assert.match(js, /URL.createObjectURL/);
   assert.doesNotMatch(js, /localStorage|sessionStorage/);
-  assert.match(html, /رمز الاتصال يبقى في ذاكرة الجلسة/);
+  assert.match(js, /let runtimeToken=""/);
 });
 
 test('PWA metadata uses BLACK VANTA identity', () => {
