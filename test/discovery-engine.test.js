@@ -10,6 +10,8 @@ const repo = (overrides = {}) => ({
   htmlUrl: 'https://github.com/example/tool', archived: false,
   license: { spdxId: 'MIT', name: 'MIT License' },
   zeroCostVerified: true, selfHosted: true, paidDependency: false,
+  runtimeCompatible: true, licenseCompatibilityVerified: true, licenseTextReviewed: true,
+  dependencyReviewComplete: true, securityReviewed: true, maintenanceReviewed: true, versionPinned: true,
   capabilities: ['web-frontend'], provides: ['frontend'], requires: [],
   conflicts: [], version: '1.2.0', popularity: { stars: 999999 },
   ...overrides,
