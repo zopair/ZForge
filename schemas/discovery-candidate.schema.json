@@ -1,0 +1,23 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://github.com/zopair/ZForge/blob/main/schemas/discovery-candidate.schema.json",
+  "title":"ZForge Discovery Candidate",
+  "type":"object",
+  "required":["id","fullName","htmlUrl","license","status","evidence"],
+  "properties":{
+    "id":{"type":["string","integer"]},
+    "fullName":{"type":"string","minLength":1},
+    "htmlUrl":{"type":"string","format":"uri"},
+    "capabilities":{"type":"array","items":{"type":"string"}},
+    "license":{"type":["object","null"],"properties":{"spdxId":{"type":["string","null"]},"name":{"type":["string","null"]}},"additionalProperties":true},
+    "status":{"enum":["CANDIDATE","QUARANTINED","REJECTED","CONDITIONAL","VERIFIED","DEPRECATED"]},
+    "zeroCostVerified":{"type":["boolean","null"]},
+    "selfHosted":{"type":["boolean","null"]},
+    "paidDependency":{"type":["boolean","null"]},
+    "runtimeCompatible":{"type":["boolean","null"]},
+    "licenseCompatibilityVerified":{"type":["boolean","null"]},
+    "evidence":{"type":"object"},
+    "popularity":{"type":"object","description":"Discovery metadata only; never a quality score."}
+  },
+  "additionalProperties":true
+}
