@@ -15,10 +15,12 @@ function browserHarness({ status = 200, layout = { title: 'Generated app', viewp
             return {
               on: (event, handler) => { (handlers[event] ??= []).push(handler); },
               goto: async url => {
-                visits.push({ name, url });
+                const response = await fetch(url);
+                const body = await response.text();
+                visits.push({ name, url, body });
                 for (const error of pageErrors) for (const handler of handlers.pageerror ?? []) handler(new Error(error));
                 for (const error of consoleErrors) for (const handler of handlers.console ?? []) handler({ type: () => 'error', text: () => error });
-                return { status: () => status };
+                return { status: () => status ?? response.status };
               },
               evaluate: async () => layout,
               close: async () => {},
@@ -61,6 +63,7 @@ test('browser verifier serves built static output and checks Chromium, Firefox a
   assert.deepEqual(result.browsers.map(item => item.name), ['chromium', 'firefox', 'webkit']);
   assert.ok(harness.visits.every(item => item.url.startsWith('http://127.0.0.1:')));
   assert.ok(reads.includes('frontend/dist/index.html'));
+  assert.ok(harness.visits.every(item => item.body.includes('Generated app')));
 });
 
 test('browser verifier reports page errors, console errors and horizontal overflow', async () => {
