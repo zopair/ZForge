@@ -71,6 +71,35 @@ export function classifyLicense(input) {
   return { status:'UNKNOWN', spdxId:normalized, reason:'License identifier is not in the conservative allowlist; manual legal review required.' };
 }
 
+export function createCandidateRecord({ repository, capabilities = [], verification = {} } = {}) {
+  if (!repository || typeof repository !== 'object') throw new TypeError('repository metadata is required');
+  const candidate = {
+    id: repository.id,
+    fullName: repository.fullName ?? repository.full_name,
+    name: repository.name,
+    htmlUrl: repository.htmlUrl ?? repository.html_url,
+    archived: repository.archived,
+    license: repository.license ?? null,
+    version: verification.version ?? null,
+    capabilities,
+    zeroCostVerified: verification.zeroCostVerified ?? null,
+    selfHosted: verification.selfHosted ?? null,
+    paidDependency: verification.paidDependency ?? null,
+    runtimeCompatible: verification.runtimeCompatible ?? null,
+    licenseCompatibilityVerified: verification.licenseCompatibilityVerified ?? null,
+    licenseTextReviewed: verification.licenseTextReviewed ?? null,
+    dependencyReviewComplete: verification.dependencyReviewComplete ?? null,
+    securityReviewed: verification.securityReviewed ?? null,
+    maintenanceReviewed: verification.maintenanceReviewed ?? null,
+    versionPinned: verification.versionPinned ?? null,
+    securityBlocked: verification.securityBlocked ?? null,
+    provides: verification.provides ?? [], requires: verification.requires ?? [],
+    conflicts: verification.conflicts ?? [], packagePins: verification.packagePins ?? {},
+    evidence: verification.evidence ?? [],
+  };
+  return { ...candidate, evaluation: evaluateRepositoryCandidate(candidate) };
+}
+
 export function evaluateRepositoryCandidate(candidate) {
   if (!candidate || typeof candidate !== 'object') throw new TypeError('candidate must be an object');
   const license = classifyLicense(candidate.license);
@@ -89,6 +118,11 @@ export function evaluateRepositoryCandidate(candidate) {
   if (candidate.runtimeCompatible !== true && candidate.runtimeCompatible !== false) unresolved.push('RUNTIME_COMPATIBILITY_UNVERIFIED');
   if (candidate.runtimeCompatible === false) failures.push('RUNTIME_INCOMPATIBLE');
   if (candidate.licenseCompatibilityVerified !== true) unresolved.push('COMBINED_LICENSE_COMPATIBILITY_UNVERIFIED');
+  if (candidate.licenseTextReviewed !== true) unresolved.push('LICENSE_TEXT_UNREVIEWED');
+  if (candidate.dependencyReviewComplete !== true) unresolved.push('DEPENDENCY_REVIEW_INCOMPLETE');
+  if (candidate.securityReviewed !== true) unresolved.push('SECURITY_REVIEW_INCOMPLETE');
+  if (candidate.maintenanceReviewed !== true) unresolved.push('MAINTENANCE_REVIEW_INCOMPLETE');
+  if (candidate.versionPinned !== true) unresolved.push('VERSION_NOT_PINNED');
   if (failures.length) return { status:'REJECTED', eligible:false, license, failures, unresolved };
   if (unresolved.length) return { status:'QUARANTINED', eligible:false, license, failures, unresolved };
   return { status:'CANDIDATE', eligible:true, license, failures, unresolved:[] };
