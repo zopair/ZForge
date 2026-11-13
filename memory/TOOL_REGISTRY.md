@@ -31,6 +31,16 @@ Canonical index of category-specific evaluations. Popularity is discovery-only a
 | Chief Agent / Agent Architect policies | prompts/ | Updated; runtime not connected | docs/ARCHITECTURE.md |
 | Black Phantom UI | index.html, assets/app.css, assets/app.js | Static Arabic RTL visual shell implemented; voice/chat runtime not connected | docs/BLACK_PHANTOM_UI.md |
 
+## User-curated repository seed catalogue
+- Canonical source: `src/core/curated-repository-catalog.js`.
+- **128 repository identities** supplied by the user or resolved from their shorthand; each is a `PENDING_REVIEW` discovery seed and `installable: false`.
+- Categories cover learning/reference material, operating systems and languages, AI models and local inference, agent frameworks/skills, image/video generation, media players, 3D/WebXR, cloud, databases, DevOps, networking, observability and security.
+- The discovery planner emits owner-scoped repository-name queries for these seeds. They enter the same bounded, resumable query budget; they are not fetched or installed in bulk.
+- Reference collections (books, roadmaps, algorithms, awesome lists, learning repositories) are knowledge sources, not executable toolchains.
+- Model/checkpoint repositories require separate weight, tokenizer, dataset and usage-term review; a code repository license does not establish model-weight permissions.
+- Four shorthand references remain unresolved and are deliberately not guessed: `rea`, `Matt Pocock / Skills for Real Engineers`, `Affaan / ECC`, and `Addy Osmani / agent-skills`.
+- Search resolution: `claude-mem` → `thedotmack/claude-mem`; `gemini-cli` → `google-gemini/gemini-cli`. Resolution identifies the repository only; it is not license or security approval.
+
 ## Third-party registry
 No third-party tools have been benchmarked and approved in this update. Do not invent winners or assign VERIFIED status without reproducible evidence.
 
