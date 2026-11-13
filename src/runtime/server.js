@@ -6,6 +6,7 @@ import { OllamaModelAdapter } from '../adapters/ollama-model-adapter.js';
 import { AgentExecutionService } from '../core/agent-execution-service.js';
 import { ChiefAgent } from '../core/chief-agent.js';
 import { AgentFactory } from '../core/agent-factory.js';
+import { MultiAgentCoordinator } from '../core/multi-agent-coordinator.js';
 import { LocalAgentRegistry } from './local-agent-registry.js';
 import { AgentWorkspaceManager } from '../core/agent-workspace-manager.js';
 import { UniversalDiscoveryService } from '../core/discovery-service.js';
@@ -53,7 +54,8 @@ const promptProvider = new LocalPromptProvider({ rootDir: repositoryRoot });
 const chiefAgent = new ChiefAgent({ modelAdapter, discoveryService, memoryStore, promptProvider, model });
 const agentRegistry = await new LocalAgentRegistry({ dataDir }).initialize();
 const agentFactory = new AgentFactory({ registry: agentRegistry });
-const gateway = createTaskGateway({ dataDir, token, runtime, agentService, chiefAgent, agentFactory, artifactStore, defaultModel: model, allowedOrigins });
+const multiAgentCoordinator = new MultiAgentCoordinator({ agentFactory, agentService, maxParallel: Number(process.env.ZFORGE_MAX_PARALLEL_AGENTS ?? 3), defaultModel: model });
+const gateway = createTaskGateway({ dataDir, token, runtime, agentService, chiefAgent, agentFactory, multiAgentCoordinator, artifactStore, defaultModel: model, allowedOrigins });
 
 await gateway.ready;
 gateway.server.listen(port, host, () => {
