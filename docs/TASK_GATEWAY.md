@@ -11,6 +11,7 @@
 - `LocalArtifactStore`: durable binary artifacts with SHA-256 integrity verification and authenticated downloads.
 - `AgentFactory` + `LocalAgentRegistry`: durable agent proposals, required test evidence, independent reviews, explicit activation approval and per-agent execution profiles.
 - `MultiAgentCoordinator`: bounded DAG execution for up to 32 delegated tasks, dependency-aware scheduling, per-agent profile enforcement, and preserved partial/failure outcomes.
+- `AndroidBuildService`: self-hosted Gradle test + debug APK/AAB build worker; publishes only discovered output files through the checksum-verifying artifact store.
 - `server.js`: environment-configured process entry point.
 
 ## Start
