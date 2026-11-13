@@ -26,6 +26,7 @@ jobs:
       - name: Validate cloud execution entrypoints
         run: |
           node --check src/core/cloud-task-contract.js
+          node --check src/runtime/server.js
           node --check scripts/run-cloud-task.mjs
           node --check scripts/post-cloud-task-result.mjs
           node --check assets/cloud-execution.js
