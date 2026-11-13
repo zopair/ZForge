@@ -1,4 +1,4 @@
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, lstat } from 'node:fs/promises';
 import { Buffer } from 'node:buffer';
 import { resolve, join } from 'node:path';
 
@@ -15,7 +15,8 @@ export class LocalRepositoryMemoryStore{
     for(const name of MEMORY_FILES){
       const path=join(this.rootDir,'memory',name);
       try{
-        const info=await stat(path);
+        const info=await lstat(path);
+        if(info.isSymbolicLink()||!info.isFile())throw new Error('memory input must be a regular file, not a symbolic link');
         const limit=Math.min(this.maxFileBytes,remaining);
         if(limit<=0){files[name]={available:false,reason:'TOTAL_MEMORY_BUDGET_REACHED'};truncatedFiles.push(name);continue;}
         const raw=await readFile(path);
@@ -40,7 +41,8 @@ export class LocalPromptProvider{
   }
   async getChiefAgentPrompt(){
     const path=join(this.rootDir,'prompts','CHIEF_AGENT.md');
-    const info=await stat(path);
+    const info=await lstat(path);
+    if(info.isSymbolicLink()||!info.isFile())throw new Error('canonical prompt must be a regular file, not a symbolic link');
     if(info.size>this.maxFileBytes)throw new RangeError('canonical Chief Agent prompt exceeds configured size limit');
     return readFile(path,'utf8');
   }
