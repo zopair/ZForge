@@ -6,6 +6,7 @@ const conversation=document.getElementById("conversation");
 const runtimeUrlInput=document.getElementById("runtime-url");
 const runtimeTokenInput=document.getElementById("runtime-token");
 const runtimeModelSelect=document.getElementById("runtime-model");
+const runtimeAgentSelect=document.getElementById("runtime-agent");
 const connectButton=document.getElementById("connect-runtime");
 const runtimeBadge=document.getElementById("runtime-badge");
 const chiefStatus=document.getElementById("chief-status");
@@ -135,6 +136,19 @@ connectButton.addEventListener("click",async()=>{
       runtimeModelSelect.append(option);
     }
     runtimeModelSelect.disabled=false;
+    const agentInventory=await api("/api/agents");
+    runtimeAgentSelect.replaceChildren();
+    const defaultAgent=document.createElement("option");
+    defaultAgent.value="";
+    defaultAgent.textContent="Chief Agent — الافتراضي";
+    runtimeAgentSelect.append(defaultAgent);
+    for(const agent of (agentInventory.agents??[]).filter(item=>item.status==="ACTIVE")){
+      const option=document.createElement("option");
+      option.value=agent.id;
+      option.textContent=agent.name+" · "+agent.version;
+      runtimeAgentSelect.append(option);
+    }
+    runtimeAgentSelect.disabled=false;
     runtimeTokenInput.value="";
     setConnectionState(true);
     securityNote.lastChild.textContent=" رمز الاتصال محفوظ في ذاكرة الصفحة فقط، ولا يُكتب في التخزين المحلي.";
@@ -165,9 +179,11 @@ form.addEventListener("submit",async event=>{
   executionStatus.textContent="جارٍ تنفيذ المهمة...";
   try{
     const task=await api("/api/tasks",{method:"POST",body:{request:message}});
+    const runBody={model:runtimeModelSelect.value,confirmExecution:true};
+    if(runtimeAgentSelect.value)runBody.agentId=runtimeAgentSelect.value;
     const completed=await api("/api/tasks/"+encodeURIComponent(task.id)+"/agent-run",{
       method:"POST",
-      body:{model:runtimeModelSelect.value,confirmExecution:true}
+      body:runBody
     });
     const result=completed.result??{};
     if(completed.status==="succeeded"&&result.completed===true){
