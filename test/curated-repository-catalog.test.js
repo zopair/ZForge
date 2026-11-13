@@ -10,6 +10,7 @@ test('curated repository catalog preserves unique canonical repository identitie
   for (const item of CURATED_REPOSITORY_SEEDS) {
     assert.match(item.fullName, /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/);
     assert.ok(item.category);
+    assert.ok(['REFERENCE_ONLY', 'RUNTIME_OR_MODEL', 'MEDIA_TOOL_OR_MODEL', 'SOFTWARE_CANDIDATE'].includes(item.usageClass));
     assert.equal(item.status, 'PENDING_REVIEW');
     assert.equal(item.installable, false);
   }
