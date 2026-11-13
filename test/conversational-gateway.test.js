@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createTaskGateway } from '../src/runtime/task-gateway.js';
 
 test('authenticated conversational API preserves session context and only drafts engineering plans', async () => {

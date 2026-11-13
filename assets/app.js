@@ -515,6 +515,8 @@ async function approveAndExecutePlan(planPayload,button){
   button.disabled=true;
   button.textContent="جارٍ تنفيذ الخطة المعتمدة...";
   latestTaskId=planPayload.taskId;
+  androidBuildButton.disabled=false;
+  webBuildButton.disabled=false;
   webBuildReady=false;
   webVerifyButton.disabled=true;
   const progressController=new AbortController();

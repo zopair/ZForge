@@ -87,6 +87,10 @@ const selfHealingEngine = new SelfHealingEngineeringEngine({ discoveryService, m
 const agentService = new AgentExecutionService({ modelAdapter, runtime, workspaceManager, artifactStore, selfHealingEngine, maxSteps: Number(process.env.ZFORGE_AGENT_MAX_STEPS ?? 16) });
 const promptProvider = new LocalPromptProvider({ rootDir: repositoryRoot });
 const chiefAgent = new ChiefAgent({ modelAdapter, discoveryService, memoryStore, promptProvider, model });
+
+const agentRegistry = await new LocalAgentRegistry({ dataDir }).initialize();
+const agentFactory = new AgentFactory({ registry: agentRegistry });
+const multiAgentCoordinator = new MultiAgentCoordinator({ agentFactory, agentService, maxParallel: Number(process.env.ZFORGE_MAX_PARALLEL_AGENTS ?? 3), defaultModel: model });
 const conversationalCore = new ConversationalCore({
   modelAdapter,
   chiefAgent,
@@ -105,9 +109,6 @@ const conversationalCore = new ConversationalCore({
     { id: 'safe-cleanup', label: 'تنظيف المستودع الآمن', status: 'planned', description: 'مؤجل حالياً ولم يبدأ تطويره.' },
   ],
 });
-const agentRegistry = await new LocalAgentRegistry({ dataDir }).initialize();
-const agentFactory = new AgentFactory({ registry: agentRegistry });
-const multiAgentCoordinator = new MultiAgentCoordinator({ agentFactory, agentService, maxParallel: Number(process.env.ZFORGE_MAX_PARALLEL_AGENTS ?? 3), defaultModel: model });
 const gateway = createTaskGateway({ dataDir, token, runtime, agentService, chiefAgent, agentFactory, multiAgentCoordinator, androidBuildService, webBuildService, webBrowserVerificationService, voiceService, artifactStore, engineeringIssueLedger, conversationalCore, defaultModel: model, allowedOrigins });
 
 await gateway.ready;
