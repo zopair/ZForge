@@ -66,6 +66,7 @@ All endpoints except health require `Authorization: Bearer <token>`.
 | POST | `/api/tasks/:id/execute` | Run an explicit command in that task's workspace |
 | POST | `/api/tasks/:id/agent-run` | Run Chief Agent planning followed by the local model tool loop; requires `confirmExecution: true` |
 | POST | `/api/tasks/:id/orchestrate` | Execute a bounded multi-agent dependency graph; requires `confirmExecution: true` and ACTIVE specialist agents |
+| POST | `/api/tasks/:id/android-build` | Run Gradle tests and build debug APK/AAB from the task workspace; requires `confirmExecution: true` |
 
 Execution body example:
 
