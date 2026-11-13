@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createTaskGateway } from '../src/runtime/task-gateway.js';
 import { LocalExecutionRuntime } from '../src/runtime/local-execution-runtime.js';
+import { EngineeringIssueLedger } from '../src/adapters/engineering-issue-ledger.js';
 
 async function withGateway(run) {
   const root = await mkdtemp(join(tmpdir(), 'zforge-gateway-'));
@@ -14,6 +15,57 @@ async function withGateway(run) {
   try { await run(`http://127.0.0.1:${address.port}`, gateway, root); }
   finally { await new Promise(resolve => gateway.server.close(resolve)); await rm(root, { recursive: true, force: true }); }
 }
+
+test('engineering issue API is authenticated, persistent and requires evidence to resolve', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zforge-issue-api-'));
+  const engineeringIssueLedger = await new EngineeringIssueLedger({ dataDir: root }).initialize();
+  const gateway = createTaskGateway({ dataDir: root, token: 'test-secret-token', engineeringIssueLedger });
+  await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${gateway.server.address().port}`;
+  const headers = { Authorization: 'Bearer test-secret-token', 'Content-Type': 'application/json' };
+  const input = {
+    title: 'Android build cannot locate SDK',
+    domain: 'android-build',
+    environment: { runtime: 'CI', node: '24' },
+    exactError: 'ANDROID_HOME is not set',
+    expectedBehavior: 'Android build worker discovers configured SDK',
+    reproduction: 'Run Android preflight without ANDROID_HOME',
+    severity: 'high',
+    rootCause: { status: 'unknown', confidence: 'low', description: '' },
+    evidence: [{ kind: 'ci-log', reference: 'run-123' }],
+    attempts: [{ approach: 'retry build', outcome: 'failed', details: 'same missing SDK error' }],
+    toolVersions: { gradle: '8.x' },
+    resourceUsage: { durationMs: 1200 },
+  };
+  try {
+    const unauthorized = await fetch(`${base}/api/engineering-issues`);
+    assert.equal(unauthorized.status, 401);
+    const createdResponse = await fetch(`${base}/api/engineering-issues`, { method: 'POST', headers, body: JSON.stringify(input) });
+    assert.equal(createdResponse.status, 201);
+    const created = await createdResponse.json();
+    assert.equal(created.status, 'open');
+    const listResponse = await fetch(`${base}/api/engineering-issues?domain=android-build`, { headers });
+    assert.equal((await listResponse.json()).issues[0].id, created.id);
+    const premature = await fetch(`${base}/api/engineering-issues/${created.id}`, { method: 'PATCH', headers, body: JSON.stringify({ status: 'resolved' }) });
+    assert.equal(premature.status, 400);
+    const resolved = await fetch(`${base}/api/engineering-issues/${created.id}`, {
+      method: 'PATCH', headers,
+      body: JSON.stringify({
+        status: 'resolved',
+        rootCause: { status: 'confirmed', confidence: 'high', description: 'CI worker lacks Android SDK environment variables' },
+        solution: { summary: 'Configure Android SDK on the build host', verification: 'Android preflight and assembleDebug passed on a configured host' },
+        regressionTests: ['test/android-build-service.test.js'],
+      }),
+    });
+    assert.equal(resolved.status, 200);
+    assert.equal((await resolved.json()).status, 'resolved');
+    const persisted = JSON.parse(await readFile(join(root, 'engineering-issues.json'), 'utf8'));
+    assert.equal(persisted[0].status, 'resolved');
+  } finally {
+    await new Promise(resolve => gateway.server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test('health endpoint reports runtime readiness without exposing secrets', async () => {
   await withGateway(async (base) => {
