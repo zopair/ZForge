@@ -8,6 +8,7 @@ import { createTaskGateway } from '../src/runtime/task-gateway.js';
 test('task event ledger appends bounded structured events with monotonic cursors', async () => {
   const root = await mkdtemp(join(tmpdir(), 'zforge-events-'));
   const gateway = createTaskGateway({ dataDir: root, token: 'progress-test-token-123' });
+  await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
   await gateway.ready;
   try {
     const task = await gateway.store.create({ request: 'observe agent progress' });
