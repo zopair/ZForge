@@ -1,0 +1,9 @@
+{
+  "name": "zforge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Evidence-driven autonomous engineering forge",
+  "scripts": { "test": "node --test" },
+  "engines": { "node": ">=20" }
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zopair/ZForge/blob/main/schemas/tool-record.schema.json",
+  "title": "ZForge Tool Evaluation Record",
+  "type": "object",
+  "required": ["id","capability","source","version","license","gates","scores","evidence"],
+  "properties": {
+    "id": {"type":"string","minLength":1},
+    "capability": {"type":"string","minLength":1},
+    "source": {"type":"string","format":"uri"},
+    "version": {"type":"string","minLength":1},
+    "license": {"type":"string","minLength":1},
+    "gates": {
+      "type":"object",
+      "required":["licenseCompatible","secure","runtimeCompatible","lawful","zeroCostViable"],
+      "properties":{
+        "licenseCompatible":{"type":["boolean","null"]},
+        "secure":{"type":["boolean","null"]},
+        "runtimeCompatible":{"type":["boolean","null"]},
+        "lawful":{"type":["boolean","null"]},
+        "zeroCostViable":{"type":["boolean","null"]}
+      },
+      "additionalProperties":false
+    },
+    "scores": {
+      "type":"object",
+      "required":["capabilityFit","correctness","evidenceQuality","integration","maintenance","costCompliance","resourceEfficiency"],
+      "properties":{
+        "capabilityFit":{"type":"number","minimum":0,"maximum":5},
+        "correctness":{"type":"number","minimum":0,"maximum":5},
+        "evidenceQuality":{"type":"number","minimum":0,"maximum":5},
+        "integration":{"type":"number","minimum":0,"maximum":5},
+        "maintenance":{"type":"number","minimum":0,"maximum":5},
+        "costCompliance":{"type":"number","minimum":0,"maximum":5},
+        "resourceEfficiency":{"type":"number","minimum":0,"maximum":5}
+      },
+      "additionalProperties":false
+    },
+    "evidence": {
+      "type":"object",
+      "required":["pinnedVersion","officialSource","reproducibleTest","rawResults"],
+      "properties":{
+        "pinnedVersion":{"type":"boolean"},
+        "officialSource":{"type":"boolean"},
+        "reproducibleTest":{"type":"boolean"},
+        "rawResults":{"type":"boolean"},
+        "verifiedAt":{"type":"string","format":"date"},
+        "links":{"type":"array","items":{"type":"string","format":"uri"}}
+      }
+    },
+    "limitations":{"type":"array","items":{"type":"string"}},
+    "resourceProfile":{"type":"object"},
+    "popularity":{"description":"Discovery metadata only. Must never affect score or ranking.","type":"object"}
+  },
+  "additionalProperties":false
+}
