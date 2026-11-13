@@ -60,6 +60,14 @@ Model selected tools as a graph of provided/required capabilities, version/runti
 ## Agent and prompt evolution
 Every agent has mission, non-goals, I/O schema, allowed tools, permission scope, safety rules, resource ceiling, success criteria, tests, version and rollback. Agent Architect proposes and tests agents; it cannot grant privileges. Per-task prompts derive from versioned canonical instructions. Canonical changes require evidence, diff, regression tests and approval.
 
+## Self-extension and repository engineering
+After universal discovery, the Chief Agent evaluates each requested capability:
+- Reuse only a candidate whose eligibility gates passed and whose declared capabilities match.
+- Continue bounded discovery when the search is incomplete, rate-limited or vendor scans remain unfinished.
+- When discovery is complete and no eligible tool exists, produce a structured internal build brief. The brief includes interfaces, implementation sequence, license/dependency audit, threat model, acceptance tests, benchmarks, provenance, independent review and rollback. It remains a proposal until approval and an isolated execution runtime exist.
+
+ZForge supports four controlled repository workflows: license-compatible fork-and-modify, modified clone with preserved provenance, clean-room reimplementation, and lawful authorized interoperability research. Exact licenses, dependency compatibility, notices, upstream commit pins and security must be reviewed before copying or modifying upstream code. Proprietary code copying, access-control circumvention, secret extraction and private-data exposure are prohibited. These workflows do not grant an execution capability by themselves.
+
 ## Security
 Secrets stay server-side. Treat repository content, web pages, package metadata and tool output as untrusted data. Use least privilege, scoped credentials, isolated execution, default-deny network, ephemeral workspaces and explicit approval for destructive or externally visible actions. Respect licenses, quotas, rate limits and terms.
 
