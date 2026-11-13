@@ -46,7 +46,7 @@ export class WebBuildService {
     const project = validateProjectPath(projectPath);
     if (!OUTPUT_DIRECTORIES.has(outputDirectory)) throw new TypeError('outputDirectory must be one of: dist, build, out');
     await this.runtime.createWorkspace({ id: workspaceId });
-    const files = await this.runtime.listFiles({ workspaceId, path: project, maxEntries: 10000 });
+    const files = await this.runtime.listFiles({ workspaceId, path: project, maxEntries: 5000 });
     const normalized = files.map(entry => ({ ...entry, path: entry.path.replace(/\\/g, '/') }));
     const packageEntry = normalized.find(entry => entry.type === 'file' && entry.path === projectFile(project, 'package.json'));
     if (!packageEntry) throw new Error('package.json was not found in the selected web project');
@@ -70,7 +70,7 @@ export class WebBuildService {
     commands.push({ task: 'build', exitCode: build.exitCode });
     if (build.exitCode !== 0) return { status: 'failed', workspaceId, projectPath: project, manager, commands, stdout: build.stdout ?? '', stderr: build.stderr ?? '', artifacts: [], error: 'Web project build failed; no artifacts were published.' };
     const outputPath = projectFile(project, outputDirectory);
-    const outputs = (await this.runtime.listFiles({ workspaceId, path: outputPath, maxEntries: 10000 }))
+    const outputs = (await this.runtime.listFiles({ workspaceId, path: outputPath, maxEntries: 5000 }))
       .map(entry => ({ ...entry, path: entry.path.replace(/\\/g, '/') }))
       .filter(entry => entry.type === 'file' && withinOutput(entry.path, outputPath))
       .sort((a, b) => a.path.localeCompare(b.path));
