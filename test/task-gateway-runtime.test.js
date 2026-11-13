@@ -175,3 +175,14 @@ test('task gateway allows explicit PWA origins and handles preflight requests', 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('task gateway allocates a distinct workspace when none is specified', async () => {
+  await withGateway(async (base) => {
+    const headers = { Authorization: 'Bearer test-secret-token', 'Content-Type': 'application/json' };
+    const create = async request => fetch(`${base}/api/tasks`, { method: 'POST', headers, body: JSON.stringify({ request }) }).then(response => response.json());
+    const first = await create('First isolated task');
+    const second = await create('Second isolated task');
+    assert.match(first.workspaceId, /^task-[0-9a-f-]{36}$/);
+    assert.notEqual(first.workspaceId, second.workspaceId);
+  });
+});
