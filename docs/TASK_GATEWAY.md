@@ -28,6 +28,10 @@ export ZFORGE_REPO_ROOT="$PWD"
 export ZFORGE_MODEL=qwen3:8b
 export ZFORGE_ALLOWED_ORIGINS=https://zopair.github.io
 export ZFORGE_ARTIFACT_DIR="$PWD/.zforge-artifacts"
+# Android build worker (install a JDK and Android SDK on this self-hosted host).
+export JAVA_HOME="/path/to/jdk"
+export ANDROID_HOME="/path/to/android-sdk"
+export ZFORGE_ANDROID_BUILD_TIMEOUT_MS=840000
 # Optional isolated backend; local is the default.
 # export ZFORGE_EXECUTION_BACKEND=container
 # export ZFORGE_CONTAINER_ENGINE=podman
