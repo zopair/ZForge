@@ -35,6 +35,7 @@ test('license classifier distinguishes approved open source, non-open source, an
   assert.equal(classifyLicense('Apache-2.0').status, 'OPEN_SOURCE');
   assert.equal(classifyLicense('AGPL-3.0-only').status, 'OPEN_SOURCE');
   assert.equal(classifyLicense('BUSL-1.1').status, 'NOT_OPEN_SOURCE');
+  assert.equal(classifyLicense('BSL-1.0').status, 'OPEN_SOURCE');
   assert.equal(classifyLicense(null).status, 'UNKNOWN');
 });
 
