@@ -49,4 +49,21 @@ export class GitHubRepositoryWriter{
     if(!result?.commit?.sha)throw new GitHubWriteError('GitHub did not confirm the file commit.');
     return {repository:this.repository,branch,path,commitSha:result.commit.sha,contentSha:result.content?.sha??null,createdOrUpdated:true};
   }
+  async createPullRequest({branch,base=this.defaultBranch,title,body='',approval}={}){
+    this.assertTaskBranch(branch);
+    if(typeof base!=='string'||!base.trim()||base===branch)throw new TypeError('a distinct base branch is required');
+    if(typeof title!=='string'||!title.trim())throw new TypeError('pull request title is required');
+    const action={type:'create-pull-request',repository:this.repository,branch,base,title};
+    const approved=await this.approvalVerifier(approval,action);
+    if(approved!==true||approval?.branch!==branch||approval?.baseRef!==base)throw new GitHubWriteError('A valid explicit approval for this task pull request is required.',{status:403});
+    const result=await this.request(`/repos/${this.repository}/pulls`,{method:'POST',body:{title,head:branch,base,body,draft:true}});
+    if(!result?.number)throw new GitHubWriteError('GitHub did not confirm pull request creation.');
+    return {repository:this.repository,number:result.number,url:result.html_url??null,state:result.state??'open',draft:result.draft===true,branch,base};
+  }
+  async getPullRequest(number){
+    if(!Number.isInteger(number)||number<1)throw new RangeError('pull request number must be positive');
+    const result=await this.request(`/repos/${this.repository}/pulls/${number}`);
+    if(!result)return null;
+    return {number:result.number,title:result.title,state:result.state,draft:result.draft===true,mergeable:result.mergeable,headSha:result.head?.sha??null,baseRef:result.base?.ref??null,url:result.html_url??null};
+  }
 }
