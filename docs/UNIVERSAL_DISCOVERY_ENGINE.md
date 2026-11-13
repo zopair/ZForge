@@ -40,6 +40,12 @@ Search public repositories, not brand claims, across:
 
 These organizations are discovery seeds only. Their repositories, dependencies, model weights, hosted products, and licenses are evaluated independently. Do not infer that a company's commercial API is free/open-source because it publishes some repositories.
 
+## User-curated repository seeds
+
+The catalogue in `src/core/curated-repository-catalog.js` contains 128 user-curated canonical repository references across learning, core engineering, AI/model runtime, agent frameworks, image/video/media, 3D/WebXR, cloud, data, DevOps, networking, observability and security. Every entry is marked `PENDING_REVIEW` and `installable: false`. Exact-owner repository search queries are added to the same bounded, resumable discovery catalogue; the seeds do not bypass rate limits or eligibility gates.
+
+Learning collections are knowledge references, not executable tools. Model and media repositories require separate review of code, weights, tokenizers, datasets, assets and usage terms. Four shorthand references remain unresolved and are not guessed: `rea`, `Matt Pocock / Skills for Real Engineers`, `Affaan / ECC`, and `Addy Osmani / agent-skills`. The ambiguous `claude-mem` and `gemini-cli` names were resolved to `thedotmack/claude-mem` and `google-gemini/gemini-cli`; identity resolution is not approval.
+
 ## Search strategy
 
 1. Convert the task into capability statements, inputs/outputs, runtime, target platforms, constraints, quality targets, and acceptance tests.
