@@ -1,5 +1,5 @@
 import { spawn, execFileSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile, cp, lstat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -133,6 +133,10 @@ try {
   if (planning.executionStarted !== false || planning.phase !== 'awaiting_approval') {
     throw new Error('Planning endpoint violated the no-execution contract.');
   }
+  const planSha256 = createHash('sha256').update(JSON.stringify(planning.plan)).digest('hex');
+  if (phase === 'execute' && event.comment.body.trim() !== '/approve-plan ' + planSha256) {
+    throw new Error('Approval does not match the current plan digest. Review the latest plan and approve its exact SHA-256.');
+  }
   if (phase === 'plan') {
     await saveReport({
       status: 'awaiting_approval',
@@ -143,7 +147,8 @@ try {
       plan: planning.plan,
       availableAgents: planning.availableAgents,
       executionStarted: false,
-      approvalCommand: '/approve-plan',
+      planSha256,
+      approvalCommand: '/approve-plan ' + planSha256,
       generatedAt: new Date().toISOString(),
     });
   } else {
