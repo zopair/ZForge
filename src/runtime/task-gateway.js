@@ -3,12 +3,13 @@ import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-const TASK_STATES = new Set(['queued', 'running', 'succeeded', 'failed', 'cancelled']);
+const TASK_STATES = new Set(['queued', 'running', 'succeeded', 'failed', 'inconclusive', 'cancelled']);
 const TRANSITIONS = {
   queued: new Set(['running', 'cancelled', 'failed']),
-  running: new Set(['succeeded', 'failed', 'cancelled']),
+  running: new Set(['succeeded', 'failed', 'inconclusive', 'cancelled']),
   succeeded: new Set(),
   failed: new Set(),
+  inconclusive: new Set(),
   cancelled: new Set(),
 };
 
@@ -126,7 +127,7 @@ export class TaskStore {
   }
 }
 
-export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null } = {}) {
+export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, defaultModel = 'qwen3:8b' } = {}) {
   if (typeof token !== 'string' || token.length < 16) throw new TypeError('a gateway bearer token of at least 16 characters is required');
   if (!Number.isInteger(maxBodyBytes) || maxBodyBytes < 1024) throw new RangeError('maxBodyBytes must be at least 1024');
   const store = new TaskStore({ dataDir, clock });
@@ -184,6 +185,34 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
             error: error.message,
             details: { timedOut: /timed out/i.test(error.message) },
           });
+          return send(response, 200, failed);
+        }
+      }
+      const agentMatch = url.pathname.match(/^\/api\/tasks\/([a-f0-9-]{36})\/agent-run$/i);
+      if (agentMatch && request.method === 'POST') {
+        if (!agentService) return send(response, 503, { error: 'agent_execution_unavailable' });
+        const task = store.get(agentMatch[1]);
+        if (!task) return send(response, 404, { error: 'task_not_found' });
+        const body = await readJson(request, maxBodyBytes);
+        if (body.confirmExecution !== true) return send(response, 409, { error: 'explicit_execution_confirmation_required' });
+        const model = typeof body.model === 'string' && body.model.trim() ? body.model.trim() : defaultModel;
+        await store.transition(task.id, 'running', { details: { mode: 'local-agent', model } });
+        try {
+          const result = await agentService.runTask({
+            request: task.request,
+            model,
+            workspaceId: task.workspaceId,
+            plan: typeof body.approvedPlan === 'string' ? body.approvedPlan : null,
+          });
+          const status = result.completed === true ? 'succeeded' : 'inconclusive';
+          const completed = await store.transition(task.id, status, {
+            result,
+            error: result.completed === true ? null : 'agent did not provide verified completion evidence',
+            details: { steps: result.steps ?? 0, agentStatus: result.status ?? 'unknown' },
+          });
+          return send(response, 200, completed);
+        } catch (error) {
+          const failed = await store.transition(task.id, 'failed', { error: error.message, details: { mode: 'local-agent' } });
           return send(response, 200, failed);
         }
       }
