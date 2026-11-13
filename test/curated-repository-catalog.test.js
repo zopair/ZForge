@@ -19,9 +19,11 @@ test('ambiguous user-supplied repository labels are preserved for resolution rat
   assert.ok(UNRESOLVED_REPOSITORY_REFERENCES.includes('rea'));
   assert.ok(UNRESOLVED_REPOSITORY_REFERENCES.includes('Matt Pocock / Skills for Real Engineers'));
   assert.ok(UNRESOLVED_REPOSITORY_REFERENCES.includes('Affaan / ECC'));
-  assert.ok(UNRESOLVED_REPOSITORY_REFERENCES.includes('claude-mem'));
+  assert.ok(CURATED_REPOSITORY_SEEDS.some(item => item.fullName === 'thedotmack/claude-mem'));
+  assert.ok(!UNRESOLVED_REPOSITORY_REFERENCES.includes('claude-mem'));
   assert.ok(UNRESOLVED_REPOSITORY_REFERENCES.includes('Addy Osmani / agent-skills'));
-  assert.ok(UNRESOLVED_REPOSITORY_REFERENCES.includes('gemini-cli'));
+  assert.ok(CURATED_REPOSITORY_SEEDS.some(item => item.fullName === 'google-gemini/gemini-cli'));
+  assert.ok(!UNRESOLVED_REPOSITORY_REFERENCES.includes('gemini-cli'));
 });
 
 test('discovery plan includes exact-owner curated repository queries in resumable catalogue', () => {
