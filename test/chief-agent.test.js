@@ -73,3 +73,66 @@ test('Chief Agent plans with experimental workspaces and preserves failed experi
   assert.ok(context.workspaceOperatingPrinciples.defaultCapabilities.includes('terminal'));
   assert.match(submittedPrompt, /parallel experiments/i);
 });
+
+test('Chief Agent extracts a bounded DAG only for independently active specialists', async () => {
+  const agent = new ChiefAgent({
+    modelAdapter: {
+      chat: async () => ({
+        content: 'Draft the implementation in parallel.\n<ORCHESTRATION_PLAN>\n' + JSON.stringify({
+          tasks: [
+            { id: 'research', agentId: 'researcher', request: 'Research compatible open-source libraries', dependsOn: [] },
+            { id: 'build', agentId: 'builder', request: 'Build the integration', dependsOn: ['research'] },
+          ],
+        }) + '\n</ORCHESTRATION_PLAN>',
+      }),
+    },
+    discoveryService: { discover: async () => ({ status: 'COMPLETE', results: [] }) },
+    memoryStore: { loadRelevant: async () => ({}) },
+    promptProvider: { getChiefAgentPrompt: async () => 'Canonical instructions' },
+    model: 'local-model',
+  });
+  const result = await agent.planTask({
+    request: 'Build and verify a local web integration',
+    availableAgents: [
+      { id: 'researcher', name: 'Researcher', status: 'ACTIVE', mission: 'Research' },
+      { id: 'builder', name: 'Builder', status: 'ACTIVE', mission: 'Build' },
+      { id: 'draft-agent', name: 'Draft Agent', status: 'PROPOSED', mission: 'Not executable' },
+    ],
+  });
+  assert.equal(result.orchestrationTasks.length, 2);
+  assert.deepEqual(result.orchestrationTasks[1].dependsOn, ['research']);
+  assert.deepEqual(result.availableAgents.map(agent => agent.id), ['researcher', 'builder']);
+  assert.equal(result.orchestrationStatus, 'PROPOSED');
+});
+
+test('Chief Agent rejects orchestration plans that invent agents or contain cycles', async () => {
+  let response = '<ORCHESTRATION_PLAN>' + JSON.stringify({
+    tasks: [{ id: 'research', agentId: 'invented-agent', request: 'Do work', dependsOn: [] }],
+  }) + '</ORCHESTRATION_PLAN>';
+  const agent = new ChiefAgent({
+    modelAdapter: { chat: async () => ({ content: response }) },
+    discoveryService: { discover: async () => ({ status: 'COMPLETE', results: [] }) },
+    memoryStore: { loadRelevant: async () => ({}) },
+    promptProvider: { getChiefAgentPrompt: async () => 'Canonical instructions' },
+    model: 'local-model',
+  });
+  const invalidAgent = await agent.planTask({
+    request: 'Build something',
+    availableAgents: [{ id: 'builder', status: 'ACTIVE' }],
+  });
+  assert.equal(invalidAgent.orchestrationTasks, null);
+  assert.match(invalidAgent.orchestrationPlanError, /active agent/i);
+
+  response = '<ORCHESTRATION_PLAN>' + JSON.stringify({
+    tasks: [
+      { id: 'one', agentId: 'builder', request: 'One', dependsOn: ['two'] },
+      { id: 'two', agentId: 'builder', request: 'Two', dependsOn: ['one'] },
+    ],
+  }) + '</ORCHESTRATION_PLAN>';
+  const cycle = await agent.planTask({
+    request: 'Build something',
+    availableAgents: [{ id: 'builder', status: 'ACTIVE' }],
+  });
+  assert.equal(cycle.orchestrationTasks, null);
+  assert.match(cycle.orchestrationPlanError, /cycle/i);
+});
