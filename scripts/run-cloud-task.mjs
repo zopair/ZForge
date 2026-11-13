@@ -71,18 +71,22 @@ try {
     const repository = process.env.GITHUB_REPOSITORY;
     const githubToken = process.env.GITHUB_TOKEN;
     if (!repository || !githubToken) throw new Error('GitHub read/write credentials are required to verify the approved plan.');
-    const approvalMatch = event.comment.body.trim().match(/^\\/approve-plan ([a-f0-9]{64})$/);
-    if (!approvalMatch) throw new Error('Approval command is malformed.');
-    const digest = approvalMatch[1];
+    const approvalCommand = event.comment.body.trim();
+    const approvalPrefix = '/approve-plan ';
+    const digest = approvalCommand.startsWith(approvalPrefix) ? approvalCommand.slice(approvalPrefix.length) : '';
+    if (!/^[a-f0-9]{64}$/.test(digest)) throw new Error('Approval command is malformed.');
     const comments = await githubApi(repository, githubToken, '/issues/' + event.issue.number + '/comments?per_page=100');
     const snapshotComment = [...comments].reverse().find(comment =>
       comment?.user?.login === 'github-actions[bot]'
       && typeof comment.body === 'string'
       && comment.body.includes('ZFORGE_PLAN_SNAPSHOT_V1:')
     );
-    const marker = snapshotComment?.body?.match(/<!--\\s*ZFORGE_PLAN_SNAPSHOT_V1:([A-Za-z0-9+/=]+)\\s*-->/);
-    if (!marker) throw new Error('The original immutable plan snapshot was not found.');
-    approvedPlanSnapshot = decodeApprovedPlanSnapshot(marker[1], { expectedDigest: digest });
+    const markerPrefix = '<!-- ZFORGE_PLAN_SNAPSHOT_V1:';
+    const markerStart = typeof snapshotComment?.body === 'string' ? snapshotComment.body.indexOf(markerPrefix) : -1;
+    const encodedStart = markerStart < 0 ? -1 : markerStart + markerPrefix.length;
+    const markerEnd = encodedStart < 0 ? -1 : snapshotComment.body.indexOf(' -->', encodedStart);
+    if (markerStart < 0 || markerEnd < 0) throw new Error('The original immutable plan snapshot was not found.');
+    approvedPlanSnapshot = decodeApprovedPlanSnapshot(snapshotComment.body.slice(encodedStart, markerEnd), { expectedDigest: digest });
     const claimMarker = '<!-- ZFORGE_EXECUTION_CLAIM_V1:' + digest + ' -->';
     const alreadyClaimed = comments.some(comment => comment?.user?.login === 'github-actions[bot]' && comment.body?.includes(claimMarker));
     if (alreadyClaimed) throw new Error('This exact plan has already been claimed for execution; create a new plan to run it again.');
