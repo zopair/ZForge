@@ -50,6 +50,34 @@ Set `ZFORGE_WHISPER_BIN` to the built `whisper-cli`, `ZFORGE_WHISPER_MODEL` to `
 
 The Piper adapter invokes the maintained CLI as `python -m piper -m MODEL -f OUTPUT.wav -- TEXT`; text is passed as a distinct process argument, never interpolated into a shell command. The Piper engine repository is GPL-3.0; inspect its distribution obligations and the separate voice `MODEL_CARD` before redistributing either engine or model.
 
+
+## Optional Egyptian Cairene voice: KemeTone
+
+For Egyptian Arabic output, ZForge also supports **KemeTone**, an optional local CPU-capable TTS model. The published model card describes an 81.8M-parameter, 24 kHz single female Cairene voice, with a 327 MB model weight file and Apache-2.0 license. It is based on a real speaker, has no voice-cloning feature, and must not be used for impersonation. Disclose that generated speech is synthetic when listeners could otherwise mistake it for a real recording.
+
+KemeTone works best with Arabic text carrying diacritics (tashkeel). It does not support Latin words, digits or code-switched English, and its context window is 510 tokens. ZForge conservatively limits automatic KemeTone routing to 400 whitespace-separated words; mixed-language text falls back to Piper when Piper is ready.
+
+Install the model and its own Python dependencies separately from Piper:
+
+```sh
+sudo apt-get install espeak-ng git-lfs
+git lfs install
+git clone https://huggingface.co/Rabe3/kemetone /opt/models/kemetone
+python3 -m venv /opt/zforge-kemetone
+/opt/zforge-kemetone/bin/pip install -r /opt/models/kemetone/requirements.txt
+```
+
+Configure the runtime:
+
+```sh
+ZFORGE_KEMETONE_PYTHON=/opt/zforge-kemetone/bin/python
+ZFORGE_KEMETONE_DIR=/opt/models/kemetone
+ZFORGE_KEMETONE_ESPEAK_BIN=/usr/bin/espeak-ng
+ZFORGE_KEMETONE_TIMEOUT_MS=300000
+```
+
+The model directory must contain `example.py`, `config.json`, `kemetone.pth`, `voices/kemetone.pt` and the `kemetone/` G2P package. The readiness endpoint verifies these files, the interpreter imports and espeak-ng before marking KemeTone ready. Automatic selection uses KemeTone for supported Arabic-only text and Piper for mixed-language text when Piper is configured.
+
 ## API
 
 - `GET /api/voice/capabilities` — authenticated readiness report. It checks executable permissions, local model files, Piper's Python module import and the required `.onnx.json` sidecar; the microphone transcription capability also requires FFmpeg. Configured paths alone are not reported as ready.
