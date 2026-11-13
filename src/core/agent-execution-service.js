@@ -45,12 +45,13 @@ export class AgentExecutionService {
     return this.modelAdapter.listModels();
   }
 
-  async runTask({ request, model, workspaceId, plan = null, allowedTools = null, resourceLimits = null } = {}) {
+  async runTask({ request, model, workspaceId, plan = null, allowedTools = null, resourceLimits = null, onProgress = null } = {}) {
     if (typeof request !== 'string' || !request.trim()) throw new TypeError('task request is required');
     if (typeof model !== 'string' || !model.trim()) throw new TypeError('a local model name is required');
     if (typeof workspaceId !== 'string' || !workspaceId.trim()) throw new TypeError('workspaceId is required');
     if (allowedTools !== null && (!Array.isArray(allowedTools) || allowedTools.some(name => typeof name !== 'string' || (!EXECUTION_TOOLS.some(tool => tool.function.name === name) && name !== 'finish_task')))) throw new TypeError('allowedTools contains an unknown execution tool');
     if (resourceLimits !== null && (!resourceLimits || typeof resourceLimits !== 'object' || Array.isArray(resourceLimits))) throw new TypeError('resourceLimits must be an object');
+    if (onProgress !== null && typeof onProgress !== 'function') throw new TypeError('onProgress must be a function');
     const allowedToolSet = allowedTools === null ? null : new Set(allowedTools);
     const availableTools = EXECUTION_TOOLS.filter(tool => !allowedToolSet || allowedToolSet.has(tool.function.name) || tool.function.name === 'finish_task');
     const maxTaskTimeoutMs = Number.isFinite(resourceLimits?.timeoutSeconds) ? resourceLimits.timeoutSeconds * 1000 : null;
@@ -73,16 +74,22 @@ export class AgentExecutionService {
     ];
     const evidence = new Map();
     const trace = [];
+    const emitProgress = async (type, details = {}) => { if (onProgress) await onProgress({ type, details }); };
+    await emitProgress('agent.started', { workspaceId, model });
     for (let step = 1; step <= this.maxSteps; step += 1) {
+      await emitProgress('agent.step.started', { step, maxSteps: this.maxSteps });
       let response;
       try {
         response = await this.modelAdapter.chat({ model, messages, temperature: 0.1, tools: availableTools });
       } catch (error) {
+        await emitProgress('agent.failed', { step, reason: 'model_execution_failed' });
         await finishExperiment('failed', [`Model execution failed: ${error.message}`], { step });
         throw error;
       }
       const toolCalls = Array.isArray(response?.toolCalls) ? response.toolCalls : [];
+      await emitProgress('agent.model.response', { step, toolCount: toolCalls.length, hasText: Boolean(response?.content) });
       if (!toolCalls.length) {
+        await emitProgress('agent.needs_action', { step });
         await finishExperiment('inconclusive', ['Model returned no executable tool call.'], { step });
         return { status: 'needs_action', completed: false, workspaceId, steps: step, message: response?.content ?? '', trace };
       }
@@ -95,6 +102,7 @@ export class AgentExecutionService {
         const call = toolCalls[index];
         const callId = call.id ?? rawCalls[index]?.id ?? randomUUID();
         let result;
+        await emitProgress('agent.tool.started', { step, toolName: call.name });
         try {
           if (allowedToolSet && !allowedToolSet.has(call.name) && call.name !== 'finish_task') throw new Error(`tool is not granted to this agent: ${call.name}`);
           const args = parseArguments(call.arguments ?? {});
@@ -138,6 +146,7 @@ export class AgentExecutionService {
               const completed = { status: 'completed', completed: true, workspaceId, summary: args.summary.trim(), steps: step, evidence: validEvidence, trace };
               trace.push({ id: callId, name: call.name, ok: true });
               await finishExperiment('succeeded', [args.summary.trim()], { steps: step, evidenceCount: validEvidence.length });
+              await emitProgress('agent.completed', { step, evidenceCount: validEvidence.length });
               return completed;
             }
             default:
@@ -146,6 +155,7 @@ export class AgentExecutionService {
         } catch (error) {
           result = { ok: false, error: error.message };
         }
+        await emitProgress('agent.tool.completed', { step, toolName: call.name, ok: result.ok === true });
         const record = { id: callId, name: call.name, ...result };
         evidence.set(callId, record);
         trace.push({ id: callId, name: call.name, ok: result.ok === true });
@@ -153,6 +163,7 @@ export class AgentExecutionService {
         messages.push({ role: 'tool', tool_name: call.name, content: JSON.stringify(record) });
       }
     }
+    await emitProgress('agent.step_limit', { steps: this.maxSteps });
     await finishExperiment('inconclusive', ['Agent reached the configured tool-call step limit.'], { steps: this.maxSteps });
     return { status: 'step_limit', completed: false, workspaceId, steps: this.maxSteps, trace };
   }

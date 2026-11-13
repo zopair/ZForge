@@ -54,3 +54,7 @@ body{background:#030303;color:#fff}
 #android-build-button{grid-column:1/-1;min-height:42px;border:1px solid #f5d58a;border-radius:9px;background:linear-gradient(145deg,#f5d58a,#bd8b3d);color:#080604;font-weight:800;letter-spacing:.2px}
 #android-build-button:disabled{opacity:.42;cursor:not-allowed}
 #android-project-path{direction:ltr;text-align:left}
+
+.agent-progress-feed{display:flex;flex-direction:column;gap:5px;max-height:120px;overflow:auto;padding:0 8px;color:#d9bd80}
+.agent-progress-event{margin:0;padding:5px 8px;border-right:2px solid #b58a42;background:#ffffff05;color:#e5d5b0;font-size:11px;line-height:1.6}
+#web-build-button,#android-build-button{grid-column:1/-1}

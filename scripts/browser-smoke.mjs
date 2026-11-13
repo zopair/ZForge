@@ -66,6 +66,7 @@ try {
       await page.locator('#chat-input').fill('اختبر تطبيق الويب');
       await page.locator('#send-button').click();
       await page.getByText(/Browser smoke task verified/).waitFor();
+      await page.locator('.agent-progress-event').first().waitFor({ timeout: 10000 });
       await page.locator('#web-build-button').click();
       await page.getByText(/اكتمل بناء تطبيق الويب/).waitFor();
       assert.equal(await page.locator('.artifact-link').count(), 1);

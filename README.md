@@ -23,6 +23,7 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - [BLACK VANTA UI](docs/BLACK_VANTA_UI.md)
 - [Web Build Worker](docs/WEB_BUILD_WORKER.md)
 - [Browser QA](docs/BROWSER_QA.md)
+- [Live Agent Progress](docs/LIVE_AGENT_PROGRESS.md)
 - [Tool evaluation protocol](docs/TOOL_EVALUATION.md)
 - [Agent operating system](docs/AGENT_OPERATING_SYSTEM.md)
 

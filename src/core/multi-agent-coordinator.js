@@ -43,8 +43,10 @@ export class MultiAgentCoordinator {
     this.defaultModel = defaultModel;
   }
 
-  async executePlan({ workspaceId, tasks } = {}) {
+  async executePlan({ workspaceId, tasks, onProgress = null } = {}) {
     validatePlan({ workspaceId, tasks });
+    if (onProgress !== null && typeof onProgress !== 'function') throw new TypeError('onProgress must be a function');
+    const emitProgress = async (type, details = {}) => { if (onProgress) await onProgress({ type, details }); };
     const pending = new Map(tasks.map(task => [task.id, structuredClone(task)]));
     const results = new Map();
     while (pending.size) {
@@ -53,6 +55,7 @@ export class MultiAgentCoordinator {
         const dependencies = (task.dependsOn ?? []).map(dep => results.get(dep));
         if (dependencies.some(result => result && ['failed', 'skipped'].includes(result.status))) {
           results.set(id, { id, agentId: task.agentId, status: 'skipped', reason: 'A required dependency did not succeed.' });
+          await emitProgress('agent.task.skipped', { taskId: id, agentId: task.agentId });
           pending.delete(id);
           progress = true;
         }
@@ -64,6 +67,7 @@ export class MultiAgentCoordinator {
       }
       const batch = await Promise.all(ready.map(async task => {
         try {
+          await emitProgress('agent.task.started', { taskId: task.id, agentId: task.agentId });
           const profile = await this.agentFactory.getExecutionProfile(task.agentId);
           const dependencyContext = (task.dependsOn ?? []).map(id => {
             const result = results.get(id);
@@ -76,12 +80,16 @@ export class MultiAgentCoordinator {
             plan: [task.plan, dependencyContext].filter(Boolean).join('\n\n') || null,
             allowedTools: profile.allowedTools,
             resourceLimits: profile.resourceLimits,
+            onProgress: onProgress ? event => onProgress({ type: event.type, details: { ...event.details, taskId: task.id, agentId: task.agentId } }) : null,
           });
           if (execution?.completed !== true) {
+            await emitProgress('agent.task.failed', { taskId: task.id, agentId: task.agentId, reason: 'completion_not_verified' });
             return { id: task.id, agentId: task.agentId, status: 'failed', summary: execution?.summary ?? execution?.message ?? 'Agent did not verify task completion.', execution };
           }
+          await emitProgress('agent.task.completed', { taskId: task.id, agentId: task.agentId, evidenceCount: execution.evidence?.length ?? 0 });
           return { id: task.id, agentId: task.agentId, status: 'succeeded', summary: execution.summary ?? 'Completed with verified evidence.', evidence: execution.evidence ?? [], workspaceId: execution.workspaceId };
         } catch (error) {
+          await emitProgress('agent.task.failed', { taskId: task.id, agentId: task.agentId, reason: 'execution_failed' });
           return { id: task.id, agentId: task.agentId, status: 'failed', reason: error.message };
         }
       }));

@@ -83,6 +83,9 @@ export class TaskStore {
       if (!Array.isArray(records)) throw new Error('task ledger must contain an array');
       for (const record of records) {
         if (!record || typeof record.id !== 'string' || !TASK_STATES.has(record.status)) throw new Error('task ledger contains an invalid record');
+        if (!Array.isArray(record.events)) record.events = [];
+        record.events = record.events.map((event, index) => ({ ...event, sequence: Number.isInteger(event.sequence) ? event.sequence : index + 1 }));
+        record.eventSequence = Number.isInteger(record.eventSequence) ? record.eventSequence : record.events.reduce((max, event) => Math.max(max, event.sequence), 0);
         this.tasks.set(record.id, record);
       }
     } catch (error) {
@@ -111,7 +114,8 @@ export class TaskStore {
       status: 'queued',
       result: null,
       error: null,
-      events: [{ id: randomUUID(), type: 'task.queued', at: now }],
+      events: [{ id: randomUUID(), sequence: 1, type: 'task.queued', at: now }],
+      eventSequence: 1,
       createdAt: now,
       updatedAt: now,
     };
@@ -130,9 +134,31 @@ export class TaskStore {
     task.result = result;
     task.error = error;
     task.updatedAt = now;
-    task.events.push({ id: randomUUID(), type: `task.${status}`, at: now, details: structuredClone(details) });
+    task.events.push({ id: randomUUID(), sequence: ++task.eventSequence, type: `task.${status}`, at: now, details: structuredClone(details) });
+    if (task.events.length > 2000) task.events.splice(0, task.events.length - 2000);
     await this.#persist();
     return structuredClone(task);
+  }
+
+  async appendEvent(id, type, details = {}) {
+    if (typeof type !== 'string' || !/^[a-z][a-z0-9._-]{0,63}$/.test(type)) throw new TypeError('event type is invalid');
+    if (!details || typeof details !== 'object' || Array.isArray(details)) throw new TypeError('event details must be an object');
+    if (Buffer.byteLength(JSON.stringify(details)) > 8192) throw new RangeError('event details exceed 8192 bytes');
+    const task = this.tasks.get(id);
+    if (!task) return null;
+    const event = { id: randomUUID(), sequence: ++task.eventSequence, type, at: this.clock(), details: structuredClone(details) };
+    task.events.push(event);
+    if (task.events.length > 2000) task.events.splice(0, task.events.length - 2000);
+    task.updatedAt = event.at;
+    await this.#persist();
+    return structuredClone(event);
+  }
+
+  eventsSince(id, after = 0) {
+    const task = this.tasks.get(id);
+    if (!task) return null;
+    const events = task.events.filter(event => event.sequence > after);
+    return { taskId: id, status: task.status, events: structuredClone(events), cursor: task.eventSequence };
   }
 
   async #persist() {
@@ -321,6 +347,7 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
             plan: planning?.plan ?? (typeof body.approvedPlan === 'string' ? body.approvedPlan : null),
             allowedTools: executionProfile?.allowedTools ?? null,
             resourceLimits: executionProfile?.resourceLimits ?? null,
+            onProgress: event => store.appendEvent(task.id, event.type, event.details),
           });
           const result = { ...execution, agentProfile: executionProfile ? { agentId: executionProfile.agentId, name: executionProfile.name, version: executionProfile.version } : null, planning: planning ? {
             status: planning.status,
@@ -404,7 +431,7 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
         if (body.confirmExecution !== true) return send(response, 409, { error: 'explicit_execution_confirmation_required' });
         await store.transition(task.id, 'running', { details: { mode: 'multi-agent-orchestration', taskCount: Array.isArray(body.tasks) ? body.tasks.length : 0 } });
         try {
-          const result = await multiAgentCoordinator.executePlan({ workspaceId: task.workspaceId, tasks: body.tasks });
+          const result = await multiAgentCoordinator.executePlan({ workspaceId: task.workspaceId, tasks: body.tasks, onProgress: event => store.appendEvent(task.id, event.type, event.details) });
           const status = result.status === 'completed' ? 'succeeded' : result.status === 'partial' ? 'inconclusive' : 'failed';
           const completed = await store.transition(task.id, status, {
             result,
@@ -416,6 +443,13 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
           const failed = await store.transition(task.id, 'failed', { error: error.message, details: { mode: 'multi-agent-orchestration' } });
           return send(response, 200, failed);
         }
+      }
+      const eventsMatch = url.pathname.match(/^\/api\/tasks\/([a-f0-9-]{36})\/events$/i);
+      if (eventsMatch && request.method === 'GET') {
+        const after = Number(url.searchParams.get('after') ?? 0);
+        if (!Number.isSafeInteger(after) || after < 0) return send(response, 400, { error: 'invalid_event_cursor' });
+        const result = store.eventsSince(eventsMatch[1], after);
+        return result ? send(response, 200, result) : send(response, 404, { error: 'task_not_found' });
       }
       const match = url.pathname.match(/^\/api\/tasks\/([a-f0-9-]{36})$/i);
       if (match && request.method === 'GET') {
