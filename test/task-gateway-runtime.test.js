@@ -151,3 +151,20 @@ test('agent execution route requires explicit confirmation and persists verified
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('task gateway allows explicit PWA origins and handles preflight requests', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zforge-cors-'));
+  const gateway = createTaskGateway({ dataDir: root, token: 'test-secret-token', allowedOrigins: ['https://zopair.github.io'] });
+  await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${gateway.server.address().port}`;
+  try {
+    const allowed = await fetch(`${base}/api/tasks`, { method: 'OPTIONS', headers: { Origin: 'https://zopair.github.io', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'authorization,content-type' } });
+    assert.equal(allowed.status, 204);
+    assert.equal(allowed.headers.get('access-control-allow-origin'), 'https://zopair.github.io');
+    const denied = await fetch(`${base}/api/tasks`, { method: 'OPTIONS', headers: { Origin: 'https://untrusted.example', 'Access-Control-Request-Method': 'POST' } });
+    assert.equal(denied.headers.get('access-control-allow-origin'), null);
+  } finally {
+    await new Promise(resolve => gateway.server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
