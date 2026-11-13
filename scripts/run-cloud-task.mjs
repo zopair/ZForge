@@ -92,7 +92,7 @@ try {
     if (alreadyClaimed) throw new Error('This exact plan has already been claimed for execution; create a new plan to run it again.');
     await githubApi(repository, githubToken, '/issues/' + event.issue.number + '/comments', {
       method: 'POST',
-      body: { body: claimMarker + '\\nExecution claim for plan ' + digest + ' (approval comment #' + event.comment.id + ').' },
+      body: { body: claimMarker + '\nExecution claim for plan ' + digest + ' (approval comment #' + event.comment.id + ').' },
     });
   }
   const { request } = normalizeCloudTaskRequest({
