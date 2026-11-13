@@ -29,6 +29,8 @@ test('discovery plan covers the requested engineering domains and major vendor e
   assert.ok(plan.vendorQueries.some(query => query.includes('org:anthropics')));
   assert.ok(plan.vendorQueries.some(query => query.includes('org:google')));
   assert.ok(plan.queries.some(query => query.includes('topic:android')));
+  assert.equal(plan.domains.find(domain=>domain.id==='android').requested,true);
+  assert.equal(plan.domains.find(domain=>domain.id==='arabic-localization').requested,true);
 });
 
 test('license classifier distinguishes approved open source, non-open source, and unknown', () => {
