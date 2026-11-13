@@ -86,7 +86,7 @@ try {
       await page.locator('#github-settings > summary').click();
       await page.locator('#github-token').fill('github_pat_browser_test_token');
       await page.locator('#github-connect').click();
-      await page.getByText(/تم ربط @zopair/).waitFor({ timeout: 5000 });
+      await page.waitForFunction(() => document.querySelector('#github-auth-status')?.textContent.includes('تم ربط @zopair'), null, { timeout: 5000 });
       assert.equal(await page.locator('#github-settings').evaluate(element => element.open), false, name + ': GitHub settings should collapse after successful connection to restore the chat viewport');
       await page.locator('#chat-input').fill('Build a sample PWA');
       await page.locator('#send-button').click();
