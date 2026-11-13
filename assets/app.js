@@ -135,7 +135,7 @@ function appendVoicePlayer(blob){
   const row=document.createElement("div");
   row.className="voice-output-row";
   const label=document.createElement("span");
-  label.textContent="الصوت المحلي";
+  label.textContent="صوت اصطناعي محلي";
   row.append(label,audio);
   conversation.append(row);
   conversation.scrollTop=conversation.scrollHeight;
