@@ -40,4 +40,23 @@ export class GitHubDiscoveryClient {
     const truncated=results.length<Math.min(maxResults,totalCount);
     return { query, count:results.length, totalCount, results:results.slice(0,maxResults), complete:!truncated, truncated, source:'GitHub Search API', retrievedAt:new Date().toISOString() };
   }
+  async listOrganizationRepositories(organization,{page=1,perPage=100}={}){
+    if(typeof organization!=='string'||!/^[-\\w.]+$/.test(organization))throw new TypeError('organization name is invalid');
+    if(!Number.isInteger(page)||page<1)throw new RangeError('page must be a positive integer');
+    if(!Number.isInteger(perPage)||perPage<1||perPage>100)throw new RangeError('perPage must be 1..100');
+    const url=new URL(`/orgs/${encodeURIComponent(organization)}/repos`,API);
+    url.searchParams.set('type','public');url.searchParams.set('sort','updated');url.searchParams.set('direction','desc');
+    url.searchParams.set('per_page',String(perPage));url.searchParams.set('page',String(page));
+    const headers={Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
+    if(this.token)headers.Authorization=`Bearer ${this.token}`;
+    const response=await this.fetchImpl(url,{headers});
+    if(response.status===403||response.status===429){
+      const reset=response.headers?.get?.('x-ratelimit-reset');
+      throw new GitHubDiscoveryError('GitHub core API rate limit reached; pause until the official reset window. No quota bypass is attempted.',{status:response.status,resetAt:reset?new Date(Number(reset)*1000).toISOString():null});
+    }
+    if(!response.ok)throw new GitHubDiscoveryError(`GitHub organization listing failed with HTTP ${response.status}.`,{status:response.status});
+    const payload=await response.json();
+    const results=(Array.isArray(payload)?payload:[]).map(normalizeRepository);
+    return {organization,page,count:results.length,results,complete:results.length<perPage,nextPage:results.length<perPage?null:page+1,source:'GitHub Organization Repositories API',retrievedAt:new Date().toISOString()};
+  }
 }
