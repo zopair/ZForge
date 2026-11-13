@@ -4,7 +4,8 @@ BLACK VANTA can use optional, self-hosted speech engines. Microphone capture hap
 
 ## Engines
 
-- **Speech-to-text:** whisper.cpp CLI (`whisper-cli`) with a locally stored Whisper model.
+- **Speech-to-text:** whisper.cpp CLI (`whisper-cli`) with a locally stored multilingual Whisper model.
+- **Audio normalization:** FFmpeg converts browser WebM/Ogg/MP4/MP3 clips to 16 kHz mono WAV before Whisper. Existing WAV input does not require conversion.
 - **Text-to-speech:** Piper CLI with a locally stored voice model.
 - Both are optional and independently configurable. No model or executable is downloaded automatically.
 
@@ -12,17 +13,18 @@ BLACK VANTA can use optional, self-hosted speech engines. Microphone capture hap
 
 Build/install whisper.cpp and Piper from their open-source projects on the runtime host. Download model files separately, review each model/voice license and language support, and store them locally.
 
-Set environment variables before starting the runtime:
+Install the free local executables on the runtime host and set environment variables before starting the runtime:
 
 ```sh
 ZFORGE_WHISPER_BIN=/usr/local/bin/whisper-cli
-ZFORGE_WHISPER_MODEL=/opt/models/ggml-base.bin
+ZFORGE_WHISPER_MODEL=/opt/models/ggml-small.bin
+ZFORGE_FFMPEG_BIN=/usr/bin/ffmpeg
 ZFORGE_PIPER_BIN=/usr/local/bin/piper
-ZFORGE_PIPER_MODEL=/opt/models/ar_JO-voice.onnx
+ZFORGE_PIPER_MODEL=/opt/models/ar_JO-kareem-medium.onnx
 ZFORGE_VOICE_TIMEOUT_MS=120000
 ```
 
-The Piper model path is an example only: select a voice model that actually exists and supports the desired language. Whisper multilingual models can transcribe multiple languages; accuracy and latency depend on model size and host resources.
+The Arabic Piper voice catalog includes `ar_JO-kareem` in low and medium quality. It is Jordanian Arabic, not an Egyptian-accent voice. Download the `.onnx` model, its matching `.onnx.json` configuration, and inspect the voice's `MODEL_CARD` before use; voice model licenses can differ. The official Whisper.cpp model catalog provides multilingual models such as `tiny`, `base`, `small`, `medium` and `large-v3`; select a model without the `.en` suffix for Arabic. Larger models generally require more disk, memory and compute. Actual Egyptian-dialect recognition quality and speech naturalness must be tested on the target host.
 
 ## API
 
@@ -36,4 +38,4 @@ Accepted input MIME types: WebM, Ogg, WAV, MP4/M4A and MPEG audio. Default maxim
 
 After connecting to the Task Gateway, enable **الصوت المحلي**. The microphone button records a short clip and places the locally transcribed text in the composer for review before sending. Verified agent replies can be synthesized to a local WAV player when Piper is configured.
 
-The browser requires microphone permission and a secure context (HTTPS or localhost). The PWA itself does not perform transcription or synthesis when the runtime host has not configured the corresponding model and executable.
+The browser requires microphone permission and a secure context (HTTPS or localhost). WebM/Ogg/MP4/MP3 microphone recordings require FFmpeg on the runtime host; WAV input is passed directly to Whisper.cpp. The PWA itself does not perform transcription or synthesis when the runtime host has not configured the corresponding model and executable.
