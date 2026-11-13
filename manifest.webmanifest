@@ -1,1 +1,18 @@
-{"name":"ZForge — Autonomous Engineering","short_name":"ZForge","description":"Evidence-driven autonomous engineering control plane.","start_url":"./","scope":"./","display":"standalone","background_color":"#101827","theme_color":"#101827","icons":[]}
+{
+  "name": "ZForge — Autonomous Engineering",
+  "short_name": "ZForge",
+  "description": "Evidence-driven autonomous engineering control plane.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#101827",
+  "theme_color": "#101827",
+  "icons": [
+    {
+      "src": "./assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
