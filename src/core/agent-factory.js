@@ -137,6 +137,20 @@ export class AgentFactory {
     };
   }
 
+  async deactivateAgent({ agentId, approved, approverId, reason } = {}) {
+    const record = await this.#get(agentId);
+    if (record.status !== 'ACTIVE') throw new Error('only an active agent can be deactivated');
+    if (approved !== true) throw new Error('explicit deactivation approval is required');
+    if (typeof approverId !== 'string' || !approverId.trim()) throw new TypeError('approverId is required');
+    if (typeof reason !== 'string' || !reason.trim()) throw new TypeError('deactivation reason is required');
+    record.manifest.status = 'RETIRED';
+    record.status = 'RETIRED';
+    record.deactivation = { approvedBy: approverId, reason: reason.trim(), deactivatedAt: new Date().toISOString() };
+    record.updatedAt = new Date().toISOString();
+    await this.#save(record);
+    return { agentId, status: 'RETIRED', deactivation: clone(record.deactivation) };
+  }
+
   async listAgents() {
     const records = this.registry instanceof Map ? [...this.registry.values()] : await this.registry.list();
     return records.map(record => ({
