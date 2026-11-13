@@ -17,11 +17,18 @@ const runtimeBadge=document.getElementById("runtime-badge");
 const chiefStatus=document.getElementById("chief-status");
 const executionStatus=document.getElementById("execution-status");
 const securityNote=document.getElementById("security-note");
+const voiceEnabledInput=document.getElementById("voice-enabled");
+const voiceRecordButton=document.getElementById("voice-record-button");
+const voiceStatus=document.getElementById("voice-status");
 
 let runtimeBaseUrl="";
 let runtimeToken="";
 let connected=false;
 let latestTaskId=null;
+let voiceCapabilities={transcription:false,synthesis:false};
+let activeRecorder=null;
+let activeRecordingStream=null;
+let voiceChunks=[];
 
 function setConnectionState(value){
   connected=value;
@@ -31,6 +38,7 @@ function setConnectionState(value){
   executionStatus.textContent=value?"جاهز لتنفيذ المهام":"بانتظار الاتصال";
   androidBuildButton.disabled=!(value&&latestTaskId);
   webBuildButton.disabled=!(value&&latestTaskId);
+  voiceRecordButton.disabled=!(value&&voiceEnabledInput.checked&&voiceCapabilities.transcription);
   document.querySelector(".connection-state")?.classList.toggle("is-connected",value);
 }
 
@@ -93,6 +101,106 @@ async function streamTaskEvents(taskId,signal){
     await new Promise(resolve=>window.setTimeout(resolve,800));
   }
 }
+
+function appendVoicePlayer(blob){
+  const audio=document.createElement("audio");
+  audio.className="voice-output";
+  audio.controls=true;
+  audio.preload="none";
+  const objectUrl=URL.createObjectURL(blob);
+  audio.src=objectUrl;
+  audio.addEventListener("ended",()=>URL.revokeObjectURL(objectUrl),{once:true});
+  audio.addEventListener("error",()=>URL.revokeObjectURL(objectUrl),{once:true});
+  const row=document.createElement("div");
+  row.className="voice-output-row";
+  const label=document.createElement("span");
+  label.textContent="الصوت المحلي";
+  row.append(label,audio);
+  conversation.append(row);
+  conversation.scrollTop=conversation.scrollHeight;
+}
+
+async function synthesizeLocalSpeech(text){
+  if(!voiceCapabilities.synthesis||!text)return;
+  const response=await fetch(runtimeBaseUrl+"/api/voice/synthesize",{
+    method:"POST",
+    headers:{Authorization:"Bearer "+runtimeToken,"Content-Type":"application/json"},
+    body:JSON.stringify({text:String(text).slice(0,8000)})
+  });
+  if(!response.ok){
+    const error=await response.json().catch(()=>({}));
+    throw new Error(error.error||"تعذر إنشاء الصوت المحلي.");
+  }
+  appendVoicePlayer(await response.blob());
+}
+
+async function stopVoiceRecording(){
+  if(activeRecorder&&activeRecorder.state==="recording"){
+    voiceRecordButton.disabled=true;
+    voiceRecordButton.textContent="جارٍ معالجة التسجيل...";
+    activeRecorder.stop();
+  }
+}
+
+voiceEnabledInput.addEventListener("change",()=>{
+  voiceRecordButton.disabled=!(connected&&voiceEnabledInput.checked&&voiceCapabilities.transcription);
+  if(!voiceEnabledInput.checked)stopVoiceRecording();
+});
+
+voiceRecordButton.addEventListener("click",async()=>{
+  if(!connected||!voiceEnabledInput.checked||!voiceCapabilities.transcription)return;
+  if(activeRecorder&&activeRecorder.state==="recording"){
+    await stopVoiceRecording();
+    return;
+  }
+  if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==="undefined"){
+    voiceStatus.textContent="المتصفح لا يدعم التسجيل الصوتي.";
+    return;
+  }
+  try{
+    activeRecordingStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    voiceChunks=[];
+    const preferredType="audio/webm;codecs=opus";
+    const options=MediaRecorder.isTypeSupported(preferredType)?{mimeType:preferredType}:{};
+    activeRecorder=new MediaRecorder(activeRecordingStream,options);
+    activeRecorder.addEventListener("dataavailable",event=>{if(event.data?.size)voiceChunks.push(event.data);});
+    activeRecorder.addEventListener("stop",async()=>{
+      const recorder=activeRecorder;
+      const blob=new Blob(voiceChunks,{type:recorder?.mimeType||"audio/webm"});
+      activeRecordingStream?.getTracks().forEach(track=>track.stop());
+      activeRecordingStream=null;
+      activeRecorder=null;
+      voiceChunks=[];
+      voiceRecordButton.textContent="بدء التسجيل الصوتي";
+      voiceRecordButton.disabled=!(connected&&voiceEnabledInput.checked&&voiceCapabilities.transcription);
+      try{
+        if(!blob.size)throw new Error("التسجيل الصوتي فارغ.");
+        voiceStatus.textContent="جارٍ تحويل الصوت محلياً...";
+        const response=await fetch(runtimeBaseUrl+"/api/voice/transcribe",{
+          method:"POST",
+          headers:{Authorization:"Bearer "+runtimeToken,"Content-Type":blob.type||"audio/webm"},
+          body:blob
+        });
+        const result=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(result.error||"تعذر التعرف على الكلام.");
+        input.value=result.text||"";
+        voiceStatus.textContent="تم التعرف على الكلام محلياً. راجع النص قبل إرساله.";
+        appendMessage("تم تحويل التسجيل إلى نص محلياً باستخدام "+(result.engine||"محرك محلي")+". راجع النص في مربع الكتابة.");
+      }catch(error){
+        voiceStatus.textContent="تعذر تحويل التسجيل.";
+        appendMessage("تعذر تحويل الصوت: "+error.message);
+      }
+    });
+    activeRecorder.start();
+    voiceRecordButton.textContent="إيقاف التسجيل";
+    voiceStatus.textContent="جارٍ التسجيل من الميكروفون...";
+  }catch(error){
+    activeRecordingStream?.getTracks().forEach(track=>track.stop());
+    activeRecordingStream=null;
+    voiceStatus.textContent="تعذر الوصول إلى الميكروفون.";
+    appendMessage("تعذر بدء التسجيل: "+error.message);
+  }
+});
 
 function appendArtifactLink(artifact){
   const row=document.createElement("div");
@@ -200,6 +308,14 @@ connectButton.addEventListener("click",async()=>{
       runtimeAgentSelect.append(option);
     }
     runtimeAgentSelect.disabled=false;
+    const voiceInventory=await api("/api/voice/capabilities");
+    voiceCapabilities=voiceInventory.capabilities??{transcription:false,synthesis:false};
+    voiceEnabledInput.disabled=!(voiceCapabilities.transcription||voiceCapabilities.synthesis);
+    voiceRecordButton.disabled=!(voiceCapabilities.transcription&&voiceEnabledInput.checked);
+    voiceStatus.textContent=voiceCapabilities.transcription||voiceCapabilities.synthesis
+      ?"الصوت يعمل محلياً عبر whisper.cpp وPiper حسب المحركات المهيأة."
+      :"ثبّت whisper.cpp وPiper والنماذج المحلية ثم أعد تشغيل المحرك.";
+
     runtimeTokenInput.value="";
     setConnectionState(true);
     securityNote.lastChild.textContent=" رمز الاتصال محفوظ في ذاكرة الصفحة فقط، ولا يُكتب في التخزين المحلي.";
@@ -315,6 +431,10 @@ form.addEventListener("submit",async event=>{
     }
     for(const item of result.evidence??[]){
       if(item.artifact)appendArtifactLink(item.artifact);
+    }
+    if(voiceEnabledInput.checked&&voiceCapabilities.synthesis){
+      try{await synthesizeLocalSpeech(result.summary||result.message||"اكتملت المهمة.");}
+      catch(error){appendMessage("تعذر إنشاء الرد الصوتي المحلي: "+error.message);}
     }
     executionStatus.textContent=completed.status==="succeeded"?"آخر مهمة مكتملة":"تحتاج إلى متابعة";
   }catch(error){
