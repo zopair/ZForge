@@ -103,3 +103,36 @@ test('agent can publish a verified workspace artifact into the durable artifact 
   assert.equal(published.filename, 'app.apk');
   assert.equal(result.evidence[0].artifact.id, 'artifact-123');
 });
+
+test('agent execution enforces an activated profile tool allowlist', async () => {
+  let executed = false;
+  let visibleTools = [];
+  const agent = new AgentExecutionService({
+    modelAdapter: { chat: async ({ tools }) => { visibleTools = tools.map(tool => tool.function.name); return { toolCalls: [{ name: 'run_command', arguments: { command: 'node', args: ['--version'] } }] }; } },
+    runtime: { createWorkspace: async () => ({}), execute: async () => { executed = true; return { exitCode: 0 }; } },
+    maxSteps: 1,
+  });
+  const result = await agent.runTask({ request: 'Read files only', model: 'local', workspaceId: 'ws-limited', allowedTools: ['read_file'] });
+  assert.equal(visibleTools.includes('run_command'), false);
+  assert.equal(executed, false);
+  assert.equal(result.completed, false);
+});
+
+test('agent execution clamps process timeout to the activated profile resource limit', async () => {
+  let actualTimeout;
+  let turn = 0;
+  const agent = new AgentExecutionService({
+    modelAdapter: { chat: async ({ messages }) => {
+      turn += 1;
+      if (turn === 1) return { toolCalls: [{ id: 'limited-run', name: 'run_command', arguments: { command: 'node', args: ['--version'], timeoutMs: 60000 } }] };
+      const evidence = JSON.parse(messages.find(message => message.role === 'tool').content);
+      return { toolCalls: [{ name: 'finish_task', arguments: { summary: 'Finished within policy', evidenceIds: [evidence.id] } }] };
+    } },
+    runtime: {
+      createWorkspace: async () => ({}),
+      execute: async input => { actualTimeout = input.timeoutMs; return { exitCode: 0 }; },
+    },
+  });
+  await agent.runTask({ request: 'Run within 5 seconds', model: 'local', workspaceId: 'ws-limits', resourceLimits: { timeoutSeconds: 5, storageMb: 10 } });
+  assert.equal(actualTimeout, 5000);
+});
