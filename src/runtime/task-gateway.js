@@ -137,7 +137,7 @@ export class TaskStore {
 export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
   if (typeof token !== 'string' || token.length < 16) throw new TypeError('a gateway bearer token of at least 16 characters is required');
   if (!Number.isInteger(maxBodyBytes) || maxBodyBytes < 1024) throw new RangeError('maxBodyBytes must be at least 1024');
-  if (!Array.isArray(allowedOrigins) || allowedOrigins.some(origin => typeof origin !== 'string' || !/^https?:\\/\\//.test(origin))) throw new TypeError('allowedOrigins must be an array of HTTP(S) origins');
+  if (!Array.isArray(allowedOrigins) || allowedOrigins.some(origin => typeof origin !== 'string' || !isValidOrigin(origin))) throw new TypeError('allowedOrigins must be an array of exact HTTP(S) origins');
   const store = new TaskStore({ dataDir, clock });
   const ready = store.initialize();
   const server = createServer(async (request, response) => {
