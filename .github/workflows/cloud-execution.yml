@@ -54,7 +54,26 @@ jobs:
           npm install --no-save --package-lock=false playwright@1.56.1
           npx playwright install --with-deps chromium firefox webkit
 
+      - name: Classify cloud conversation before model provisioning
+        id: classify-request
+        if: github.event_name == 'issues'
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, appendFile } from 'node:fs/promises';
+          import { isCapabilityQuestion } from './src/core/conversational-core.js';
+          import { normalizeCloudTaskRequest } from './src/core/cloud-task-contract.js';
+          const event = JSON.parse(await readFile(process.env.GITHUB_EVENT_PATH, 'utf8'));
+          const { request } = normalizeCloudTaskRequest({
+            author: event.issue?.user?.login,
+            title: event.issue?.title,
+            body: event.issue?.body,
+          });
+          const needsModel = !isCapabilityQuestion(request);
+          await appendFile(process.env.GITHUB_OUTPUT, 'needs_model=' + String(needsModel) + '\\n');
+          NODE
+
       - name: Install Ollama on the ephemeral worker
+        if: github.event_name == 'issue_comment' || steps.classify-request.outputs.needs_model == 'true'
         shell: bash
         run: |
           set -euo pipefail
