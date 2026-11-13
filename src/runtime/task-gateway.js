@@ -88,7 +88,7 @@ export class TaskStore {
     return this.tasks.has(id) ? structuredClone(this.tasks.get(id)) : null;
   }
 
-  async create({ request, workspaceId = 'default', metadata = {} } = {}) {
+  async create({ request, workspaceId = `task-${randomUUID()}`, metadata = {} } = {}) {
     if (typeof request !== 'string' || !request.trim() || request.length > 12000) throw Object.assign(new TypeError('request must contain 1..12000 characters'), { statusCode: 400 });
     if (typeof workspaceId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/.test(workspaceId) || workspaceId === '.' || workspaceId === '..') throw Object.assign(new TypeError('workspaceId is invalid'), { statusCode: 400 });
     const now = this.clock();
