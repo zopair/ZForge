@@ -1,0 +1,31 @@
+.cloud-handoff-message .cloud-task-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  margin-top: 10px;
+  padding: 9px 16px;
+  border: 1px solid #d9ad55;
+  border-radius: 999px;
+  background: #d9ad55;
+  color: #080808;
+  font-weight: 700;
+  text-decoration: none;
+  transition: box-shadow .2s ease, transform .2s ease;
+}
+.cloud-handoff-message .cloud-task-link:hover,
+.cloud-handoff-message .cloud-task-link:focus-visible {
+  box-shadow: 0 0 18px rgb(217 173 85 / 45%);
+  transform: translateY(-1px);
+  outline: none;
+}
+.cloud-handoff-message .muted,
+.cloud-execution-note {
+  color: #aaa;
+  font-size: .78rem;
+  line-height: 1.7;
+}
+.cloud-execution-note {
+  margin: 8px 4px 0;
+  text-align: center;
+}
