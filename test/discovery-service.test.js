@@ -58,3 +58,26 @@ test('discovery service resumes the same query at the next page before advancing
   assert.equal(second.nextQueryPage,1);
   assert.deepEqual(calls.map(call=>call.page),[1,2]);
 });
+
+test('discovery skips invalid search queries without abandoning later candidates',async()=>{
+  const calls=[];
+  const client={searchRepositories:async query=>{calls.push(query);if(calls.length===1)throw new GitHubDiscoveryError('invalid query',{status:422});return{results:[{id:2,fullName:'org/valid'}]};}};
+  const service=new UniversalDiscoveryService({client,maxQueriesPerRun:2});
+  const result=await service.discover({keywords:['invalid-query-case'],includeVendorSeeds:false});
+  assert.equal(calls.length,2);
+  assert.equal(result.nextOffset,2);
+  assert.equal(result.failedQueries.length,1);
+  assert.equal(result.results.length,1);
+});
+test('discovery skips missing vendor organizations and continues the organization batch',async()=>{
+  const scanned=[];
+  const client={
+    searchRepositories:async()=>({results:[]}),
+    listOrganizationRepositories:async org=>{scanned.push(org);if(scanned.length===1)throw new GitHubDiscoveryError('not found',{status:404});return{results:[{id:2,fullName:`${org}/repo`}],count:1,complete:true};}
+  };
+  const service=new UniversalDiscoveryService({client,maxQueriesPerRun:1,maxVendorOrgsPerRun:2});
+  const result=await service.discover({capabilities:['android'],vendorOffset:0});
+  assert.equal(scanned.length,2);
+  assert.equal(result.unavailableOrganizations.length,1);
+  assert.equal(result.nextVendorOffset,2);
+});
