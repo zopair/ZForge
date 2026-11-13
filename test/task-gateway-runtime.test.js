@@ -106,3 +106,21 @@ test('authenticated gateway provisions a workspace and executes a task through t
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('execution runtime refuses a workspace cwd symlink that resolves outside its root', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zforge-symlink-'));
+  const outside = await mkdtemp(join(tmpdir(), 'zforge-outside-'));
+  try {
+    const runtime = await new LocalExecutionRuntime({ rootDir: root }).initialize();
+    await runtime.createWorkspace({ id: 'ws-link' });
+    const { symlink } = await import('node:fs/promises');
+    await symlink(outside, join(root, 'ws-link', 'escape'), 'dir');
+    await assert.rejects(
+      () => runtime.execute({ workspaceId: 'ws-link', cwd: 'escape', command: process.execPath, args: ['-e', 'process.exit(0)'] }),
+      /resolves outside workspace/i,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+  }
+});
