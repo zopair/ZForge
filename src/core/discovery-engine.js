@@ -1,4 +1,5 @@
 import { CURATED_REPOSITORY_SEEDS, UNRESOLVED_REPOSITORY_REFERENCES } from './curated-repository-catalog.js';
+import { AGENT_MASTER_LIBRARY_SEEDS } from './agent-master-library-catalog.js';
 const DOMAINS = Object.freeze([
   { id:'cloud-computing', label:'Cloud & Computing', topics:['cloud','kubernetes','containers','distributed-systems'], terms:['cloud computing','distributed systems','containers','Kubernetes','virtualization','serverless','storage','networking','infrastructure as code','edge computing'] },
   { id:'github-engineering', label:'GitHub Engineering', topics:['github-actions','github-api','github-apps','octokit'], terms:['GitHub API','GitHub Actions','GitHub CLI','GitHub Apps','Octokit','runners','repository automation','release automation'] },
@@ -54,11 +55,31 @@ export function buildDiscoveryPlan({ capabilities = [], keywords = [], maxQuerie
     const selectedTopics = domain.requested ? domain.topics : domain.topics.slice(0, 1);
     for (const topic of selectedTopics) queries.push(`${topic} topic:${topic}`);
   }
+  const repositorySeedMap = new Map();
+  for (const seed of [...CURATED_REPOSITORY_SEEDS, ...AGENT_MASTER_LIBRARY_SEEDS]) {
+    const key = seed.fullName.toLowerCase();
+    const existing = repositorySeedMap.get(key);
+    if (!existing) {
+      repositorySeedMap.set(key, { ...seed, catalogSources: [seed.source] });
+    } else {
+      existing.catalogSources = [...new Set([...existing.catalogSources, seed.source])];
+      if (seed.projectType) existing.projectTypes = [...new Set([...(existing.projectTypes ?? []), seed.projectType])];
+    }
+  }
+  const allRepositorySeeds = [...repositorySeedMap.values()].map(seed => Object.freeze({
+    ...seed,
+    catalogSources: Object.freeze(seed.catalogSources),
+    ...(seed.projectTypes ? { projectTypes: Object.freeze(seed.projectTypes) } : {}),
+  }));
   const curatedRepositoryQueries = CURATED_REPOSITORY_SEEDS.map(({ fullName }) => {
     const [owner, name] = fullName.split('/');
     return `${name} in:name user:${owner}`;
   });
-  queries.push(...curatedRepositoryQueries);
+  const agentMasterLibraryQueries = AGENT_MASTER_LIBRARY_SEEDS.map(({ fullName }) => {
+    const [owner, name] = fullName.split('/');
+    return `${name} in:name user:${owner}`;
+  });
+  queries.push(...curatedRepositoryQueries, ...agentMasterLibraryQueries);
   const allUniqueQueries = [...new Set(queries)];
   const deduplicated = allUniqueQueries.slice(0, maxQueries);
   const vendorQueries = VENDORS.flatMap(vendor => vendor.orgs.map(org => `tooling org:${org}`));
@@ -68,6 +89,9 @@ export function buildDiscoveryPlan({ capabilities = [], keywords = [], maxQuerie
     domains,
     vendorSeeds: VENDORS,
     curatedRepositorySeeds: CURATED_REPOSITORY_SEEDS,
+    agentMasterLibrarySeeds: AGENT_MASTER_LIBRARY_SEEDS,
+    agentMasterLibraryQueries,
+    allRepositorySeeds,
     curatedRepositoryQueries,
     unresolvedRepositoryReferences: UNRESOLVED_REPOSITORY_REFERENCES,
     queries: deduplicated,
