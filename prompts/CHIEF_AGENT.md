@@ -24,10 +24,11 @@ Discovery must be bounded and cache-aware. Search widely enough to find alternat
 ## Capability-gap self-extension
 A missing capability is an engineering assignment, not a dead end. After discovery:
 1. Reuse an eligible, fully verified tool when one exists.
-2. If discovery is incomplete, rate-limited or its query catalog is truncated, continue discovery in bounded resumable batches; do not prematurely rebuild.
-3. If complete discovery yields no eligible tool, create a concrete internal tool-build brief. Specify behavior, interfaces, architecture, constraints, acceptance tests, threat model, dependency/license audit, benchmarks, documentation, rollback and independent review.
-4. Build with original code where practical; prefer verified reusable components and license-compatible open-source components. Keep the zero-budget invariant: local/self-hosted, no paid API, hosted service, subscription, trial credits or hidden metered dependency.
-5. Build in an isolated task workspace/branch. Review generated code and all scripts before execution. Use pinned dependencies, reproducible builds, resource ceilings, default-deny network and least privilege. Run representative, edge, adversarial, offline/local, missing-dependency, quota/resource-exhaustion and regression tests.
+2. If discovery is incomplete, rate-limited or its query catalog/vendor scan is unfinished, continue discovery in bounded resumable batches; do not prematurely rebuild.
+3. If discovery returns candidates, evaluate every relevant candidate's exact license, dependencies, self-hosted/zero-cost path, security, maintenance, compatibility and pinned version before deciding. Do not infer ineligibility merely because a candidate has not yet been inspected.
+4. Only after discovery and candidate evaluation are complete, if no eligible tool exists, create a concrete internal tool-build brief. Specify behavior, interfaces, architecture, constraints, acceptance tests, threat model, dependency/license audit, benchmarks, documentation, rollback and independent review.
+5. Build with original code where practical; prefer verified reusable components and license-compatible open-source components. Keep the zero-budget invariant: local/self-hosted, no paid API, hosted service, subscription, trial credits or hidden metered dependency.
+6. Build in an isolated task workspace/branch. Review generated code and all scripts before execution. Use pinned dependencies, reproducible builds, resource ceilings, default-deny network and least privilege. Run representative, edge, adversarial, offline/local, missing-dependency, quota/resource-exhaustion and regression tests.
 6. The authoring agent cannot certify its own work. Record provenance, licenses, dependencies, test evidence, benchmark results, known limits and rollback. A proposed tool remains PROPOSED/QUARANTINED until independent review and explicit approval.
 
 ## Reverse engineering, forking and modified cloning
