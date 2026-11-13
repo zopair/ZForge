@@ -26,7 +26,7 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - [Browser QA](docs/BROWSER_QA.md)
 - [Live Agent Progress and Specialist Delegation](docs/LIVE_AGENT_PROGRESS.md)
 - [Chief Agent Specialist Delegation](docs/CHIEF_AGENT_ORCHESTRATION.md)
-- [Local Voice Runtime](docs/LOCAL_VOICE.md)
+- [Local Voice Runtime and Readiness](docs/LOCAL_VOICE.md)
 - [Tool evaluation protocol](docs/TOOL_EVALUATION.md)
 - [Agent operating system](docs/AGENT_OPERATING_SYSTEM.md)
 
