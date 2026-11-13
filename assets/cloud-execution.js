@@ -6,7 +6,7 @@
   if (!form || !input || !conversation || !status) return;
 
   const API_ROOT = 'https://api.github.com/repos/zopair/ZForge';
-  const POLL_INTERVAL_MS = 12000;
+  const POLL_INTERVAL_MS = 60000;
   const MAX_WAIT_MS = 10 * 60 * 1000;
 
   function appendMessage(text, kind = 'assistant') {
@@ -47,7 +47,7 @@
     statusNode.textContent = 'بانتظار إرسال الطلب على GitHub...';
     try {
       while (Date.now() < deadline && !issue) {
-        const query = encodeURIComponent('repo:zopair/ZForge is:issue in:title ZForgeChat-' + correlationId);
+        const query = encodeURIComponent('repo:zopair/ZForge is:issue in:title ZForgeChat:' + correlationId);
         const search = await githubJson('https://api.github.com/search/issues?q=' + query + '&per_page=1');
         issue = search.items?.find(item => item.pull_request == null) ?? null;
         if (!issue) await wait(POLL_INTERVAL_MS);
@@ -118,7 +118,7 @@
   document.addEventListener('submit', event => {
     if (event.target !== form) return;
     const request = input.value.trim();
-    if (!request || status.textContent.trim() !== 'المحرك غير متصل') return;
+    if (!request || status.textContent.trim() !== 'العامل السحابي عند الطلب') return;
     event.preventDefault();
     event.stopImmediatePropagation();
     appendMessage(request, 'user');
