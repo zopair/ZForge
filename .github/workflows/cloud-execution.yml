@@ -3,6 +3,8 @@ name: ZForge Cloud Execution
 on:
   issues:
     types: [opened]
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
@@ -14,7 +16,12 @@ concurrency:
 
 jobs:
   execute:
-    if: github.event.issue.user.login == 'zopair' && startsWith(github.event.issue.title, '[ZForge Cloud Task]')
+    if: >-
+      github.event.issue.user.login == 'zopair' &&
+      startsWith(github.event.issue.title, '[ZForge Cloud Task]') &&
+      ((github.event_name == 'issues' && github.event.action == 'opened') ||
+       (github.event_name == 'issue_comment' && github.event.action == 'created' &&
+        github.event.comment.user.login == 'zopair' && startsWith(github.event.comment.body, '/approve-plan ')))
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     steps:
@@ -30,6 +37,7 @@ jobs:
         run: npm test
 
       - name: Prepare the isolated Node and Android worker image
+        if: github.event_name == 'issue_comment'
         shell: bash
         run: |
           set -euo pipefail
@@ -41,6 +49,7 @@ jobs:
           docker run --rm zforge-cloud-worker:latest python3 --version
 
       - name: Install host-side Playwright browser verification engines
+        if: github.event_name == 'issue_comment'
         run: |
           npm install --no-save --package-lock=false playwright@1.56.1
           npx playwright install --with-deps chromium firefox webkit

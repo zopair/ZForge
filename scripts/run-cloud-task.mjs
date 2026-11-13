@@ -1,9 +1,9 @@
 import { spawn, execFileSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile, cp, lstat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { tmpdir } from 'node:os';
-import { normalizeCloudTaskRequest } from '../src/core/cloud-task-contract.js';
+import { normalizeCloudTaskRequest, getCloudTaskPhase } from '../src/core/cloud-task-contract.js';
 
 const outputDir = process.env.ZFORGE_CLOUD_OUTPUT_DIR ?? join(tmpdir(), 'zforge-cloud-output');
 const resultPath = join(outputDir, 'cloud-task-result.json');
@@ -48,6 +48,7 @@ async function api(baseUrl, token, path, { method = 'GET', body, timeoutMs = 300
 try {
   if (!eventPath) throw new Error('GitHub issue event payload is unavailable.');
   const event = JSON.parse(await readFile(eventPath, 'utf8'));
+  const { phase } = getCloudTaskPhase({ action: event.action, issue: event.issue, comment: event.comment });
   const { request } = normalizeCloudTaskRequest({
     author: event.issue?.user?.login,
     title: event.issue?.title,
@@ -124,9 +125,36 @@ try {
       return !info.isSymbolicLink();
     },
   });
+  const planning = await api(baseUrl, token, '/api/tasks/' + encodeURIComponent(task.id) + '/plan', {
+    method: 'POST',
+    body: { model },
+    timeoutMs: 8 * 60 * 1000,
+  });
+  if (planning.executionStarted !== false || planning.phase !== 'awaiting_approval') {
+    throw new Error('Planning endpoint violated the no-execution contract.');
+  }
+  const planSha256 = createHash('sha256').update(JSON.stringify(planning.plan)).digest('hex');
+  if (phase === 'execute' && event.comment.body.trim() !== '/approve-plan ' + planSha256) {
+    throw new Error('Approval does not match the current plan digest. Review the latest plan and approve its exact SHA-256.');
+  }
+  if (phase === 'plan') {
+    await saveReport({
+      status: 'awaiting_approval',
+      phase,
+      taskId: task.id,
+      model,
+      summary: 'تم تحليل الطلب وإعداد خطة مبدئية. لم يبدأ أي تنفيذ.',
+      plan: planning.plan,
+      availableAgents: planning.availableAgents,
+      executionStarted: false,
+      planSha256,
+      approvalCommand: '/approve-plan ' + planSha256,
+      generatedAt: new Date().toISOString(),
+    });
+  } else {
   const completed = await api(baseUrl, token, '/api/tasks/' + encodeURIComponent(task.id) + '/agent-run', {
     method: 'POST',
-    body: { model, confirmExecution: true },
+    body: { model, confirmExecution: true, approvedPlan: JSON.stringify(planning.plan) },
     timeoutMs: 24 * 60 * 1000,
   });
   const result = completed.result ?? {};
@@ -162,6 +190,7 @@ try {
   };
   await saveReport(report);
   if (completed.status !== 'succeeded' || result.completed !== true) process.exitCode = 1;
+  }
 } catch (error) {
   let workspaceArchive = null;
   if (taskWorkspacePath) {
