@@ -72,3 +72,29 @@ test('Android worker rejects missing APK output instead of inventing an artifact
   assert.match(result.error, /APK output was not found/i);
   assert.equal(published.length, 0);
 });
+
+test('Android worker scans build outputs after Gradle finishes rather than before', async () => {
+  let built = false;
+  let scans = 0;
+  const published = [];
+  const runtime = {
+    createWorkspace: async () => ({}),
+    listFiles: async () => {
+      scans += 1;
+      const project = [
+        { path: 'android/gradlew', type: 'file' },
+        { path: 'android/settings.gradle', type: 'file' },
+      ];
+      return built ? [...project, { path: 'android/app/build/outputs/apk/debug/fresh.apk', type: 'file' }] : project;
+    },
+    execute: async () => { built = true; return { exitCode: 0 }; },
+  };
+  const service = new AndroidBuildService({
+    runtime,
+    artifactStore: { publishFromWorkspace: async input => { published.push(input); return { id: 'fresh-apk', filename: input.filename, kind: input.kind }; } },
+  });
+  const result = await service.build({ workspaceId: 'ws-android', projectPath: 'android', formats: ['apk'], runTests: false });
+  assert.equal(scans, 2);
+  assert.equal(result.status, 'succeeded');
+  assert.equal(published[0].sourcePath, 'android/app/build/outputs/apk/debug/fresh.apk');
+});
