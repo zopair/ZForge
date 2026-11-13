@@ -1,0 +1,150 @@
+import { spawn } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
+import { mkdir, readFile, writeFile, cp } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { normalizeCloudTaskRequest } from '../src/core/cloud-task-contract.js';
+
+const outputDir = process.env.ZFORGE_CLOUD_OUTPUT_DIR ?? join(tmpdir(), 'zforge-cloud-output');
+const resultPath = join(outputDir, 'cloud-task-result.json');
+const eventPath = process.env.GITHUB_EVENT_PATH;
+const port = '8787';
+const model = 'qwen2.5:1.5b';
+let server;
+let logs = '';
+
+async function saveReport(report) {
+  await mkdir(outputDir, { recursive: true });
+  await writeFile(resultPath, JSON.stringify(report, null, 2));
+}
+
+async function waitForGateway(child, baseUrl, timeoutMs = 60000) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (child.exitCode !== null) throw new Error('ZForge runtime exited before becoming healthy. ' + logs.slice(-3000));
+    try {
+      const response = await fetch(baseUrl + '/api/health', { signal: AbortSignal.timeout(2500) });
+      const payload = await response.json();
+      if (response.ok && payload.status === 'ok') return;
+    } catch {}
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  throw new Error('ZForge runtime health check timed out. ' + logs.slice(-3000));
+}
+
+async function api(baseUrl, token, path, { method = 'GET', body, timeoutMs = 30000 } = {}) {
+  const response = await fetch(baseUrl + path, {
+    method,
+    headers: { Authorization: 'Bearer ' + token, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || ('ZForge API returned HTTP ' + response.status));
+  return payload;
+}
+
+try {
+  if (!eventPath) throw new Error('GitHub issue event payload is unavailable.');
+  const event = JSON.parse(await readFile(eventPath, 'utf8'));
+  const { request } = normalizeCloudTaskRequest({
+    author: event.issue?.user?.login,
+    title: event.issue?.title,
+    body: event.issue?.body,
+  });
+  await mkdir(outputDir, { recursive: true });
+  const dataDir = join(outputDir, 'data');
+  const workspaceDir = join(outputDir, 'workspaces');
+  const artifactDir = join(outputDir, 'artifacts');
+  const token = randomBytes(32).toString('hex');
+  const baseUrl = 'http://127.0.0.1:' + port;
+
+  // Deliberately pass an allowlisted environment: no GITHUB_TOKEN, Actions runtime
+  // credentials, repository write credentials, or unrelated runner secrets reach
+  // the model or commands executed by its workspace tools.
+  const runtimeEnv = {
+    PATH: process.env.PATH ?? '',
+    HOME: process.env.HOME ?? tmpdir(),
+    TMPDIR: process.env.RUNNER_TEMP ?? tmpdir(),
+    LANG: 'C.UTF-8',
+    ZFORGE_GATEWAY_TOKEN: token,
+    ZFORGE_HOST: '127.0.0.1',
+    ZFORGE_PORT: port,
+    ZFORGE_DATA_DIR: dataDir,
+    ZFORGE_WORKSPACE_DIR: workspaceDir,
+    ZFORGE_ARTIFACT_DIR: artifactDir,
+    ZFORGE_REPO_ROOT: process.cwd(),
+    ZFORGE_MODEL: model,
+    ZFORGE_AGENT_MAX_STEPS: '12',
+    ZFORGE_MAX_PARALLEL_AGENTS: '1',
+    OLLAMA_BASE_URL: 'http://127.0.0.1:11434',
+  };
+
+  server = spawn(process.execPath, ['src/runtime/server.js'], {
+    cwd: process.cwd(),
+    env: runtimeEnv,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  server.stdout.on('data', chunk => { logs = (logs + chunk.toString()).slice(-12000); });
+  server.stderr.on('data', chunk => { logs = (logs + chunk.toString()).slice(-12000); });
+  await waitForGateway(server, baseUrl);
+
+  const inventory = await api(baseUrl, token, '/api/models');
+  if (!Array.isArray(inventory.models) || !inventory.models.includes(model)) {
+    throw new Error('Required local model is not available in the cloud worker: ' + model);
+  }
+
+  const task = await api(baseUrl, token, '/api/tasks', {
+    method: 'POST',
+    body: { request },
+  });
+  const completed = await api(baseUrl, token, '/api/tasks/' + encodeURIComponent(task.id) + '/agent-run', {
+    method: 'POST',
+    body: { model, confirmExecution: true },
+    timeoutMs: 24 * 60 * 1000,
+  });
+  const result = completed.result ?? {};
+  const report = {
+    status: completed.status,
+    taskId: task.id,
+    model,
+    summary: String(result.summary ?? result.message ?? '').slice(0, 4000),
+    error: String(completed.error ?? result.error ?? '').slice(0, 3000),
+    steps: Number.isInteger(result.steps) ? result.steps : 0,
+    evidence: Array.isArray(result.evidence) ? result.evidence.slice(0, 20).map(item => ({
+      type: item.type ?? null,
+      summary: String(item.summary ?? item.description ?? '').slice(0, 500),
+      exitCode: Number.isInteger(item.exitCode) ? item.exitCode : null,
+      artifact: item.artifact ? {
+        id: item.artifact.id,
+        filename: item.artifact.filename,
+        kind: item.artifact.kind,
+        sha256: item.artifact.sha256,
+        sizeBytes: item.artifact.sizeBytes,
+      } : null,
+    })) : [],
+    generatedAt: new Date().toISOString(),
+  };
+  await saveReport(report);
+  if (completed.status !== 'succeeded' || result.completed !== true) process.exitCode = 1;
+} catch (error) {
+  await saveReport({
+    status: 'failed',
+    summary: '',
+    error: String(error?.message ?? error).slice(0, 5000),
+    runtimeLogs: logs.slice(-5000),
+    generatedAt: new Date().toISOString(),
+  });
+  process.exitCode = 1;
+} finally {
+  if (server && server.exitCode === null) {
+    server.kill('SIGTERM');
+    await Promise.race([
+      new Promise(resolve => server.once('exit', resolve)),
+      new Promise(resolve => setTimeout(resolve, 5000)),
+    ]);
+    if (server.exitCode === null) server.kill('SIGKILL');
+  }
+  const artifactSource = join(outputDir, 'artifacts');
+  try { await cp(artifactSource, join(outputDir, 'artifact-files'), { recursive: true, force: true }); } catch {}
+}
