@@ -134,7 +134,7 @@ export class TaskStore {
   }
 }
 
-export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
+export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
   if (typeof token !== 'string' || token.length < 16) throw new TypeError('a gateway bearer token of at least 16 characters is required');
   if (!Number.isInteger(maxBodyBytes) || maxBodyBytes < 1024) throw new RangeError('maxBodyBytes must be at least 1024');
   if (!Array.isArray(allowedOrigins) || allowedOrigins.some(origin => typeof origin !== 'string' || !isValidOrigin(origin))) throw new TypeError('allowedOrigins must be an array of exact HTTP(S) origins');
@@ -227,12 +227,25 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
         const model = typeof body.model === 'string' && body.model.trim() ? body.model.trim() : defaultModel;
         await store.transition(task.id, 'running', { details: { mode: 'local-agent', model } });
         try {
-          const result = await agentService.runTask({
+          const capabilities = Array.isArray(body.capabilities) ? body.capabilities.slice(0, 20).map(String) : [];
+          const keywords = Array.isArray(body.keywords)
+            ? body.keywords.slice(0, 12).map(String)
+            : [...new Set(task.request.match(/[\\p{L}\\p{N}._+-]{3,}/gu) ?? [])].slice(0, 12);
+          const planning = chiefAgent
+            ? await chiefAgent.planTask({ request: task.request, capabilities, keywords })
+            : null;
+          const execution = await agentService.runTask({
             request: task.request,
             model,
             workspaceId: task.workspaceId,
-            plan: typeof body.approvedPlan === 'string' ? body.approvedPlan : null,
+            plan: planning?.plan ?? (typeof body.approvedPlan === 'string' ? body.approvedPlan : null),
           });
+          const result = { ...execution, planning: planning ? {
+            status: planning.status,
+            discoveryStatus: planning.discoveryStatus,
+            candidatesConsidered: planning.candidatesConsidered,
+            proposedInternalBuilds: planning.proposedInternalBuilds,
+          } : null };
           const status = result.completed === true ? 'succeeded' : 'inconclusive';
           const completed = await store.transition(task.id, status, {
             result,
