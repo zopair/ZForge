@@ -21,7 +21,7 @@ model = KModel(
     repo_id="Rabe3/kemetone",
     config=os.path.join(model_dir, "config.json"),
     model=os.path.join(model_dir, "kemetone.pth"),
-).eval()
+).eval().cpu()
 voice = torch.load(os.path.join(model_dir, "voices", "kemetone.pt"), map_location="cpu")
 
 with torch.inference_mode():
