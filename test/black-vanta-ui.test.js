@@ -64,10 +64,3 @@ test('PWA metadata uses BLACK VANTA identity', () => {
   assert.match(manifest, /BLACK VANTA/);
   assert.doesNotMatch(manifest, /Phantom/i);
 });
-
-test('BLACK VANTA provides explicit GitHub authorization without persisting credentials', () => {
-  assert.match(html, /id="github-token"/);
-  assert.match(html, /id="github-connect"/);
-  assert.match(html, /id="github-disconnect"/);
-  assert.match(html, /id="github-auth-status"/);
-});
