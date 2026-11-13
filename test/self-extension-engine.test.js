@@ -24,7 +24,7 @@ test('incomplete discovery never triggers premature tool rebuilding', () => {
 test('a verified eligible tool is reused instead of rebuilt', () => {
   const gap = assessCapabilityGap({
     capability: 'web-frontend',
-    discovery: { status: 'COMPLETE', queryCatalogComplete: true, results: [{ fullName: 'org/tool', evaluation: { eligible: true, status: 'CANDIDATE' } }] },
+    discovery: { status: 'COMPLETE', queryCatalogComplete: true, results: [{ fullName: 'org/tool', capabilities: ['web-frontend'], evaluation: { eligible: true, status: 'CANDIDATE' } }] },
   });
   assert.equal(gap.action, 'REUSE_VERIFIED_TOOL');
   assert.equal(gap.selectedTool, 'org/tool');
