@@ -28,7 +28,7 @@ test('authenticated conversational API preserves session context and only drafts
     },
   };
   let executionCalls = 0;
-  const gateway = createTaskGateway({ dataDir: root, token: 'test-secret-token', conversationCore, agentService: { runTask: async () => { executionCalls += 1; return { completed: true, summary: 'done' }; } } });
+  const gateway = createTaskGateway({ dataDir: root, token: 'test-secret-token', conversationalCore: conversationCore, agentService: { runTask: async () => { executionCalls += 1; return { completed: true, summary: 'done' }; } } });
   await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
   const base = 'http://127.0.0.1:' + gateway.server.address().port;
   const headers = { Authorization: 'Bearer test-secret-token', 'Content-Type': 'application/json' };
