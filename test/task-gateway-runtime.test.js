@@ -124,3 +124,30 @@ test('execution runtime refuses a workspace cwd symlink that resolves outside it
     await rm(outside, { recursive: true, force: true });
   }
 });
+
+test('agent execution route requires explicit confirmation and persists verified completion', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zforge-agent-gateway-'));
+  const agentService = {
+    runTask: async ({ request, model, workspaceId }) => ({
+      status: 'completed', completed: true, summary: `Executed: ${request}`, model, workspaceId, evidence: [{ id: 'verified-1', ok: true }],
+    }),
+  };
+  const gateway = createTaskGateway({ dataDir: root, token: 'test-secret-token', agentService });
+  await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${gateway.server.address().port}`;
+  const headers = { Authorization: 'Bearer test-secret-token', 'Content-Type': 'application/json' };
+  try {
+    const created = await fetch(`${base}/api/tasks`, { method: 'POST', headers, body: JSON.stringify({ request: 'Create a verified artifact', workspaceId: 'ws-agent-api' }) });
+    const task = await created.json();
+    const denied = await fetch(`${base}/api/tasks/${task.id}/agent-run`, { method: 'POST', headers, body: JSON.stringify({ model: 'qwen3:8b' }) });
+    assert.equal(denied.status, 409);
+    const executed = await fetch(`${base}/api/tasks/${task.id}/agent-run`, { method: 'POST', headers, body: JSON.stringify({ model: 'qwen3:8b', confirmExecution: true }) });
+    assert.equal(executed.status, 200);
+    const result = await executed.json();
+    assert.equal(result.status, 'succeeded');
+    assert.equal(result.result.completed, true);
+  } finally {
+    await new Promise(resolve => gateway.server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
