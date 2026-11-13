@@ -4,7 +4,9 @@
 
 - `TaskStore`: durable JSON task ledger, atomic file replacement, state transitions and event history.
 - `createTaskGateway`: Node.js HTTP API with bearer authentication and bounded JSON request bodies.
-- `LocalExecutionRuntime`: self-hosted workspaces and process execution using argument arrays (`shell:false`), per-process timeout, output cap and concurrency limit.
+- `LocalExecutionRuntime`: per-task self-hosted workspaces, file operations and process execution using argument arrays (`shell:false`), per-process timeout, output cap and concurrency limit.
+- `AgentExecutionService`: local Ollama tool-call loop; successful, failed and inconclusive experiment outcomes are recorded through `AgentWorkspaceManager`.
+- `LocalTaskHistoryMemoryStore`: feeds recent task outcomes back into Chief Agent planning context.
 - `server.js`: environment-configured process entry point.
 
 ## Start
@@ -25,7 +27,7 @@ export ZFORGE_ALLOWED_ORIGINS=https://zopair.github.io
 npm start
 ```
 
-The default listener is loopback-only. To reach it remotely, put it behind a TLS reverse proxy and configure network exposure deliberately. Never expose the raw HTTP listener to the public internet. Keep the bearer token server-side; do not embed it in GitHub Pages assets.
+The default listener is loopback-only. To reach it remotely, put it behind a TLS reverse proxy and configure network exposure deliberately. Never expose the raw HTTP listener to the public internet. Keep the bearer token server-side; do not embed it in GitHub Pages assets. `ZFORGE_ALLOWED_ORIGINS` is an exact comma-separated origin list; the default permits `https://zopair.github.io` for the BLACK VANTA Pages UI.
 
 ## API
 
@@ -36,7 +38,7 @@ All endpoints except health require `Authorization: Bearer <token>`.
 | GET | `/api/health` | Liveness response; contains no secret |
 | GET | `/api/models` | List installed Ollama models |
 | GET | `/api/tasks` | List durable task records |
-| POST | `/api/tasks` | Create a queued task: `{ "request": "...", "workspaceId": "..." }` |
+| POST | `/api/tasks` | Create a queued task: `{ "request": "..." }`; a unique workspace is generated unless `workspaceId` is supplied |
 | GET | `/api/tasks/:id` | Read task state and event history |
 | PATCH | `/api/tasks/:id` | Apply a valid lifecycle transition |
 | POST | `/api/workspaces` | Create a workspace: `{ "id": "..." }` |
@@ -54,13 +56,13 @@ Execution body example:
 }
 ```
 
-Commands are launched with `shell:false`; pass executable and arguments separately. Environment variables are minimal by default; callers may pass explicit string values. Output is capped. Task records survive process restarts.
+Commands are launched with `shell:false`; pass executable and arguments separately. Environment variables are minimal by default; callers may pass explicit string values. Output is capped. Task records survive process restarts. Each task receives its own workspace ID by default, preventing unrelated tasks from sharing a working directory.
 
 ## Execution model and responsibility
 
 This is a local host process runner, not a container sandbox. A process inherits the operating-system identity and filesystem/network reach of the ZForge service account. Run it under a dedicated unprivileged account or inside a disposable container/VM with only the intended workspace mounted. Do not run it as root or expose it directly to untrusted networks.
 
-The `agent-run` endpoint invokes Chief Agent planning (memory + bounded GitHub discovery + canonical prompt), then passes the plan to the local Ollama tool loop. Available tools are `run_command`, `read_file`, `write_file`, `list_files` and evidence-backed `finish_task`. A task is marked succeeded only when the model cites successful tool-result IDs. Otherwise it remains inconclusive. The BLACK VANTA PWA can connect to this API, discover installed models, submit tasks and display the result.
+The `agent-run` endpoint invokes Chief Agent planning (repository memory + durable task-history memory + bounded GitHub discovery + canonical prompt), then passes the plan to the local Ollama tool loop. The workspace manager records tool observations and succeeded/failed/inconclusive experiment outcomes in the current runtime process; the task ledger preserves the durable task and evidence history across restarts. Available tools are `run_command`, `read_file`, `write_file`, `list_files` and evidence-backed `finish_task`. A task is marked succeeded only when the model cites successful tool-result IDs. Otherwise it remains inconclusive. The BLACK VANTA PWA can connect to this API, discover installed models, submit tasks and display the result.
 
 This is not yet an isolated sandbox. It also does not yet provide container workers, live streaming/SSE, a multi-agent scheduler, autonomous Agent Architect activation, voice, Android/iOS build/signing, or a full artifact release pipeline.
 
