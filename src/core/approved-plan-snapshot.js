@@ -45,10 +45,13 @@ export function extractApprovedPlanSnapshot(comments, { expectedDigest, botLogin
   if (!/^[a-f0-9]{64}$/.test(expectedDigest ?? '')) throw new TypeError('expectedDigest must be a SHA-256 fingerprint');
   for (const comment of [...comments].reverse()) {
     if (comment?.user?.login !== botLogin || typeof comment.body !== 'string') continue;
-    const pattern = new RegExp('<!--\\\\s*' + APPROVED_PLAN_SNAPSHOT_MARKER + ':([A-Za-z0-9+/=]+)\\\\s*-->');
-    const match = comment.body.match(pattern);
-    if (!match) continue;
-    const payload = decodeApprovedPlanSnapshot(match[1], { expectedDigest });
+    const markerPrefix = '<!-- ' + APPROVED_PLAN_SNAPSHOT_MARKER + ':';
+    const markerStart = comment.body.indexOf(markerPrefix);
+    if (markerStart < 0) continue;
+    const encodedStart = markerStart + markerPrefix.length;
+    const markerEnd = comment.body.indexOf(' -->', encodedStart);
+    if (markerEnd < 0) continue;
+    const payload = decodeApprovedPlanSnapshot(comment.body.slice(encodedStart, markerEnd), { expectedDigest });
     return { ...payload, commentId: comment.id ?? null };
   }
   throw new Error('no trusted stored plan matches this approval fingerprint');
