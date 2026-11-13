@@ -96,6 +96,7 @@ No paid subscriptions, paid APIs, paid usage, trial credits or required commerci
 - F4.1 Bounded multi-agent DAG orchestration with dependency-aware execution — initial implementation.
 - F5 Agent Workspace Manager control plane — initial implementation; host runtime adapters pending.
 - F6 Container-isolated execution, browser, build and QA runtimes.
-- F7 Web/PWA and Android build, preview, signing and delivery workers.
+- F7 Android debug APK/AAB Gradle build worker — initial implementation; release signing and iOS build workers pending.
+- F7.1 Web/PWA build, preview and delivery workers.
 - F8 BLACK VANTA live text/voice gateway with open-source local STT/TTS.
 - F9 Outcome analytics, tool re-evaluation, experiment reuse and continuous improvement.
