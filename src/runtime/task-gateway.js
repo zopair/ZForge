@@ -26,6 +26,17 @@ function safeEqual(left, right) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+function sendBinary(response, content, filename) {
+  response.writeHead(200, {
+    'Content-Type': 'application/octet-stream',
+    'Content-Length': content.length,
+    'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  response.end(content);
+}
+
 function send(response, status, payload) {
   const body = JSON.stringify(payload);
   response.writeHead(status, {
@@ -134,7 +145,7 @@ export class TaskStore {
   }
 }
 
-export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
+export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, artifactStore = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
   if (typeof token !== 'string' || token.length < 16) throw new TypeError('a gateway bearer token of at least 16 characters is required');
   if (!Number.isInteger(maxBodyBytes) || maxBodyBytes < 1024) throw new RangeError('maxBodyBytes must be at least 1024');
   if (!Array.isArray(allowedOrigins) || allowedOrigins.some(origin => typeof origin !== 'string' || !isValidOrigin(origin))) throw new TypeError('allowedOrigins must be an array of exact HTTP(S) origins');
@@ -168,6 +179,20 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
       const supplied = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
       if (!supplied || !safeEqual(supplied, token)) return send(response, 401, { error: 'unauthorized' });
 
+      if (request.method === 'GET' && url.pathname === '/api/artifacts') {
+        if (!artifactStore) return send(response, 503, { error: 'artifact_store_unavailable' });
+        return send(response, 200, { artifacts: artifactStore.listArtifacts() });
+      }
+      const artifactMatch = url.pathname.match(/^\/api\/artifacts\/([A-Za-z0-9._-]{1,64})(\/download)?$/);
+      if (artifactMatch && request.method === 'GET') {
+        if (!artifactStore) return send(response, 503, { error: 'artifact_store_unavailable' });
+        if (artifactMatch[2] === '/download') {
+          const artifact = await artifactStore.readArtifact(artifactMatch[1]);
+          return artifact ? sendBinary(response, artifact.content, artifact.metadata.filename) : send(response, 404, { error: 'artifact_not_found' });
+        }
+        const artifact = artifactStore.getArtifact(artifactMatch[1]);
+        return artifact ? send(response, 200, artifact) : send(response, 404, { error: 'artifact_not_found' });
+      }
       if (request.method === 'GET' && url.pathname === '/api/models') {
         if (!agentService || typeof agentService.listModels !== 'function') return send(response, 503, { error: 'model_inventory_unavailable' });
         return send(response, 200, { models: await agentService.listModels() });
