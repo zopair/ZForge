@@ -34,7 +34,9 @@ deepseek-ai/DeepSeek-R1
 Tencent-Hunyuan/HunyuanVideo
 Wan-Video/Wan2.2
 zai-org/CogVideo`,
-  'agent-frameworks-skills': `open-webui/open-webui
+  'agent-frameworks-skills': `thedotmack/claude-mem
+google-gemini/gemini-cli
+open-webui/open-webui
 langchain-ai/langchain
 langgenius/dify
 Significant-Gravitas/AutoGPT
@@ -143,7 +145,5 @@ export const UNRESOLVED_REPOSITORY_REFERENCES = Object.freeze([
   'rea',
   'Matt Pocock / Skills for Real Engineers',
   'Affaan / ECC',
-  'claude-mem',
   'Addy Osmani / agent-skills',
-  'gemini-cli',
 ]);
