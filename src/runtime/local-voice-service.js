@@ -14,7 +14,7 @@ const AUDIO_TYPES = new Map([
 ]);
 const MAX_TEXT_LENGTH = 8000;
 
-function runLocalProcess({ command, args, input = null, cwd, timeoutMs, maxOutputBytes }) {
+function runLocalProcess({ command, args, input = null, cwd, timeoutMs, maxOutputBytes, extraEnv = {} }) {
   return new Promise((resolveResult, reject) => {
     let stdout = Buffer.alloc(0);
     let stderr = Buffer.alloc(0);
@@ -24,7 +24,7 @@ function runLocalProcess({ command, args, input = null, cwd, timeoutMs, maxOutpu
       cwd,
       shell: false,
       windowsHide: true,
-      env: { PATH: process.env.PATH ?? '', HOME: cwd, TMPDIR: cwd, LANG: 'C.UTF-8' },
+      env: { PATH: process.env.PATH ?? '', HOME: cwd, TMPDIR: cwd, LANG: 'C.UTF-8', ...extraEnv },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     const finish = (error, value) => {
@@ -94,6 +94,12 @@ export class LocalVoiceService {
     ffmpegCommand = 'ffmpeg',
     piperCommand = 'python3',
     piperModelPath = null,
+    kemetonePythonCommand = 'python3',
+    kemetoneModelDir = null,
+    kemetoneEspeakCommand = 'espeak-ng',
+    kemetoneEspeakLib = null,
+    kemetoneTimeoutMs = 300000,
+    maxKemetoneWords = 400,
     timeoutMs = 120000,
     maxAudioBytes = 25 * 1024 * 1024,
     maxSynthesizedBytes = 50 * 1024 * 1024,
@@ -109,6 +115,13 @@ export class LocalVoiceService {
     this.ffmpegCommand = ffmpegCommand;
     this.piperCommand = piperCommand;
     this.piperModelPath = piperModelPath ? resolve(piperModelPath) : null;
+    this.kemetonePythonCommand = kemetonePythonCommand;
+    this.kemetoneModelDir = kemetoneModelDir ? resolve(kemetoneModelDir) : null;
+    this.kemetoneEspeakCommand = kemetoneEspeakCommand;
+    this.kemetoneEspeakLib = kemetoneEspeakLib ? resolve(kemetoneEspeakLib) : null;
+    this.kemetoneTimeoutMs = kemetoneTimeoutMs;
+    this.maxKemetoneWords = maxKemetoneWords;
+    this.readinessSnapshot = null;
     this.timeoutMs = timeoutMs;
     this.maxAudioBytes = maxAudioBytes;
     this.maxSynthesizedBytes = maxSynthesizedBytes;
