@@ -17,7 +17,7 @@ export class UniversalDiscoveryService {
     if(!Number.isInteger(queryPage)||queryPage<1)throw new RangeError('queryPage must be a positive integer');
     if(!Number.isInteger(vendorOffset)||vendorOffset<0)throw new RangeError('vendorOffset must be a non-negative integer');
     if(!Number.isInteger(vendorPage)||vendorPage<1)throw new RangeError('vendorPage must be a positive integer');
-    const plan=buildDiscoveryPlan({capabilities,keywords,maxQueries:120});
+    const plan=buildDiscoveryPlan({capabilities,keywords,maxQueries:500});
     const allQueries=[...plan.queries,...(includeVendorSeeds?plan.vendorQueries:[])];
     const unique=[...new Set(allQueries)];
     const selected=unique.slice(queryOffset,queryOffset+this.maxQueriesPerRun);
