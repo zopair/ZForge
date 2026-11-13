@@ -53,7 +53,7 @@ test('agent cannot mark a task complete with missing or unsuccessful evidence', 
 test('agent returns a non-completed state when the model does not provide a tool call', async () => {
   const agent = new AgentExecutionService({
     modelAdapter: { chat: async () => ({ content: 'Here is a suggestion.', toolCalls: [] }) },
-    runtime: { createWorkspace: async () => ({}) },
+    runtime: { createWorkspace: async () => ({}), execute: async () => ({ exitCode: 0 }) },
   });
   const result = await agent.runTask({ request: 'Do work', model: 'local', workspaceId: 'ws-idle' });
   assert.equal(result.status, 'needs_action');
