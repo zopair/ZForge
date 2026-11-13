@@ -146,8 +146,7 @@ try {
       approvalCommand: '/approve-plan',
       generatedAt: new Date().toISOString(),
     });
-    return;
-  }
+  } else {
   const completed = await api(baseUrl, token, '/api/tasks/' + encodeURIComponent(task.id) + '/agent-run', {
     method: 'POST',
     body: { model, confirmExecution: true, approvedPlan: JSON.stringify(planning.plan) },
@@ -186,6 +185,7 @@ try {
   };
   await saveReport(report);
   if (completed.status !== 'succeeded' || result.completed !== true) process.exitCode = 1;
+  }
 } catch (error) {
   let workspaceArchive = null;
   if (taskWorkspacePath) {
