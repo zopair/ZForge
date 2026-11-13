@@ -1,20 +1,13 @@
 {
-  "name": "ZForge — Black Phantom",
-  "short_name": "ZForge",
-  "description": "Black Phantom user interface for the ZForge autonomous engineering system.",
+  "name": "ZForge — BLACK VANTA",
+  "short_name": "VANTA",
+  "description": "BLACK VANTA user interface for the ZForge autonomous engineering system.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#050505",
-  "theme_color": "#050505",
+  "background_color": "#030303",
+  "theme_color": "#030303",
   "lang": "ar",
   "dir": "rtl",
-  "icons": [
-    {
-      "src": "./assets/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
-  ]
+  "icons": [{"src":"./assets/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
 }

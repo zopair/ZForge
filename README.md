@@ -2,7 +2,7 @@
 
 **Zubair Autonomous Engineering Forge** — *From Idea to Reality. Autonomously.*
 
-ZForge is a zero-budget, open-source-only autonomous engineering platform. Its internal Chief Autonomous Engineer discovers, verifies, composes and maintains engineering tools; specialist agents build and test software; Black Phantom is the human-facing text/voice control surface.
+ZForge is a zero-budget, open-source-only autonomous engineering platform. Its internal Chief Autonomous Engineer discovers, verifies, composes and maintains engineering tools; specialist agents build and test software; BLACK VANTA is the human-facing text/voice control surface.
 
 ## Non-negotiable principles
 1. **Open source only:** public source code is not enough; verify OSI-compatible licensing for code, dependencies, models, data, fonts and assets.
@@ -20,7 +20,7 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
 - [Local Model Registry](memory/MODEL_REGISTRY.md)
 - [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
-- [Black Phantom UI](docs/BLACK_PHANTOM_UI.md)
+- [BLACK VANTA UI](docs/BLACK_PHANTOM_UI.md)
 - [Tool evaluation protocol](docs/TOOL_EVALUATION.md)
 - [Agent operating system](docs/AGENT_OPERATING_SYSTEM.md)
 
@@ -43,7 +43,7 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - Tool registry and engineering memory: memory/
 
 ## Current implementation status
-The repository contains a static Black Phantom PWA shell, universal discovery/evaluation modules, a loopback-only Ollama adapter, a draft-only Chief Agent planner, Agent Architect validation gates, bounded local memory/prompt readers, and an approval-gated GitHub task-branch/file writer. The local model adapter has not yet been tested against an installed model, and no GitHub write credential or approval-verification service is configured. No backend task gateway, isolated code execution worker, live voice runtime, Android/iOS build worker, or autonomous task execution is connected yet. GitHub Pages serves static files only; Actions are ephemeral and quota-limited.
+The repository contains an interactive BLACK VANTA PWA preview with a working local chat composer, universal discovery/evaluation modules, a loopback-only Ollama adapter, a draft-only Chief Agent planner, Agent Architect validation gates, bounded local memory/prompt readers, and an approval-gated GitHub task-branch/file writer. The local model adapter has not yet been tested against an installed model, and no GitHub write credential or approval-verification service is configured. No backend task gateway, isolated code execution worker, live voice runtime, Android/iOS build worker, or autonomous task execution is connected yet. GitHub Pages serves static files only; Actions are ephemeral and quota-limited.
 
 ## Tests
 Run `npm test` with Node.js 20 or newer. CI uses Node.js 24.

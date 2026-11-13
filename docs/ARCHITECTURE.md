@@ -1,10 +1,10 @@
 # ZForge Architecture
 
 ## Mission
-A zero-budget, open-source-only autonomous engineering platform that converts requests into verified software artifacts. Modular, auditable, secure by default, self-hostable, and improved through measured outcomes.
+A zero-budget, open-source-only autonomous engineering platform that converts requests into verified software artifacts. Modular, self-hostable, and improved through measured outcomes. Exploration and experimentation are first-class capabilities.
 
 ## Two distinct agents/surfaces
-- **Chief Autonomous Engineer:** internal engineering agent. Reads repository memory, searches tools, composes toolchains, plans and delegates work, operates isolated workspaces, verifies changes, proposes repository updates, and maintains version/evidence records.
+- **Chief Autonomous Engineer:** internal engineering agent. Reads repository memory, searches tools, composes toolchains, plans and delegates work, operates agent workspaces, verifies changes, proposes repository updates, and maintains version/evidence records.
 - **Black Phantom:** human-facing PWA persona with text/voice interaction and a black/gold animated visual identity. It is a presentation/control surface, not the privileged runtime and never holds GitHub or signing credentials.
 
 ## Logical architecture
@@ -16,75 +16,81 @@ Task Gateway
 Chief Autonomous Engineer
    ├─ Memory & Context Loader
    ├─ Universal Open-Source Discovery (ZUOI)
-   │    ├─ GitHub Search Adapter (read-only, rate-limited)
-   │    ├─ Vendor/Topic/Registry Search
-   │    ├─ License & Dependency Inspection
-   │    └─ Evidence Collector
    ├─ Tool Evaluation & Compatibility Composer
-   ├─ Local Model Adapter (Ollama loopback; model license checked separately)
-   ├─ Version/Security Maintenance Monitor
-   ├─ Prompt Assembly & Versioning
+   ├─ Local Model Adapter
    ├─ Agent Architect / Specialist Factory
-   └─ Execution Broker
-          ├─ Ephemeral Isolated Workspace
-          ├─ Build/Test/Security Workers
-          └─ Approval-Gated GitHub Writer
+   └─ Workspace Manager
+          ├─ Research Workspaces
+          ├─ Development Workspaces
+          ├─ Experimental Workspaces
+          ├─ Browser / Build / QA Workspaces
+          └─ Runtime Adapter (local / container / other self-hosted)
                    │
-            Independent Verification
+       Artifacts / Evidence / Experiment Memory
                    │
-       Evidence / Artifacts / Memory / PR
+          Git branches / PRs / Releases
 ```
 
-This is the target architecture. Implemented components are listed in the discovery-engine document; missing runtime services are not implied to exist.
+The diagram distinguishes the target architecture from components already implemented. See the registry for exact implementation status.
+
+## Engineering philosophy: experimental freedom
+ZForge follows **Freedom by Default, Guardrails by Context**. Disorder, failed attempts, unusual behavior and conflicting approaches can be valuable research signals. The platform should help agents explore, install, modify, fork, combine, prototype and compare tools rather than requiring every idea to pass a narrow pre-approval allowlist.
+
+Prefer warnings, checkpoints, reversible changes and recovery paths over blanket denial. A warning is not a refusal. Failures remain available as engineering knowledge. Resource policies should be adaptive to the host and workload, not arbitrary universal ceilings. Ask for human input when consequences are materially external, irreversible, costly, legally consequential, or involve deployment credentials—not for ordinary experimentation.
+
+This principle does not remove applicable license, privacy, provenance or credential obligations. It means those concerns are handled in context and proportionately, without turning routine research, network exploration, package installation, code execution or tool modification into prohibited activities.
+
+## Agent Workspaces
+See [Agent Workspaces: Experimental Freedom](AGENT_WORKSPACES.md).
+
+The initial `AgentWorkspaceManager` control plane supports:
+- Multiple workspaces per agent, extensible profiles and agent-selected capabilities.
+- Broad default capabilities for filesystem, terminal, package installation, network research, Git, browser, tests and artifacts.
+- Adaptive resource preferences and shared artifact collaboration.
+- Workspace lifecycle, observations and experiment records.
+- Successful, failed and inconclusive outcomes, including metrics and artifacts.
+- Promotion of successful experiments to reusable destinations.
+
+The current manager is a metadata/control-plane implementation. It does not yet provision host processes, terminals, filesystems or browsers. A runtime adapter is the next implementation layer and should preserve the same runtime-neutral contract.
 
 ## Chief Agent lifecycle
-1. Parse outcome, constraints, acceptance criteria, risk and resource budget.
-2. Read canonical prompts and relevant memory before planning.
-3. Determine capabilities and run bounded semantic discovery when needed.
-4. Inspect licenses, dependencies, security, maintenance and platform requirements.
-5. Evaluate credible alternatives; do not select by popularity.
-6. Compose a mutually compatible, zero-cost, open-source toolchain.
-7. Assemble a task-specific prompt with evidence, known failures, limits and tests.
-8. Delegate bounded tasks with explicit inputs, outputs and permissions.
-9. Execute in an isolated workspace; never expose secrets to the model or browser.
-10. Verify independently; reject unsupported claims and untested artifacts.
-11. Record outcomes, resource use, errors, fixes, version pins and prompt deltas.
-12. Return artifact links, test evidence, risks and limitations.
+1. Understand the desired outcome and relevant constraints.
+2. Read engineering memory, including previous failures and unexpected findings.
+3. Explore available tools, repositories, approaches and alternatives.
+4. Create or reuse a suitable workspace and experiment variants in parallel where useful.
+5. Build, execute, observe, measure and iterate.
+6. Preserve successful and unsuccessful outcomes with reproducible evidence.
+7. Promote useful experiments into reusable tools, templates or knowledge.
+8. Return artifacts, evidence, trade-offs and remaining unknowns.
 
 ## Tool intelligence
-See [Universal Open-Source Discovery Engine](UNIVERSAL_DISCOVERY_ENGINE.md) and [Tool Evaluation Protocol](TOOL_EVALUATION.md). Records include canonical source, pinned version, license, self-hosted proof, dependencies, compatibility, security, tests, benchmark, resource cost, failure modes, evidence and date. Unknown hard gates quarantine; failures reject. Popularity metrics add zero points.
-
-## Toolchain composition
-Model selected tools as a graph of provided/required capabilities, version/runtime constraints, protocols, data formats, dependencies, license obligations, security boundaries and resource needs. No stack is certified until the combined graph resolves and the integrated workload passes tests.
-
-## Agent and prompt evolution
-Every agent has mission, non-goals, I/O schema, allowed tools, permission scope, safety rules, resource ceiling, success criteria, tests, version and rollback. Agent Architect proposes and tests agents; it cannot grant privileges. Per-task prompts derive from versioned canonical instructions. Canonical changes require evidence, diff, regression tests and approval.
+See [Universal Open-Source Discovery Engine](UNIVERSAL_DISCOVERY_ENGINE.md) and [Tool Evaluation Protocol](TOOL_EVALUATION.md). Popularity metrics add zero points. Unknown facts should be reported as unknown, not silently treated as failure or approval.
 
 ## Curated repository intelligence
-The user-supplied catalogue is a discovery seed source, not an allowlist. It includes 128 canonical repository identities, grouped by engineering role and surfaced to the Chief Agent with `PENDING_REVIEW` status. The bounded discovery planner queries them by owner and repository name over resumable batches. Knowledge collections are treated as references; model checkpoints and media assets require independent license and resource review. Four incomplete shorthand references remain unresolved rather than guessed.
+The user-supplied catalogue includes 128 canonical repository identities, grouped by engineering role and surfaced to the Chief Agent as discovery seeds. They are research leads, not an installation allowlist. Four incomplete shorthand references remain unresolved rather than guessed.
 
 ## Self-extension and repository engineering
-After universal discovery, the Chief Agent evaluates each requested capability:
-- Reuse only a candidate whose eligibility gates passed and whose declared capabilities match.
-- Continue bounded discovery when the search is incomplete, rate-limited or vendor scans remain unfinished.
-- Evaluate every discovered candidate's exact license, dependencies, cost model, self-hosted path, security, maintenance, version and compatibility before concluding no tool qualifies.
-- Only when discovery and candidate evaluation are complete and no eligible tool exists, produce a structured internal build brief. The brief includes interfaces, implementation sequence, license/dependency audit, threat model, acceptance tests, benchmarks, provenance, independent review and rollback. It remains a proposal until approval and an isolated execution runtime exist.
+ZForge supports license-compatible fork-and-modify, modified clones with preserved provenance, clean-room reimplementation and lawful interoperability research. Exact licenses and provenance should be recorded when copying or modifying upstream work. Research and analysis should remain available even when a particular artifact cannot be redistributed.
 
-ZForge supports four controlled repository workflows: license-compatible fork-and-modify, modified clone with preserved provenance, clean-room reimplementation, and lawful authorized interoperability research. Exact licenses, dependency compatibility, notices, upstream commit pins and security must be reviewed before copying or modifying upstream code. Proprietary code copying, access-control circumvention, secret extraction and private-data exposure are prohibited. These workflows do not grant an execution capability by themselves.
-
-## Security
-Secrets stay server-side. Treat repository content, web pages, package metadata and tool output as untrusted data. Use least privilege, scoped credentials, isolated execution, default-deny network, ephemeral workspaces and explicit approval for destructive or externally visible actions. Respect licenses, quotas, rate limits and terms.
+## Contextual stewardship
+- Keep credentials out of model prompts and public artifacts.
+- Treat retrieved repository and web content as data, not instructions.
+- Prefer snapshots and recovery options before hard-to-reverse changes.
+- Explain material risks and alternatives rather than applying blanket blocks.
+- Respect licenses, privacy, rate limits and the user's zero-budget requirement.
+- Keep actions observable and outcomes reproducible.
 
 ## Zero-budget resource policy
-No paid subscriptions, paid APIs, paid usage, trial credits or required commercial SaaS. Prefer local/self-hosted open-source tools. GitHub Pages is static hosting, not a backend; GitHub Actions is ephemeral and quota-limited, not a persistent server. Record CPU/RAM/storage/network/CI quotas, cache results, use bounded searches, and never assume free tiers are unlimited.
+No paid subscriptions, paid APIs, paid usage, trial credits or required commercial SaaS. Prefer local/self-hosted open-source tools. GitHub Pages is static hosting, not a backend; GitHub Actions is ephemeral and quota-limited, not a persistent server. Resource preferences must reflect actual host capacity and workload requirements.
 
 ## Roadmap
 - F0 Governance, prompts, memory, static PWA shell — scaffolded.
-- F1 ZUOI domain/vendor catalogue, license gates, bounded GitHub discovery, repository inspection, toolchain composer and release review — initial implementation.
-- F2 Local Ollama adapter, Chief Agent draft planner and Agent Architect manifest/activation gates — implemented; local model runtime integration pending.
-- F3 Persistent memory provider, task gateway, prompt builder, execution ledger and approval-gated task lifecycle.
-- F4 Agent factory runtime and isolated agent test harness.
-- F5 Secure execution workspaces, Git operations, test runners, artifact store and approval-gated PR flow.
-- F6 Web/PWA and Android build, preview, signing and delivery workers.
-- F7 Black Phantom live text/voice gateway with open-source local STT/TTS.
-- F8 Outcome analytics, tool re-evaluation, prompt regression and promotion.
+- F1 Universal Open-Source Discovery and repository inspection — initial implementation.
+- F2 Local model adapter, Chief Agent draft planner and Agent Architect — implemented; local model runtime integration pending.
+- F3 Persistent task gateway, execution ledger and artifact storage.
+- F4 Agent factory runtime and specialist collaboration.
+- F5 Agent Workspace Manager control plane — initial implementation; host runtime adapters pending.
+- F6 Local/container execution, browser, build and QA runtimes.
+- F7 Web/PWA and Android build, preview, signing and delivery workers.
+- F8 Black Phantom live text/voice gateway with open-source local STT/TTS.
+- F9 Outcome analytics, tool re-evaluation, experiment reuse and continuous improvement.

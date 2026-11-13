@@ -55,3 +55,21 @@ test('Chief Agent does not create a build brief while discovery is incomplete', 
   assert.equal(context.capabilityGapDecisions[0].action, 'CONTINUE_DISCOVERY');
   assert.equal(context.toolBuildBriefs.length, 0);
 });
+
+test('Chief Agent plans with experimental workspaces and preserves failed experiments as learning', async () => {
+  let submittedPrompt = '';
+  const agent = new ChiefAgent({
+    modelAdapter: { chat: async ({ messages }) => { submittedPrompt = messages[1].content; return { content: 'Use parallel experiments and retain failed findings.' }; } },
+    discoveryService: { discover: async () => ({ status: 'COMPLETE', results: [] }) },
+    memoryStore: { loadRelevant: async () => ({ previousFailures: ['Variant B failed on Arabic shaping'] }) },
+    promptProvider: { getChiefAgentPrompt: async () => 'Canonical instructions' },
+    model: 'local-model',
+  });
+  await agent.planTask({ request: 'Compare two Arabic rendering engines', capabilities: ['arabic-rendering'] });
+  const context = JSON.parse(submittedPrompt.split(String.fromCharCode(10)).slice(1).join(String.fromCharCode(10)));
+  assert.equal(context.workspaceOperatingPrinciples.defaultMode, 'experimental');
+  assert.equal(context.workspaceOperatingPrinciples.failedExperimentsAreKnowledge, true);
+  assert.equal(context.workspaceOperatingPrinciples.guardrailStrategy, 'contextual-not-blanket-deny');
+  assert.ok(context.workspaceOperatingPrinciples.defaultCapabilities.includes('terminal'));
+  assert.match(submittedPrompt, /parallel experiments/i);
+});
