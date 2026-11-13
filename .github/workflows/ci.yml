@@ -18,7 +18,7 @@ jobs:
         run: npm test
 
   browser-smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -29,4 +29,4 @@ jobs:
       - name: Install Chromium, Firefox and WebKit
         run: npx playwright install --with-deps chromium firefox webkit
       - name: Run BLACK VANTA browser smoke tests
-        run: node test/browser-smoke.mjs
+        run: node scripts/browser-smoke.mjs
