@@ -320,9 +320,13 @@ connectButton.addEventListener("click",async()=>{
     voiceEnabledInput.disabled=!(voiceCapabilities.transcription||voiceCapabilities.synthesis);
     voiceRecordButton.disabled=!(voiceCapabilities.transcription&&voiceEnabledInput.checked);
     const voiceEngines=[voiceCapabilities.transcription?"whisper.cpp":null,voiceCapabilities.synthesis?"Piper":null].filter(Boolean);
+    const missingVoiceEngines=[
+      ...(!voiceCapabilities.transcription?["Whisper.cpp + FFmpeg"]:[]),
+      ...(!voiceCapabilities.synthesis?["Piper + نموذج الصوت"]:[])
+    ];
     voiceStatus.textContent=voiceEngines.length
-      ?"المحركات الصوتية المحلية المتاحة: "+voiceEngines.join(" + ")
-      :"ثبّت whisper.cpp وPiper والنماذج المحلية ثم أعد تشغيل المحرك.";
+      ?"المحركات الجاهزة محلياً: "+voiceEngines.join(" + ")+(missingVoiceEngines.length?" · غير مهيأ: "+missingVoiceEngines.join(" + "):"")
+      :"الصوت المحلي غير جاهز. يلزم تهيئة: "+missingVoiceEngines.join(" + ")+". راجع سجل المحرك.";
 
     runtimeTokenInput.value="";
     setConnectionState(true);
