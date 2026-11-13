@@ -59,3 +59,25 @@ test('agent returns a non-completed state when the model does not provide a tool
   assert.equal(result.status, 'needs_action');
   assert.equal(result.completed, false);
 });
+
+test('agent execution records experiment outcomes and tool observations in the workspace manager', async () => {
+  const { AgentWorkspaceManager } = await import('../src/core/agent-workspace-manager.js');
+  const workspaceManager = new AgentWorkspaceManager();
+  const runtime = {
+    createWorkspace: async ({ id }) => ({ id }),
+    execute: async () => ({ exitCode: 0, stdout: 'ok', stderr: '' }),
+  };
+  const modelAdapter = { chat: async ({ messages }) => {
+    if (messages.some(message => message.role === 'tool')) {
+      const result = JSON.parse(messages.find(message => message.role === 'tool').content);
+      return { toolCalls: [{ name: 'finish_task', arguments: { summary: 'Verified by command', evidenceIds: [result.id] } }] };
+    }
+    return { toolCalls: [{ name: 'run_command', arguments: { command: process.execPath, args: ['--version'] } }] };
+  } };
+  const agent = new AgentExecutionService({ modelAdapter, runtime, workspaceManager });
+  const result = await agent.runTask({ request: 'Verify runtime', model: 'local', workspaceId: 'ws-managed' });
+  const workspace = workspaceManager.getWorkspace('ws-managed');
+  assert.equal(result.completed, true);
+  assert.equal(workspace.experiments[0].status, 'succeeded');
+  assert.equal(workspace.observations.length, 1);
+});
