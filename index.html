@@ -30,6 +30,9 @@
         <label>رمز الاتصال<input id="runtime-token" type="password" placeholder="Bearer token" autocomplete="off"></label>
         <label>النموذج المحلي<select id="runtime-model" disabled><option value="">اكتشف النماذج بعد الاتصال</option></select></label>
         <label>الوكيل المتخصص<select id="runtime-agent" disabled><option value="">Chief Agent — الافتراضي</option></select></label>
+        <label>مسار مشروع الويب<input id="web-project-path" type="text" value="." placeholder=". أو frontend"></label>
+        <label>مجلد مخرجات الويب<select id="web-output-directory"><option value="dist">dist</option><option value="build">build</option><option value="out">out</option></select></label>
+        <button id="web-build-button" type="button" disabled>اختبار وبناء تطبيق ويب</button>
         <label>مسار مشروع Android<input id="android-project-path" type="text" value="." placeholder=". أو mobile"></label>
         <button id="android-build-button" type="button" disabled>بناء Android · APK + AAB</button>
         <button id="connect-runtime" type="button">اتصال بالمحرك</button>
