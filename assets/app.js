@@ -124,7 +124,7 @@ form.addEventListener("submit",async event=>{
   input.disabled=true;
   executionStatus.textContent="جارٍ تنفيذ المهمة...";
   try{
-    const task=await api("/api/tasks",{method:"POST",body:{request:message,workspaceId:"black-vanta"}});
+    const task=await api("/api/tasks",{method:"POST",body:{request:message}});
     const completed=await api("/api/tasks/"+encodeURIComponent(task.id)+"/agent-run",{
       method:"POST",
       body:{model:runtimeModelSelect.value,confirmExecution:true}
