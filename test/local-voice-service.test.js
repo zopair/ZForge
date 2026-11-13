@@ -80,3 +80,56 @@ test('local voice refuses blank synthesis text and rejects missing WAV output', 
     await assert.rejects(() => service.synthesize({ text: 'test' }), /valid WAV/i);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('local voice readiness checks executables, model files and Piper sidecar config', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zforge-voice-readiness-'));
+  try {
+    const whisperModel = join(root, 'ggml-small.bin');
+    const piperModel = join(root, 'ar_JO-kareem-medium.onnx');
+    const whisper = await executable(root, 'whisper-cli', 'exit 0\\n');
+    const ffmpeg = await executable(root, 'ffmpeg', 'exit 0\\n');
+    const python = await executable(root, 'python-voice', 'if [ "$1" = "-c" ]; then exit 0; fi\\nexit 0\\n');
+    await writeFile(whisperModel, 'whisper model');
+    await writeFile(piperModel, 'piper model');
+    await writeFile(piperModel + '.json', '{}');
+    const service = new LocalVoiceService({
+      whisperCommand: whisper,
+      whisperModelPath: whisperModel,
+      ffmpegCommand: ffmpeg,
+      piperCommand: python,
+      piperModelPath: piperModel,
+    });
+    const status = await service.inspectCapabilities();
+    assert.equal(status.transcription, true);
+    assert.equal(status.synthesis, true);
+    assert.equal(status.localOnly, true);
+    assert.equal(status.checks.ffmpegExecutable, true);
+    assert.equal(status.checks.piperModule, true);
+    assert.equal(status.checks.piperConfig, true);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('local voice readiness marks missing FFmpeg and Piper config as unavailable', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zforge-voice-readiness-missing-'));
+  try {
+    const whisperModel = join(root, 'ggml-small.bin');
+    const piperModel = join(root, 'voice.onnx');
+    const whisper = await executable(root, 'whisper-cli', 'exit 0\\n');
+    const python = await executable(root, 'python-voice', 'if [ "$1" = "-c" ]; then exit 0; fi\\nexit 0\\n');
+    await writeFile(whisperModel, 'whisper model');
+    await writeFile(piperModel, 'piper model');
+    const service = new LocalVoiceService({
+      whisperCommand: whisper,
+      whisperModelPath: whisperModel,
+      ffmpegCommand: join(root, 'missing-ffmpeg'),
+      piperCommand: python,
+      piperModelPath: piperModel,
+    });
+    const status = await service.inspectCapabilities();
+    assert.equal(status.transcription, false);
+    assert.equal(status.synthesis, false);
+    assert.equal(status.checks.ffmpegExecutable, false);
+    assert.equal(status.checks.piperConfig, false);
+    assert.ok(status.issues.length >= 2);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
