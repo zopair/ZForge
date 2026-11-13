@@ -42,4 +42,4 @@ A task is complete only when the requested artifact exists and independent verif
 
 
 ## Current implementation boundary
-The repository currently has a local Ollama adapter, a Chief Agent draft-planning orchestrator, and Agent Architect manifest/activation validation. These components do not constitute a live autonomous runtime: there is no persistent memory provider, authenticated task gateway, isolated worker, GitHub write broker, scheduler, or Black Phantom live connection. The Chief Agent returns a draft plan only and cannot execute it.
+The repository currently has a local Ollama adapter, a Chief Agent draft-planning orchestrator, Agent Architect manifest/activation validation, a bounded local memory/prompt provider, and an approval-gated GitHub task-branch/file writer. These components do not constitute a live autonomous runtime: there is no persistent memory provider, authenticated task gateway, isolated worker, GitHub write broker, scheduler, or Black Phantom live connection. The Chief Agent returns a draft plan only and cannot execute it.
