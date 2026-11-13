@@ -135,7 +135,7 @@ export class ConversationalCore {
       planning = await this.chiefAgent.planTask({
         request: cleanMessage,
         capabilities: [],
-        keywords: [...new Set(cleanMessage.match(/[\\p{L}\\p{N}._+-]{3,}/gu) ?? [])].slice(0, 12),
+        keywords: [...new Set(cleanMessage.match(/[\p{L}\p{N}._+-]{3,}/gu) ?? [])].slice(0, 12),
         availableAgents,
       });
     } catch (error) {
