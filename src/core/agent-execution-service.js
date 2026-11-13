@@ -22,7 +22,7 @@ export class AgentExecutionService {
     if (!runtime || typeof runtime.createWorkspace !== 'function' || typeof runtime.execute !== 'function') throw new TypeError('a compatible workspace execution runtime is required');
     if (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 64) throw new RangeError('maxSteps must be between 1 and 64');
     this.modelAdapter = modelAdapter;
-    if (workspaceManager && (typeof workspaceManager.createWorkspace !== 'function' || typeof workspaceManager.startExperiment !== 'function' || typeof workspaceManager.finishExperiment !== 'function')) throw new TypeError('workspaceManager must implement the AgentWorkspaceManager contract');
+    if (workspaceManager && (typeof workspaceManager.createWorkspace !== 'function' || typeof workspaceManager.startExperiment !== 'function' || typeof workspaceManager.finishExperiment !== 'function' || typeof workspaceManager.getWorkspace !== 'function' || typeof workspaceManager.addObservation !== 'function' || typeof workspaceManager.setWorkspaceStatus !== 'function')) throw new TypeError('workspaceManager must implement the AgentWorkspaceManager contract');
     this.runtime = runtime;
     this.workspaceManager = workspaceManager;
     this.maxSteps = maxSteps;
