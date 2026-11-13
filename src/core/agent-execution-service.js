@@ -164,7 +164,7 @@ export class AgentExecutionService {
         } catch (error) {
           result = { ok: false, error: error.message };
         }
-        if (call.name === 'run_command' && result?.ok !== true && this.selfHealingEngine) {
+        if (call.name !== 'finish_task' && result?.ok !== true && this.selfHealingEngine) {
           try {
             const recovery = await this.selfHealingEngine.investigate({
               request,
