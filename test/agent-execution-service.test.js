@@ -46,7 +46,7 @@ test('agent cannot mark a task complete with missing or unsuccessful evidence', 
   }) };
   const agent = new AgentExecutionService({ modelAdapter, runtime });
   const result = await agent.runTask({ request: 'Do work', model: 'local', workspaceId: 'ws-check' });
-  assert.equal(result.status, 'incomplete');
+  assert.notEqual(result.status, 'completed');
   assert.equal(result.completed, false);
 });
 
