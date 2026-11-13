@@ -87,6 +87,7 @@ try {
       await page.locator('#github-token').fill('github_pat_browser_test_token');
       await page.locator('#github-connect').click();
       await page.getByText(/تم ربط @zopair/).waitFor({ timeout: 5000 });
+      assert.equal(await page.locator('#github-settings').evaluate(element => element.open), false, name + ': GitHub settings should collapse after successful connection to restore the chat viewport');
       await page.locator('#chat-input').fill('Build a sample PWA');
       await page.locator('#send-button').click();
       await page.getByText('Direct cloud chat reply verified.').waitFor({ timeout: 5000 });
