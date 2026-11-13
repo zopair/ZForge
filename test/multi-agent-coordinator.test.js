@@ -82,3 +82,14 @@ test('coordinator refuses inactive specialists and does not bypass profile permi
   assert.equal(result.tasks[0].status, 'failed');
   assert.equal(calls.length, 0);
 });
+
+test('coordinator uses the configured local model when a task does not override it', async () => {
+  let model;
+  const coordinator = new MultiAgentCoordinator({
+    agentFactory: { getExecutionProfile: async () => ({ allowedTools: ['read_file', 'finish_task'], resourceLimits: {} }) },
+    agentService: { runTask: async input => { model = input.model; return { completed: true, summary: 'done' }; } },
+    defaultModel: 'qwen3:8b',
+  });
+  await coordinator.executePlan({ workspaceId: 'model-default', tasks: [{ id: 'one', agentId: 'reader', request: 'Read docs' }] });
+  assert.equal(model, 'qwen3:8b');
+});
