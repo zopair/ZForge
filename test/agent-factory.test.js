@@ -84,3 +84,14 @@ test('local agent registry persists proposed and active agent records', async ()
     assert.equal(reopened.list().length, 1);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('factory can roll back an active agent and prevents further execution', async () => {
+  const factory = new AgentFactory({ registry: new Map() });
+  await factory.proposeAgent({ manifest: manifest(), authorId: 'author' });
+  for (const testName of requiredTests) await factory.recordTestResult({ agentId: 'builder-agent', testName, status: 'passed', evidence: 'passed', recordedBy: 'ci' });
+  await factory.recordReview({ agentId: 'builder-agent', reviewerId: 'reviewer', licenseVerified: true, securityReviewed: true, permissionsReviewed: true });
+  await factory.activate({ agentId: 'builder-agent', approved: true, approverId: 'owner' });
+  const retired = await factory.deactivateAgent({ agentId: 'builder-agent', approved: true, approverId: 'operator', reason: 'Regression detected' });
+  assert.equal(retired.status, 'RETIRED');
+  await assert.rejects(() => factory.getExecutionProfile('builder-agent'), /independently activated/i);
+});
