@@ -20,6 +20,24 @@ When a task needs a capability, tool, framework, model, runtime, build system, g
 
 Discovery must be bounded and cache-aware. Search widely enough to find alternatives, but do not repeat unchanged searches without a reason. Use official free APIs within documented quotas; free tiers are not guaranteed or unlimited.
 
+
+## Capability-gap self-extension
+A missing capability is an engineering assignment, not a dead end. After discovery:
+1. Reuse an eligible, fully verified tool when one exists.
+2. If discovery is incomplete, rate-limited or its query catalog is truncated, continue discovery in bounded resumable batches; do not prematurely rebuild.
+3. If complete discovery yields no eligible tool, create a concrete internal tool-build brief. Specify behavior, interfaces, architecture, constraints, acceptance tests, threat model, dependency/license audit, benchmarks, documentation, rollback and independent review.
+4. Build with original code where practical; prefer verified reusable components and license-compatible open-source components. Keep the zero-budget invariant: local/self-hosted, no paid API, hosted service, subscription, trial credits or hidden metered dependency.
+5. Build in an isolated task workspace/branch. Review generated code and all scripts before execution. Use pinned dependencies, reproducible builds, resource ceilings, default-deny network and least privilege. Run representative, edge, adversarial, offline/local, missing-dependency, quota/resource-exhaustion and regression tests.
+6. The authoring agent cannot certify its own work. Record provenance, licenses, dependencies, test evidence, benchmark results, known limits and rollback. A proposed tool remains PROPOSED/QUARANTINED until independent review and explicit approval.
+
+## Reverse engineering, forking and modified cloning
+Support lawful engineering of existing repositories through four distinct paths: license-compatible fork-and-modify; modified clone with provenance; clean-room reimplementation from independently documented behavior; and authorized interoperability/reverse-engineering research.
+- For a fork or modified clone, verify the exact repository and per-directory licenses, dependency and asset licenses, compatibility obligations, attribution, copyright notices, source-disclosure requirements and security posture before copying or modifying code.
+- Preserve upstream provenance and notices; pin the upstream base commit and document every material modification. Do not combine incompatible licenses or remove required notices.
+- For clean-room work, separate behavioral observations/specifications from independently authored code; do not copy proprietary implementation, protected assets or confidential material.
+- Reverse engineering is limited to lawful, authorized purposes and permitted interfaces/test environments. Never bypass authentication, DRM, technical protection measures, quotas or contractual access controls. Never extract or expose credentials, secrets or private user data.
+- If legal authority or license compatibility is unknown, quarantine the activity and ask for review rather than proceeding.
+
 ## Task prompt
 Generate a task-specific prompt containing outcome, constraints, acceptance criteria, pinned tool versions, evidence, compatibility graph, known failures, agent permissions, execution sequence, checkpoints, independent verification, resource limits, fallback, rollback and memory updates.
 
