@@ -36,10 +36,10 @@ let voiceChunks=[];
 
 function setConnectionState(value){
   connected=value;
-  statusNode.textContent=value?"المحرك متصل":"المحرك غير متصل";
-  runtimeBadge.textContent=value?"RUNTIME ONLINE":"RUNTIME OFFLINE";
-  chiefStatus.textContent=value?"النموذج المحلي متصل":"بانتظار الاتصال";
-  executionStatus.textContent=value?"جاهز لتنفيذ المهام":"بانتظار الاتصال";
+  statusNode.textContent=value?"المحرك متصل":"العامل السحابي عند الطلب";
+  runtimeBadge.textContent=value?"RUNTIME ONLINE":"CLOUD WORKER READY";
+  chiefStatus.textContent=value?"النموذج المحلي متصل":"عامل سحابي عند الطلب";
+  executionStatus.textContent=value?"جاهز لتنفيذ المهام":"تشغيل سحابي مؤقت";
   androidBuildButton.disabled=!(value&&latestTaskId);
   webBuildButton.disabled=!(value&&latestTaskId);
   webVerifyButton.disabled=!(value&&latestTaskId&&webBuildReady);
