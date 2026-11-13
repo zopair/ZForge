@@ -35,7 +35,7 @@ export class GitHubRepositoryWriter{
   }
   async putFile({branch,path,content,message,approval}={}){
     this.assertTaskBranch(branch);
-    if(typeof path!=='string'||!path.trim()||path.startsWith('/')||path.split('/').some(part=>!part||part==='..')||path.includes('\\'))throw new TypeError('repository path is invalid');
+    if(typeof path!=='string'||!path.trim()||path.startsWith('/')||path.split('/').some(part=>!part||part==='..'||part==='.')||path.includes('\\'))throw new TypeError('repository path is invalid');
     if(typeof content!=='string'||typeof message!=='string'||!message.trim())throw new TypeError('content and commit message are required');
     if(Buffer.byteLength(content,'utf8')>this.maxFileBytes)throw new RangeError('file content exceeds configured write limit');
     const action={type:'write-file',repository:this.repository,branch,path};
