@@ -57,7 +57,7 @@ test('authenticated conversational API preserves session context and only drafts
     assert.equal(gateway.store.list().length, 1);
     const rejectedApproval = await fetch(base + '/api/tasks/' + secondResult.taskId + '/agent-run', {
       method: 'POST', headers,
-      body: JSON.stringify({ confirmExecution: true, approvedPlan, approvedPlanSha256: '0'.repeat(64) }),
+      body: JSON.stringify({ confirmExecution: true, approvedPlan: approvedPlan + ' ', approvedPlanSha256: createHash('sha256').update(approvedPlan).digest('hex') }),
     });
     assert.equal(rejectedApproval.status, 409);
     assert.equal(gateway.store.get(secondResult.taskId).status, 'queued');

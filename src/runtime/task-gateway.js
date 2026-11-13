@@ -412,7 +412,7 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
           if (result.mode === 'plan' && result.requiresApproval === true && result.executionStarted === false) {
             const task = await store.create({
               request: message,
-              metadata: { mode: 'conversational-plan', conversationId, approvedPlanSha256: result.approvedPlanSha256 },
+              metadata: { mode: 'conversational-plan', conversationId, approvedPlan: result.approvedPlan, approvedPlanSha256: result.approvedPlanSha256 },
             });
             taskId = task.id;
           }
@@ -502,7 +502,7 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
         if (!task) return send(response, 404, { error: 'task_not_found' });
         const body = await readJson(request, maxBodyBytes);
         if (body.confirmExecution !== true) return send(response, 409, { error: 'explicit_execution_confirmation_required' });
-        if (task.metadata?.mode === 'conversational-plan' && task.metadata.approvedPlanSha256 !== body.approvedPlanSha256) {
+        if (task.metadata?.mode === 'conversational-plan' && (task.metadata.approvedPlanSha256 !== body.approvedPlanSha256 || task.metadata.approvedPlan !== body.approvedPlan)) {
           return send(response, 409, { error: 'approved_plan_does_not_match_conversation_snapshot' });
         }
         let planning = null;
