@@ -18,6 +18,7 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - [Universal Open-Source Discovery Engine](docs/UNIVERSAL_DISCOVERY_ENGINE.md)
 - [Secure Execution Runtime Contract](docs/EXECUTION_RUNTIME_CONTRACT.md)
 - [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
+- [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
 - [Black Phantom UI](docs/BLACK_PHANTOM_UI.md)
 - [Tool evaluation protocol](docs/TOOL_EVALUATION.md)
 - [Agent operating system](docs/AGENT_OPERATING_SYSTEM.md)
@@ -28,6 +29,9 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - Read-only GitHub search adapter with official rate-limit stop: src/adapters/github-discovery.js
 - Repository metadata/license/manifest inspector: src/adapters/github-repository-inspector.js
 - Official release metadata adapter and review-only update monitor: src/adapters/github-release-monitor.js and src/core/release-monitor.js
+- Local-only Ollama model adapter: src/adapters/ollama-model-adapter.js
+- Chief Agent draft planner: src/core/chief-agent.js
+- Agent manifest and activation gates: src/core/agent-architect.js
 - Local-only Ollama model adapter: src/adapters/ollama-model-adapter.js
 - Chief Agent draft planner: src/core/chief-agent.js
 - Agent manifest and activation gates: src/core/agent-architect.js
