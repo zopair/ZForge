@@ -51,8 +51,11 @@ export class LocalExecutionRuntime {
     const workspacePath = this.#workspacePath(workspaceId);
     const workspaceInfo = await lstat(workspacePath);
     if (workspaceInfo.isSymbolicLink() || !workspaceInfo.isDirectory()) throw new Error('workspace is unavailable');
-    const workingDirectory = resolve(workspacePath, cwd);
-    if (workingDirectory !== workspacePath && !workingDirectory.startsWith(workspacePath + sep)) throw new TypeError('execution cwd escapes workspace');
+    const workspaceRealPath = await realpath(workspacePath);
+    const workingDirectory = resolve(workspaceRealPath, cwd);
+    if (workingDirectory !== workspaceRealPath && !workingDirectory.startsWith(workspaceRealPath + sep)) throw new TypeError('execution cwd escapes workspace');
+    const realWorkingDirectory = await realpath(workingDirectory);
+    if (realWorkingDirectory !== workspaceRealPath && !realWorkingDirectory.startsWith(workspaceRealPath + sep)) throw new TypeError('execution cwd resolves outside workspace');
     if (typeof env !== 'object' || env === null || Array.isArray(env) || Object.entries(env).some(([key, value]) => !/^[A-Za-z_][A-Za-z0-9_]*$/.test(key) || typeof value !== 'string')) throw new TypeError('env must be a string-valued environment object');
     const safeEnv = { PATH: process.env.PATH ?? '', HOME: workspacePath, TMPDIR: join(workspacePath, '.tmp'), LANG: 'C.UTF-8', ...env };
     return new Promise((resolveResult, reject) => {
