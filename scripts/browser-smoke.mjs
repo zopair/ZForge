@@ -6,6 +6,7 @@ import { chromium, firefox, webkit } from 'playwright';
 import { WebBrowserVerificationService } from '../src/runtime/web-browser-verification-service.js';
 
 const root = resolve('.');
+let progressPolls = 0;
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
 const server = createServer(async (request, response) => {
   const parsed = new URL(request.url, 'http://127.0.0.1');
@@ -22,9 +23,9 @@ const server = createServer(async (request, response) => {
     if (pathname === '/api/voice/capabilities') return json({ capabilities: { transcription: true, synthesis: true, localOnly: true } });
     if (pathname === '/api/voice/transcribe') return json({ text: 'recognized local speech', engine: 'whisper.cpp', local: true });
     if (pathname === '/api/voice/synthesize') { response.writeHead(200, { 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' }); return response.end(Buffer.from('RIFF0000WAVEdata')); }
-    if (pathname.endsWith('/events')) return json({ taskId: '12345678-1234-4234-8234-123456789012', status: 'succeeded', cursor: 4, events: [{ sequence: 2, type: 'agent.task.started', details: { taskId: 'research', agentId: 'researcher' } }, { sequence: 3, type: 'agent.step.started', details: { step: 1 } }, { sequence: 4, type: 'agent.task.completed', details: { taskId: 'research', agentId: 'researcher' } }] });
+    if (pathname.endsWith('/events')) { progressPolls += 1; if (progressPolls === 1) return json({ taskId: '12345678-1234-4234-8234-123456789012', status: 'running', cursor: 1, events: [] }); return json({ taskId: '12345678-1234-4234-8234-123456789012', status: 'succeeded', cursor: 4, events: [{ sequence: 2, type: 'agent.task.started', details: { taskId: 'research', agentId: 'researcher' } }, { sequence: 3, type: 'agent.step.started', details: { step: 1 } }, { sequence: 4, type: 'agent.task.completed', details: { taskId: 'research', agentId: 'researcher' } }] }); }
     if (pathname === '/api/tasks' && request.method === 'POST') return json({ id: '12345678-1234-4234-8234-123456789012', status: 'queued' }, 201);
-    if (pathname.endsWith('/agent-run')) return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { completed: true, summary: 'Browser smoke task verified', steps: 2, evidence: [] } });
+    if (pathname.endsWith('/agent-run')) { await new Promise(resolve => setTimeout(resolve, 250)); return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { completed: true, summary: 'Browser smoke task verified', steps: 2, evidence: [] } }); }
     if (pathname.endsWith('/web-build')) return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { status: 'succeeded', manager: 'npm', artifacts: [{ id: 'artifact-web-1', filename: 'index.html', sizeBytes: 512 }] } });
     if (pathname.endsWith('/web-verify')) return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { status: 'passed', summary: { total: 3, passed: 3, failed: 0 }, browsers: [{ name: 'chromium', status: 'passed', httpStatus: 200, title: 'Generated app' }, { name: 'firefox', status: 'passed', httpStatus: 200, title: 'Generated app' }, { name: 'webkit', status: 'passed', httpStatus: 200, title: 'Generated app' }] } });
     if (pathname.endsWith('/android-build')) return json({ status: 'succeeded', result: { status: 'succeeded', artifacts: [] } });
