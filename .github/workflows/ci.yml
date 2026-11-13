@@ -1,7 +1,7 @@
 name: ZForge Quality Gate
 on:
   push:
-    branches: [main, feat/persistent-task-gateway-runtime, feat/container-artifact-pipeline, feat/agent-factory-registry, feat/multi-agent-orchestration, feat/android-build-worker, feat/persistent-experiment-memory, feat/web-build-worker]
+    branches: [main, feat/persistent-task-gateway-runtime, feat/container-artifact-pipeline, feat/agent-factory-registry, feat/multi-agent-orchestration, feat/android-build-worker, feat/persistent-experiment-memory, feat/web-build-worker, feat/browser-qa]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -16,3 +16,17 @@ jobs:
           node-version: 24
       - name: Run dependency-free unit tests
         run: npm test
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Install pinned Playwright runner
+        run: npm install --no-save --package-lock=false playwright@1.56.1
+      - name: Install Chromium, Firefox and WebKit
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Run BLACK VANTA browser smoke tests
+        run: node test/browser-smoke.mjs
