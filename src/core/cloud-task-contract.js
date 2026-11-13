@@ -28,10 +28,12 @@ export function getCloudTaskPhase({ action, issue, comment } = {}) {
     throw new Error('issue is not a cloud task');
   }
   if (action === 'opened') return { phase: 'plan' };
-  if (action === 'created' && /^\/approve-plan [a-f0-9]{64}$/.test(comment?.body?.trim() ?? '')) {
-    if (comment.user?.login !== OWNER) throw new Error('cloud task approval is not authorized');
+  if (action === 'created') {
+    if (comment?.user?.login !== OWNER) throw new Error('cloud task approval is not authorized');
+    if (!/^\/approve-plan [a-f0-9]{64}$/.test(comment?.body?.trim() ?? '')) {
+      throw new Error('comment is not an approval command');
+    }
     return { phase: 'execute' };
   }
-  if (action === 'created') throw new Error('comment is not an approval command');
   throw new Error('unsupported cloud task event');
 }
