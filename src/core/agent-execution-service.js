@@ -35,6 +35,11 @@ export class AgentExecutionService {
     ].join('\n');
   }
 
+  async listModels() {
+    if (typeof this.modelAdapter.listModels !== 'function') return [];
+    return this.modelAdapter.listModels();
+  }
+
   async runTask({ request, model, workspaceId, plan = null } = {}) {
     if (typeof request !== 'string' || !request.trim()) throw new TypeError('task request is required');
     if (typeof model !== 'string' || !model.trim()) throw new TypeError('a local model name is required');
