@@ -127,14 +127,32 @@ export class TaskStore {
   }
 }
 
-export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, defaultModel = 'qwen3:8b' } = {}) {
+export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
   if (typeof token !== 'string' || token.length < 16) throw new TypeError('a gateway bearer token of at least 16 characters is required');
   if (!Number.isInteger(maxBodyBytes) || maxBodyBytes < 1024) throw new RangeError('maxBodyBytes must be at least 1024');
+  if (!Array.isArray(allowedOrigins) || allowedOrigins.some(origin => typeof origin !== 'string' || !/^https?:\\/\\//.test(origin))) throw new TypeError('allowedOrigins must be an array of HTTP(S) origins');
   const store = new TaskStore({ dataDir, clock });
   const ready = store.initialize();
   const server = createServer(async (request, response) => {
     try {
       await ready;
+      const origin = request.headers.origin;
+      const originAllowed = Boolean(origin && allowedOrigins.includes(origin));
+      if (originAllowed) {
+        response.setHeader('Access-Control-Allow-Origin', origin);
+        response.setHeader('Vary', 'Origin');
+      }
+      if (request.method === 'OPTIONS') {
+        if (!originAllowed) return send(response, 403, { error: 'origin_not_allowed' });
+        response.writeHead(204, {
+          'Access-Control-Allow-Origin': origin,
+          'Access-Control-Allow-Methods': 'GET,POST,PATCH,OPTIONS',
+          'Access-Control-Allow-Headers': 'Authorization,Content-Type',
+          'Access-Control-Max-Age': '600',
+          'Vary': 'Origin',
+        });
+        return response.end();
+      }
       const url = new URL(request.url, 'http://127.0.0.1');
       if (request.method === 'GET' && url.pathname === '/api/health') {
         return send(response, 200, { status: 'ok', service: 'zforge-task-gateway', version: 1 });
