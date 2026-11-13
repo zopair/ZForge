@@ -106,7 +106,7 @@ test('local voice readiness checks executables, model files and Piper sidecar co
     });
     const status = await service.inspectCapabilities();
     assert.equal(status.transcription, true);
-    assert.equal(status.synthesis, true);
+    assert.equal(status.synthesis, true, JSON.stringify(status));
     assert.equal(status.localOnly, true);
     assert.equal(status.checks.ffmpegExecutable, true);
     assert.equal(status.checks.piperModule, true);
