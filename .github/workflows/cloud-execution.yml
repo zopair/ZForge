@@ -16,7 +16,7 @@ jobs:
   execute:
     if: github.event.issue.user.login == 'zopair' && startsWith(github.event.issue.title, '[ZForge Cloud Task]')
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 50
     steps:
       - name: Checkout ZForge
         uses: actions/checkout@v5
@@ -28,6 +28,13 @@ jobs:
 
       - name: Validate ZForge and cloud task contract
         run: npm test
+
+      - name: Prepare the isolated Node and Android worker image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker info
+          docker build --pull -f .github/cloud-worker/Dockerfile -t zforge-cloud-worker:latest .github/cloud-worker
 
       - name: Install Ollama on the ephemeral worker
         shell: bash
