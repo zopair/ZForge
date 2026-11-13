@@ -9,7 +9,8 @@ const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 const server = createServer(async (request, response) => {
   try {
     const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
-    const target = resolve(root, '.' + pathname);
+    const relativePath = pathname === '/' ? '/index.html' : pathname;
+    const target = resolve(root, '.' + relativePath);
     if (target !== root && !target.startsWith(root + sep)) throw new Error('path outside app root');
     const content = await readFile(target);
     response.writeHead(200, { 'Content-Type': mime[extname(target)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
@@ -21,6 +22,10 @@ const server = createServer(async (request, response) => {
 });
 await new Promise(resolveListen => server.listen(0, '127.0.0.1', resolveListen));
 const origin = 'http://127.0.0.1:' + server.address().port;
+const landing = await fetch(origin);
+const landingHtml = await landing.text();
+assert.equal(landing.status, 200, 'static app should return HTTP 200: ' + landingHtml.slice(0, 200));
+assert.ok(landingHtml.includes('<title>BLACK VANTA | ZForge</title>'), 'static app response should contain the BLACK VANTA title');
 
 try {
   for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) {
@@ -43,7 +48,8 @@ try {
         if (url.pathname.endsWith('/android-build')) return route.fulfill({ json: { status: 'succeeded', result: { status: 'succeeded', artifacts: [] } } });
         return route.fulfill({ status: 404, json: { error: 'not_found' } });
       });
-      await page.goto(origin, { waitUntil: 'networkidle' });
+      const navigation = await page.goto(origin, { waitUntil: 'networkidle' });
+      assert.equal(navigation?.status(), 200, name + ': app document should return HTTP 200');
       assert.match(await page.title(), /BLACK VANTA/);
       assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
       await page.locator('#runtime-settings summary').click();
