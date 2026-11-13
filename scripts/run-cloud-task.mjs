@@ -99,12 +99,34 @@ try {
     method: 'POST',
     body: { request },
   });
+  taskWorkspacePath = join(workspaceDir, task.workspaceId);
+  await mkdir(taskWorkspacePath, { recursive: true });
+  await cp(process.cwd(), taskWorkspacePath, {
+    recursive: true,
+    filter: async source => {
+      const relativePath = relative(process.cwd(), source);
+      if (relativePath) {
+        const segments = relativePath.split(sep);
+        if (segments.some(segment => ['.git', 'node_modules', '.zforge-data', '.zforge-workspaces', '.zforge-artifacts', 'coverage', 'test-results', 'playwright-report'].includes(segment))) return false;
+      }
+      const info = await lstat(source);
+      return !info.isSymbolicLink();
+    },
+  });
   const completed = await api(baseUrl, token, '/api/tasks/' + encodeURIComponent(task.id) + '/agent-run', {
     method: 'POST',
     body: { model, confirmExecution: true },
     timeoutMs: 24 * 60 * 1000,
   });
   const result = completed.result ?? {};
+  let workspaceArchive = null;
+  try {
+    workspaceArchive = join(outputDir, 'workspace-snapshot.tar.gz');
+    execFileSync('tar', ['--exclude=.git', '--exclude=node_modules', '--exclude=.tmp', '-czf', workspaceArchive, '-C', taskWorkspacePath, '.'], { stdio: 'pipe', timeout: 120000 });
+  } catch (archiveError) {
+    workspaceArchive = null;
+    logs = (logs + '\\nWorkspace archive failed: ' + archiveError.message).slice(-12000);
+  }
   const report = {
     status: completed.status,
     taskId: task.id,
@@ -129,6 +151,13 @@ try {
   await saveReport(report);
   if (completed.status !== 'succeeded' || result.completed !== true) process.exitCode = 1;
 } catch (error) {
+  let workspaceArchive = null;
+  if (taskWorkspacePath) {
+    try {
+      workspaceArchive = join(outputDir, 'workspace-snapshot.tar.gz');
+      execFileSync('tar', ['--exclude=.git', '--exclude=node_modules', '--exclude=.tmp', '-czf', workspaceArchive, '-C', taskWorkspacePath, '.'], { stdio: 'pipe', timeout: 120000 });
+    } catch {}
+  }
   await saveReport({
     status: 'failed',
     summary: '',
