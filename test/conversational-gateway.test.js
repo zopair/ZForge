@@ -38,6 +38,7 @@ test('authenticated conversational API preserves session context and only drafts
 
     const first = await fetch(base + '/api/conversation', { method: 'POST', headers, body: JSON.stringify({ message: 'هل يمكننا مناقشة الفكرة؟' }) });
     const firstResult = await first.json();
+    assert.equal(first.status, 200, JSON.stringify(firstResult));
     assert.equal(firstResult.mode, 'conversation');
     assert.equal(firstResult.executionStarted, false);
     assert.ok(firstResult.conversationId);
