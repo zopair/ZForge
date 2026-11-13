@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LocalExecutionRuntime } from '../src/runtime/local-execution-runtime.js';
@@ -11,12 +11,11 @@ test('local runtime exposes a real workspace path and exact binary file bytes', 
   try {
     const runtime = await new LocalExecutionRuntime({ rootDir: root }).initialize();
     await runtime.createWorkspace({ id: 'ws-bin' });
-    const written = await runtime.writeFile({ workspaceId: 'ws-bin', path: 'release/app.bin', content: 'binary-placeholder' });
     const path = await runtime.getWorkspacePath({ workspaceId: 'ws-bin' });
-    const buffer = await runtime.readBuffer({ workspaceId: 'ws-bin', path: 'release/app.bin' });
+    await writeFile(join(path, 'app.bin'), Buffer.from([0, 1, 2, 127, 128, 254, 255]));
+    const buffer = await runtime.readBuffer({ workspaceId: 'ws-bin', path: 'app.bin' });
     assert.equal(path, join(root, 'ws-bin'));
-    assert.equal(buffer.toString('utf8'), 'binary-placeholder');
-    assert.ok(written.bytes > 0);
+    assert.deepEqual(buffer, Buffer.from([0, 1, 2, 127, 128, 254, 255]));
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
