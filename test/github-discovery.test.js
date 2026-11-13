@@ -28,3 +28,12 @@ test('GitHub discovery validates query and bounded result limits', async () => {
   await assert.rejects(()=>client.searchRepositories(''),/query/);
   await assert.rejects(()=>client.searchRepositories('web',{maxResults:501}),/maxResults/);
 });
+
+test('GitHub discovery can enumerate public repositories in a vendor organization',async()=>{
+  let requested;
+  const client=new GitHubDiscoveryClient({fetchImpl:async url=>{requested=String(url);return{ok:true,status:200,json:async()=>[{id:11,full_name:'google/project',name:'project',html_url:'https://github.com/google/project',archived:false,license:{spdx_id:'Apache-2.0',name:'Apache License 2.0'}}]};}});
+  const result=await client.listOrganizationRepositories('google');
+  assert.equal(result.results[0].fullName,'google/project');
+  assert.match(requested,/orgs\/google\/repos/);
+  assert.match(requested,/type=public/);
+});
