@@ -99,7 +99,7 @@ export const AGENT_MASTER_LIBRARY_CATEGORIES = Object.freeze(Object.keys(groups)
 
 export const AGENT_MASTER_LIBRARY_SEEDS = Object.freeze(
   Object.entries(groups).flatMap(([category, group]) =>
-    group.repositories.trim().split(/\\s+/).filter(Boolean).map(fullName => Object.freeze({
+    group.repositories.trim().split(/\s+/).filter(Boolean).map(fullName => Object.freeze({
       fullName,
       category,
       projectType: group.projectType,
