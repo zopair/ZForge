@@ -3,15 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#050505">
-  <meta name="description" content="ZForge Black Phantom — واجهة التحكم الصوتية لمنظومة الهندسة المستقلة.">
+  <meta name="theme-color" content="#030303">
+  <meta name="description" content="BLACK VANTA — واجهة ZForge الملكية للتحكم في منظومة الهندسة المستقلة.">
   <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./assets/app.css">
-  <title>Black Phantom | ZForge</title>
+  <title>BLACK VANTA | ZForge</title>
 </head>
 <body>
-  <div class="ambient ambient-one" aria-hidden="true"></div>
-  <div class="ambient ambient-two" aria-hidden="true"></div>
   <main class="app-shell">
     <header class="topbar">
       <a class="brand" href="./" aria-label="ZForge">
@@ -19,71 +18,55 @@
         <span class="brand-name">ZFORGE</span>
       </a>
       <div class="topbar-meta">
-        <span class="mode-label">BLACK PHANTOM</span>
-        <span class="connection-state"><i></i><span>النواة غير متصلة</span></span>
+        <span class="mode-label">BLACK VANTA</span>
+        <span class="connection-state"><i></i><span id="runtime-status">وضع العرض المحلي</span></span>
       </div>
     </header>
 
     <section class="workspace" aria-labelledby="assistant-title">
       <div class="assistant-heading">
-        <p class="eyebrow">AUTONOMOUS ENGINEERING INTERFACE</p>
-        <h1 id="assistant-title">BLACK <span>PHANTOM</span></h1>
-        <p class="subheading">واجهة واحدة. عقل هندسي مستقل. تنفيذ قائم على الدليل.</p>
+        <p class="eyebrow">ZUBAIR AUTONOMOUS ENGINEERING FORGE</p>
+        <h1 id="assistant-title">BLACK <span>VANTA</span></h1>
+        <p class="subheading">مساحة واحدة. إمكانيات بلا حدود.</p>
       </div>
 
-      <section class="voice-stage" aria-label="واجهة المساعد الصوتية">
-        <div class="orbit orbit-outer" aria-hidden="true"></div>
-        <div class="orbit orbit-middle" aria-hidden="true"></div>
-        <div class="orbit orbit-inner" aria-hidden="true"></div>
-        <div class="voice-core" aria-hidden="true">
-          <div class="core-glow"></div>
-          <div class="core-mark">Z</div>
-          <div class="sound-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-        </div>
-        <div class="voice-caption">
-          <span class="pulse-dot"></span>
-          <span>بانتظار تفعيل محرك الوكلاء</span>
-        </div>
-      </section>
-
-      <section class="chat-panel" aria-label="محادثة Black Phantom">
+      <section class="chat-panel" aria-label="محادثة Black Vanta">
         <div class="chat-header">
           <div>
-            <p class="eyebrow">SECURE CONTROL CHANNEL</p>
-            <h2>مركز المحادثة</h2>
+            <p class="eyebrow">PRIVATE CONTROL INTERFACE</p>
+            <h2>مركز القيادة</h2>
           </div>
-          <span class="runtime-badge">واجهة تجريبية</span>
+          <span class="runtime-badge">LOCAL PREVIEW</span>
         </div>
-        <div class="conversation" aria-live="polite">
+
+        <div class="conversation" id="conversation" aria-live="polite" aria-relevant="additions">
           <div class="message assistant-message">
-            <span class="message-avatar">Z</span>
+            <span class="message-avatar" aria-hidden="true">Z</span>
             <div class="message-content">
-              <p>Black Phantom جاهز من ناحية الواجهة.</p>
-              <p class="muted">الاتصال برئيس الوكلاء ومحرك الصوت والتنفيذ لم يُفعّل بعد. لن يتم إرسال رسائلك أو تسجيل صوتك قبل تجهيز بوابة التشغيل الآمنة.</p>
+              <p>مرحباً بك في BLACK VANTA.</p>
+              <p class="muted">واجهة المحادثة تعمل محلياً. اتصال الذكاء الاصطناعي ومحركات التنفيذ لم يُفعّل بعد، لذلك لن أدّعي تنفيذ مهام غير متصلة.</p>
             </div>
           </div>
         </div>
-        <form class="composer" aria-label="إرسال رسالة">
-          <button class="voice-button" type="button" disabled aria-label="الصوت غير متاح حالياً" title="يتطلب محرك صوت محلي مفتوح المصدر">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v3m-4 0h8"/></svg>
-          </button>
-          <input type="text" disabled placeholder="سيتم تفعيل المحادثة بعد توصيل النواة الآمنة" aria-label="اكتب رسالتك">
-          <button class="send-button" type="submit" disabled aria-label="إرسال">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14-7-4 14-3-6-7-1Z"/><path d="m12 13 7-8"/></svg>
+
+        <form class="composer" id="chat-form" aria-label="إرسال رسالة">
+          <input id="chat-input" name="message" type="text" autocomplete="off" maxlength="4000" placeholder="اكتب ما تريد تنفيذه..." aria-label="اكتب رسالتك">
+          <button class="send-button" id="send-button" type="submit" aria-label="إرسال الرسالة" title="إرسال">
+            <svg class="send-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
           </button>
         </form>
-        <p class="security-note"><span>◆</span> لا توجد مفاتيح API أو صلاحيات مستودع داخل المتصفح.</p>
+        <p class="security-note"><span>◆</span> وضع العرض المحلي — لا يتم إرسال بياناتك إلى أي خادم.</p>
       </section>
 
-      <section class="system-strip" aria-label="مكونات المنظومة">
+      <section class="system-strip" aria-label="حالة مكونات المنظومة">
         <div><span class="system-icon">01</span><span><b>CHIEF AGENT</b><small>غير متصل</small></span></div>
-        <div><span class="system-icon">02</span><span><b>DISCOVERY</b><small>محرك أولي داخل المستودع</small></span></div>
-        <div><span class="system-icon">03</span><span><b>EXECUTION</b><small>بانتظار بيئة آمنة</small></span></div>
+        <div><span class="system-icon">02</span><span><b>DISCOVERY</b><small>النواة البرمجية موجودة</small></span></div>
+        <div><span class="system-icon">03</span><span><b>EXECUTION</b><small>بانتظار Runtime</small></span></div>
       </section>
     </section>
 
     <footer class="footer">
-      <span>ZERO BUDGET · OPEN SOURCE ONLY · EVIDENCE FIRST</span>
+      <span>ZERO BUDGET · OPEN SOURCE · FREEDOM BY DEFAULT</span>
       <a href="https://github.com/zopair/ZForge">ZFORGE REPOSITORY ↗</a>
     </footer>
   </main>
