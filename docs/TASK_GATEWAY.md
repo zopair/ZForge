@@ -101,6 +101,7 @@ The local backend is not an isolated sandbox. The optional container backend use
 ## Data and recovery
 
 - Task records live in `ZFORGE_DATA_DIR/tasks.json`; back up this directory.
+- Agent workspaces, observations and experiment outcomes live in `ZFORGE_DATA_DIR/workspaces.json`; back up this directory alongside the task ledger.
 - Workspaces live in `ZFORGE_WORKSPACE_DIR`; each task receives a separate workspace by default.
 - Artifacts live in `ZFORGE_ARTIFACT_DIR`; each published file has a recorded SHA-256 checksum.
 - Never commit runtime data, tokens, generated artifacts or user workspaces.
