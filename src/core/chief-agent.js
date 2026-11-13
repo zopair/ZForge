@@ -35,6 +35,9 @@ export class ChiefAgent{
       discovery:{
         status:discovery.status??'UNKNOWN',
         queryCatalogComplete:discovery.queryCatalogComplete??false,
+        candidateEvaluationComplete:discovery.candidateEvaluationComplete??false,
+        candidateCount:(discovery.results??[]).length,
+        omittedCandidates:Math.max(0,(discovery.results??[]).length-this.maxCandidatesInPrompt),
         candidates:(discovery.results??[]).slice(0,this.maxCandidatesInPrompt).map(item=>({fullName:item.fullName,description:item.description,license:item.license,htmlUrl:item.htmlUrl,discoveryOnly:true})),
         rateLimit:discovery.rateLimit??null,
         remainingQueries:discovery.remainingQueries??null,
