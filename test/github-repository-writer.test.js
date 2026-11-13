@@ -29,3 +29,12 @@ test('repository writer requires approval before creating a task branch',async()
   const writer=new GitHubRepositoryWriter({repository:'org/repo',token:'server-secret',defaultBranch:'main',approvalVerifier:async()=>false,fetchImpl:async()=>{throw new Error('network must not be called');}});
   await assert.rejects(()=>writer.createTaskBranch({branch:'zforge/task-456',baseRef:'main',approval:{}}),/approval/i);
 });
+
+test('repository writer opens a draft pull request only with branch-scoped approval',async()=>{
+  let payload;
+  const writer=new GitHubRepositoryWriter({repository:'org/repo',token:'server-secret',defaultBranch:'main',approvalVerifier:async(approval,action)=>approval?.approved===true&&approval.branch===action.branch&&approval.baseRef===action.base,fetchImpl:async(url,init)=>{payload=JSON.parse(init.body);return{ok:true,status:201,json:async()=>({number:17,html_url:'https://github.com/org/repo/pull/17',state:'open',draft:true})};}});
+  const result=await writer.createPullRequest({branch:'zforge/task-123',base:'main',title:'Proposed task changes',body:'Evidence and tests',approval:{approved:true,branch:'zforge/task-123',baseRef:'main'}});
+  assert.equal(result.number,17);
+  assert.equal(payload.draft,true);
+  assert.equal(payload.head,'zforge/task-123');
+});
