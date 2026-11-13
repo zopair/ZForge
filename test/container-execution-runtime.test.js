@@ -44,3 +44,16 @@ test('container runtime rejects unsupported engines and workspace cwd traversal'
   const runtime = new ContainerExecutionRuntime({ hostRuntime });
   await assert.rejects(() => runtime.execute({ workspaceId: 'ws-1', command: 'node', cwd: '../outside' }), /escapes workspace/i);
 });
+
+test('container runtime applies per-agent CPU and memory ceilings below global defaults', async () => {
+  let invocation;
+  const hostRuntime = {
+    getWorkspacePath: async () => '/tmp/workspaces/ws-limits',
+    execute: async input => { invocation = input; return { exitCode: 0 }; },
+  };
+  const runtime = new ContainerExecutionRuntime({ hostRuntime, cpuLimit: 4, memoryLimit: '8g' });
+  await runtime.execute({ workspaceId: 'ws-limits', command: 'node', args: ['--version'], resourceLimits: { cpu: 0.5, memoryMb: 512 } });
+  const args = invocation.args;
+  assert.equal(args[args.indexOf('--cpus') + 1], '0.5');
+  assert.equal(args[args.indexOf('--memory') + 1], '512m');
+});
