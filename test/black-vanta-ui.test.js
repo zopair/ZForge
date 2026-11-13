@@ -54,6 +54,12 @@ test('BLACK VANTA connects to the authenticated task and model APIs without pers
   assert.match(js, /let runtimeToken=""/);
 });
 
+test('cloud worker remains available without an optional persistent runtime', () => {
+  assert.match(html, /id="runtime-status">العامل السحابي عند الطلب</);
+  assert.match(js, /CLOUD WORKER READY/);
+  assert.match(js, /العامل السحابي عند الطلب/);
+});
+
 test('PWA metadata uses BLACK VANTA identity', () => {
   assert.match(manifest, /BLACK VANTA/);
   assert.doesNotMatch(manifest, /Phantom/i);

@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { getCloudTaskPhase, normalizeCloudTaskRequest } from '../src/core/cloud-task-contract.js';
+import { isCapabilityQuestion } from '../src/core/conversational-core.js';
 
 const outputDir = process.env.ZFORGE_CLOUD_OUTPUT_DIR ?? join(tmpdir(), 'zforge-cloud-output');
 const resultPath = join(outputDir, 'cloud-task-result.json');
@@ -89,9 +90,11 @@ try {
   server.stderr.on('data', chunk => { logs = (logs + chunk.toString()).slice(-10000); });
   await waitForGateway(baseUrl);
 
-  const inventory = await api(baseUrl, token, '/api/models');
-  if (!Array.isArray(inventory.models) || !inventory.models.includes(model)) {
-    throw new Error('Required local model is unavailable: ' + model);
+  if (!isCapabilityQuestion(request)) {
+    const inventory = await api(baseUrl, token, '/api/models');
+    if (!Array.isArray(inventory.models) || !inventory.models.includes(model)) {
+      throw new Error('Required local model is unavailable: ' + model);
+    }
   }
 
   const result = await api(baseUrl, token, '/api/conversation', {
