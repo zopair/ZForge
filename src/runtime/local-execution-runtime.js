@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
-import { mkdir, realpath, lstat } from 'node:fs/promises';
-import { resolve, join, sep } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { mkdir, realpath, lstat, readdir, readFile as fsReadFile, writeFile as fsWriteFile, rename } from 'node:fs/promises';
+import { resolve, join, sep, dirname, relative, isAbsolute } from 'node:path';
 
 const ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/;
 
@@ -41,6 +42,75 @@ export class LocalExecutionRuntime {
     const temporary = join(path, '.tmp');
     await mkdir(temporary, { recursive: true });
     return { id, path };
+  }
+
+  async #resolveFilePath(workspaceId, filePath) {
+    if (typeof filePath !== 'string' || !filePath.trim() || isAbsolute(filePath)) throw new TypeError('file path must be a non-empty relative path');
+    const workspacePath = this.#workspacePath(workspaceId);
+    const workspaceRealPath = await realpath(workspacePath);
+    const target = resolve(workspaceRealPath, filePath);
+    if (target !== workspaceRealPath && !target.startsWith(workspaceRealPath + sep)) throw new TypeError('file path escapes workspace');
+    return { workspaceRealPath, target };
+  }
+
+  async readFile({ workspaceId, path, maxBytes = 256 * 1024 } = {}) {
+    if (!Number.isInteger(maxBytes) || maxBytes < 1) throw new RangeError('maxBytes must be positive');
+    const { workspaceRealPath, target } = await this.#resolveFilePath(workspaceId, path);
+    const info = await lstat(target);
+    if (info.isSymbolicLink() || !info.isFile()) throw new Error('workspace file must be a regular file, not a symbolic link');
+    const actual = await realpath(target);
+    if (actual !== workspaceRealPath && !actual.startsWith(workspaceRealPath + sep)) throw new TypeError('file resolves outside workspace');
+    if (info.size > maxBytes) throw new RangeError('workspace file exceeds read limit');
+    return { path: relative(workspaceRealPath, actual), content: await fsReadFile(actual, 'utf8'), bytes: info.size };
+  }
+
+  async writeFile({ workspaceId, path, content, maxBytes = 256 * 1024 } = {}) {
+    if (typeof content !== 'string') throw new TypeError('file content must be a string');
+    if (!Number.isInteger(maxBytes) || maxBytes < 1 || Buffer.byteLength(content) > maxBytes) throw new RangeError('workspace file exceeds write limit');
+    const { workspaceRealPath, target } = await this.#resolveFilePath(workspaceId, path);
+    const parent = dirname(target);
+    await mkdir(parent, { recursive: true });
+    const realParent = await realpath(parent);
+    if (realParent !== workspaceRealPath && !realParent.startsWith(workspaceRealPath + sep)) throw new TypeError('file parent resolves outside workspace');
+    try {
+      const existing = await lstat(target);
+      if (existing.isSymbolicLink() || !existing.isFile()) throw new Error('workspace target must be a regular file, not a symbolic link');
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+    const temporary = join(realParent, `.${randomUUID()}.tmp`);
+    await fsWriteFile(temporary, content, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+    await rename(temporary, target);
+    return { path: relative(workspaceRealPath, target), bytes: Buffer.byteLength(content) };
+  }
+
+  async listFiles({ workspaceId, path = '.', maxEntries = 500 } = {}) {
+    if (!Number.isInteger(maxEntries) || maxEntries < 1 || maxEntries > 5000) throw new RangeError('maxEntries must be between 1 and 5000');
+    const { workspaceRealPath, target } = await this.#resolveFilePath(workspaceId, path === '.' ? 'index.placeholder' : path).then(value => {
+      if (path === '.') return { ...value, target: value.workspaceRealPath };
+      return value;
+    });
+    const rootInfo = await lstat(target);
+    if (rootInfo.isSymbolicLink() || !rootInfo.isDirectory()) throw new Error('workspace directory must be a real directory, not a symbolic link');
+    const entries = [];
+    const visit = async (directory, prefix) => {
+      const children = await readdir(directory, { withFileTypes: true });
+      for (const child of children) {
+        if (entries.length >= maxEntries) return;
+        const childPath = join(directory, child.name);
+        if (child.isSymbolicLink()) throw new Error('workspace listing encountered a symbolic link');
+        const relativePath = prefix ? `${prefix}/${child.name}` : child.name;
+        if (child.isDirectory()) {
+          entries.push({ path: relativePath, type: 'directory' });
+          await visit(childPath, relativePath);
+        } else if (child.isFile()) {
+          const info = await lstat(childPath);
+          entries.push({ path: relativePath, type: 'file', bytes: info.size });
+        }
+      }
+    };
+    await visit(target, path === '.' ? '' : relative(workspaceRealPath, target));
+    return entries;
   }
 
   async execute({ workspaceId, command, args = [], env = {}, timeoutMs = this.defaultTimeoutMs, cwd = '.' } = {}) {
