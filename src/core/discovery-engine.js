@@ -1,20 +1,20 @@
 const DOMAINS = Object.freeze([
-  { id:'cloud-computing', label:'Cloud & Computing', terms:['cloud computing','distributed systems','containers','Kubernetes','virtualization','serverless','storage','networking','infrastructure as code','edge computing'] },
-  { id:'github-engineering', label:'GitHub Engineering', terms:['GitHub API','GitHub Actions','GitHub CLI','GitHub Apps','Octokit','runners','repository automation','release automation'] },
-  { id:'full-stack', label:'Full-Stack Engineering', terms:['full stack framework','frontend backend','REST API','GraphQL','database','authentication','ORM','realtime','file storage'] },
-  { id:'web', label:'Web Engineering', terms:['web framework','PWA','SSR','WebAssembly','WebGPU','browser automation','accessibility','web performance'] },
-  { id:'android', label:'Android Engineering', terms:['Android SDK','Kotlin','Jetpack Compose','Gradle','ADB','Android emulator','APK build','AAB','Android signing','Android testing'] },
-  { id:'ios-apple', label:'iOS & Apple Engineering', terms:['Swift','SwiftUI','FoundationDB','Apple developer tools','iOS build','iOS testing'] },
-  { id:'ai-models', label:'AI Models & Inference', terms:['open weights model','local inference','LLM runtime','multimodal model','RAG','vector database','model quantization','model evaluation'] },
-  { id:'agents', label:'Agents & Orchestration', terms:['AI agent framework','agent orchestration','MCP server','agent skills','tool calling','computer use','browser agent','agent memory'] },
-  { id:'graphics', label:'Graphics & Visual Computing', terms:['SVG','Canvas','WebGL','WebGPU','Three.js','2D graphics','3D rendering','animation','visual effects','Blender'] },
-  { id:'arabic-localization', label:'Arabic & Localization', terms:['Arabic shaping','Arabic typography','RTL layout','Arabic NLP','Arabic OCR','Arabic speech','Arabic search','Unicode bidi','Arabic fonts','اللغة العربية','دعم العربية','الكتابة من اليمين لليسار','خطوط عربية','تشكيل الحروف العربية','معالجة الكلام العربي'] },
-  { id:'audio-voice', label:'Audio & Voice', terms:['speech to text','text to speech','voice activity detection','audio processing','streaming audio','offline speech recognition'] },
-  { id:'security', label:'Security & Supply Chain', terms:['SAST','DAST','dependency scanning','SBOM','secret scanning','sandbox','container security','software supply chain'] },
-  { id:'devops-qa', label:'DevOps & Quality Engineering', terms:['CI CD','test automation','Playwright','performance testing','observability','OpenTelemetry','deployment rollback','release engineering'] },
-  { id:'data-engineering', label:'Data Engineering', terms:['ETL','data pipeline','data lake','analytics','Apache Arrow','DuckDB','schema validation','workflow orchestration'] },
-  { id:'developer-tools', label:'Developer Experience', terms:['IDE','code editor','debugger','terminal','language server','compiler','linter','formatter','documentation generator'] },
-  { id:'media-production', label:'Media Production', terms:['image processing','video editing','audio editing','media transcoding','font tooling','asset pipeline','motion graphics'] },
+  { id:'cloud-computing', label:'Cloud & Computing', topics:['cloud','kubernetes','containers','distributed-systems'], terms:['cloud computing','distributed systems','containers','Kubernetes','virtualization','serverless','storage','networking','infrastructure as code','edge computing'] },
+  { id:'github-engineering', label:'GitHub Engineering', topics:['github-actions','github-api','github-apps','octokit'], terms:['GitHub API','GitHub Actions','GitHub CLI','GitHub Apps','Octokit','runners','repository automation','release automation'] },
+  { id:'full-stack', label:'Full-Stack Engineering', topics:['fullstack','frontend','backend','database'], terms:['full stack framework','frontend backend','REST API','GraphQL','database','authentication','ORM','realtime','file storage'] },
+  { id:'web', label:'Web Engineering', topics:['web','pwa','webassembly','webgpu'], terms:['web framework','PWA','SSR','WebAssembly','WebGPU','browser automation','accessibility','web performance'] },
+  { id:'android', label:'Android Engineering', topics:['android','kotlin','jetpack-compose','gradle'], terms:['Android SDK','Kotlin','Jetpack Compose','Gradle','ADB','Android emulator','APK build','AAB','Android signing','Android testing'] },
+  { id:'ios-apple', label:'iOS & Apple Engineering', topics:['swift','swiftui','ios'], terms:['Swift','SwiftUI','FoundationDB','Apple developer tools','iOS build','iOS testing'] },
+  { id:'ai-models', label:'AI Models & Inference', topics:['llm','local-llm','inference','rag'], terms:['open weights model','local inference','LLM runtime','multimodal model','RAG','vector database','model quantization','model evaluation'] },
+  { id:'agents', label:'Agents & Orchestration', topics:['ai-agents','mcp','agent-framework','coding-agents'], terms:['AI agent framework','agent orchestration','MCP server','agent skills','tool calling','computer use','browser agent','agent memory'] },
+  { id:'graphics', label:'Graphics & Visual Computing', topics:['webgl','webgpu','threejs','blender','animation'], terms:['SVG','Canvas','WebGL','WebGPU','Three.js','2D graphics','3D rendering','animation','visual effects','Blender'] },
+  { id:'arabic-localization', label:'Arabic & Localization', topics:['arabic','rtl','arabic-nlp','arabic-fonts'], terms:['Arabic shaping','Arabic typography','RTL layout','Arabic NLP','Arabic OCR','Arabic speech','Arabic search','Unicode bidi','Arabic fonts','اللغة العربية','دعم العربية','الكتابة من اليمين لليسار','خطوط عربية','تشكيل الحروف العربية','معالجة الكلام العربي'] },
+  { id:'audio-voice', label:'Audio & Voice', topics:['speech-to-text','text-to-speech','audio-processing'], terms:['speech to text','text to speech','voice activity detection','audio processing','streaming audio','offline speech recognition'] },
+  { id:'security', label:'Security & Supply Chain', topics:['security','sast','dast','sbom'], terms:['SAST','DAST','dependency scanning','SBOM','secret scanning','sandbox','container security','software supply chain'] },
+  { id:'devops-qa', label:'DevOps & Quality Engineering', topics:['devops','ci-cd','testing','playwright'], terms:['CI CD','test automation','Playwright','performance testing','observability','OpenTelemetry','deployment rollback','release engineering'] },
+  { id:'data-engineering', label:'Data Engineering', topics:['data-engineering','etl','duckdb','analytics'], terms:['ETL','data pipeline','data lake','analytics','Apache Arrow','DuckDB','schema validation','workflow orchestration'] },
+  { id:'developer-tools', label:'Developer Experience', topics:['developer-tools','ide','language-server','compiler'], terms:['IDE','code editor','debugger','terminal','language server','compiler','linter','formatter','documentation generator'] },
+  { id:'media-production', label:'Media Production', topics:['media-processing','video-editing','image-processing','motion-graphics'], terms:['image processing','video editing','audio editing','media transcoding','font tooling','asset pipeline','motion graphics'] },
 ]);
 const VENDORS = Object.freeze([
   { id:'google', orgs:['google','GoogleCloudPlatform','android','flutter','firebase','tensorflow','googlefonts'] },
@@ -45,6 +45,8 @@ export function buildDiscoveryPlan({ capabilities = [], keywords = [], maxQuerie
   for (const domain of domains) {
     const selected = domain.requested ? domain.terms : domain.terms.slice(0, 2);
     for (const term of selected) queries.push(`(${term}) in:name,description,readme`);
+    const selectedTopics = domain.requested ? domain.topics : domain.topics.slice(0, 1);
+    for (const topic of selectedTopics) queries.push(`${topic} topic:${topic}`);
   }
   for (const keyword of keywords) if (String(keyword).trim()) queries.push(`(${String(keyword).trim()}) in:name,description,readme`);
   for (const capability of capabilities) queries.push(`(${String(capability).trim()}) in:name,description,readme`);
