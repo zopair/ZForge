@@ -32,6 +32,8 @@ Unknown or restrictive model terms mean QUARANTINED. Never assume a model is ope
 - Model output is an untrusted proposal. It cannot directly execute shell commands, write repositories, publish, sign, or change permissions.
 - Every proposed action is validated by deterministic policy code and requires the relevant approval.
 
+See [MODEL_REGISTRY.md](../memory/MODEL_REGISTRY.md) for the checkpoint-level admission queue and benchmark record.
+
 ## Current implementation
 - Implemented: local Ollama adapter for model listing and non-streaming chat on loopback only.
 - Implemented: Chief Agent planning orchestrator that loads memory, invokes bounded discovery, asks the local model for a draft plan and returns it as approval-required.
