@@ -46,6 +46,8 @@ test('license classifier distinguishes approved open source, non-open source, an
   assert.equal(classifyLicense('CC0-1.0').status, 'UNKNOWN');
   assert.equal(classifyLicense('CERN-OHL-P-2.0').status, 'UNKNOWN');
   assert.equal(classifyLicense('WTFPL').status, 'UNKNOWN');
+  assert.equal(classifyLicense('OFL-1.1').status, 'UNKNOWN');
+  assert.equal(classifyLicense('OFL-1.1',{artifactType:'font'}).status, 'OPEN_SOURCE');
   assert.equal(classifyLicense(null).status, 'UNKNOWN');
 });
 
