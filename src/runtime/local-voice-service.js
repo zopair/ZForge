@@ -307,7 +307,8 @@ export class LocalVoiceService {
     if (typeof text !== 'string' || !text.trim() || text.length > MAX_TEXT_LENGTH) throw new TypeError('synthesis text must contain 1..8000 characters');
     if (!['auto', 'piper', 'kemetone'].includes(engine)) throw new TypeError('synthesis engine must be auto, piper or kemetone');
     const readiness = this.readinessSnapshot ?? await this.inspectCapabilities();
-    const arabicOnly = /[\p{Script=Arabic}]/u.test(text) && !/[A-Za-z0-9]/u.test(text);
+    const hasUnsupportedScriptOrNumber = [...text].some(character => (/\p{L}/u.test(character) && !/\p{Script=Arabic}/u.test(character)) || /\p{N}/u.test(character));
+    const arabicOnly = /[\p{Script=Arabic}]/u.test(text) && !hasUnsupportedScriptOrNumber;
     const wordCount = text.trim().split(/\s+/u).length;
     const kemetoneCompatible = arabicOnly && wordCount <= this.maxKemetoneWords;
     let selectedEngine = engine;
