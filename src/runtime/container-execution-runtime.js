@@ -65,11 +65,12 @@ export class ContainerExecutionRuntime {
       '--memory', this.memoryLimit,
       '--pids-limit', String(this.pidsLimit),
       '--read-only',
-      '--tmpfs', `/tmp:rw,noexec,nosuid,size=${this.tmpfsSize}`,
+      '--tmpfs', `/tmp:rw,nosuid,size=${this.tmpfsSize}`,
       '--cap-drop=ALL',
       '--security-opt=no-new-privileges',
       `--network=${this.network}`,
     ];
+    argsForEngine.push('--env', 'HOME=/tmp', '--env', 'TMPDIR=/tmp', '--env', 'XDG_CACHE_HOME=/tmp/.cache');
     if (this.engine === 'podman') argsForEngine.push('--userns=keep-id');
     else if (typeof process.getuid === 'function' && typeof process.getgid === 'function') {
       argsForEngine.push('--user', `${process.getuid()}: ${process.getgid()}`.replace(' ', ''));
