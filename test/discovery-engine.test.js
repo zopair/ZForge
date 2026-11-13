@@ -25,6 +25,8 @@ test('discovery plan covers the requested engineering domains and major vendor e
   }
   const vendors = plan.vendorSeeds.map(item => item.id);
   for (const id of ['google','anthropic','microsoft','apple','meta','xai','github']) assert.ok(vendors.includes(id));
+  const vendorOrgs=plan.vendorSeeds.flatMap(vendor=>vendor.orgs);
+  assert.equal(new Set(vendorOrgs).size,vendorOrgs.length);
   assert.ok(plan.queries.some(query => query.includes('arabic-rtl')));
   assert.ok(plan.vendorQueries.some(query => query.includes('org:anthropics')));
   assert.ok(plan.vendorQueries.some(query => query.includes('org:google')));
