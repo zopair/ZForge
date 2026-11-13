@@ -12,7 +12,7 @@ test('only an owner approval comment can enter execution', () => {
   assert.deepEqual(getCloudTaskPhase({
     action: 'created',
     issue,
-    comment: { user: { login: 'zopair' }, body: '/approve-plan' },
+    comment: { user: { login: 'zopair' }, body: '/approve-plan ' + 'a'.repeat(64) },
   }), { phase: 'execute' });
 });
 
