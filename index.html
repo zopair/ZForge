@@ -19,9 +19,19 @@
       </a>
       <div class="topbar-meta">
         <span class="mode-label">BLACK VANTA</span>
-        <span class="connection-state"><i></i><span id="runtime-status">وضع العرض المحلي</span></span>
+        <span class="connection-state"><i></i><span id="runtime-status">المحرك غير متصل</span></span>
       </div>
     </header>
+
+    <details class="runtime-settings" id="runtime-settings">
+      <summary>إعداد اتصال المحرك</summary>
+      <div class="runtime-fields">
+        <label>عنوان Task Gateway<input id="runtime-url" type="url" inputmode="url" placeholder="https://your-runtime.example" autocomplete="url"></label>
+        <label>رمز الاتصال<input id="runtime-token" type="password" placeholder="Bearer token" autocomplete="off"></label>
+        <label>النموذج المحلي<select id="runtime-model" disabled><option value="">اكتشف النماذج بعد الاتصال</option></select></label>
+        <button id="connect-runtime" type="button">اتصال بالمحرك</button>
+      </div>
+    </details>
 
     <section class="workspace" aria-labelledby="assistant-title">
       <div class="assistant-heading">
@@ -36,7 +46,7 @@
             <p class="eyebrow">PRIVATE CONTROL INTERFACE</p>
             <h2>مركز القيادة</h2>
           </div>
-          <span class="runtime-badge">LOCAL PREVIEW</span>
+          <span class="runtime-badge" id="runtime-badge">RUNTIME OFFLINE</span>
         </div>
 
         <div class="conversation" id="conversation" aria-live="polite" aria-relevant="additions">
@@ -44,7 +54,7 @@
             <span class="message-avatar" aria-hidden="true">Z</span>
             <div class="message-content">
               <p>مرحباً بك في BLACK VANTA.</p>
-              <p class="muted">واجهة المحادثة تعمل محلياً. اتصال الذكاء الاصطناعي ومحركات التنفيذ لم يُفعّل بعد، لذلك لن أدّعي تنفيذ مهام غير متصلة.</p>
+              <p class="muted">اربط Task Gateway والنموذج المحلي من إعدادات المحرك لبدء تنفيذ المهام. لن يتم ادعاء نجاح أي مهمة دون دليل تنفيذ.</p>
             </div>
           </div>
         </div>
@@ -55,13 +65,13 @@
             <svg class="send-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
           </button>
         </form>
-        <p class="security-note"><span>◆</span> وضع العرض المحلي — لا يتم إرسال بياناتك إلى أي خادم.</p>
+        <p class="security-note" id="security-note"><span>◆</span> رمز الاتصال يبقى في ذاكرة الجلسة ولا يُحفظ على الجهاز.</p>
       </section>
 
       <section class="system-strip" aria-label="حالة مكونات المنظومة">
-        <div><span class="system-icon">01</span><span><b>CHIEF AGENT</b><small>غير متصل</small></span></div>
+        <div><span class="system-icon">01</span><span><b>CHIEF AGENT</b><small id="chief-status">بانتظار الاتصال</small></span></div>
         <div><span class="system-icon">02</span><span><b>DISCOVERY</b><small>النواة البرمجية موجودة</small></span></div>
-        <div><span class="system-icon">03</span><span><b>EXECUTION</b><small>بانتظار Runtime</small></span></div>
+        <div><span class="system-icon">03</span><span><b>EXECUTION</b><small id="execution-status">بانتظار الاتصال</small></span></div>
       </section>
     </section>
 

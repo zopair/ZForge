@@ -4,6 +4,12 @@
   "private": true,
   "type": "module",
   "description": "Evidence-driven autonomous engineering forge",
-  "scripts": { "test": "node --test" },
-  "engines": { "node": ">=20" }
+  "scripts": {
+    "test": "node --test",
+    "start": "node src/runtime/server.js",
+    "runtime:check": "node --check src/runtime/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
 }

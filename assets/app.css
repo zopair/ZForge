@@ -32,3 +32,14 @@ body{background:#030303;color:#fff}
 .footer a{color:#d8b66e}
 @media(max-width:600px){.assistant-heading{padding:clamp(65px,13vh,110px) 0 32px}.assistant-heading h1{font-size:clamp(34px,10vw,48px);letter-spacing:4px}.chat-panel{padding:16px 14px}.conversation{min-height:165px}.message-content p{font-size:13px}.message-content .muted{font-size:11px}.send-button{width:44px;height:44px;flex-basis:44px}}
 @media(prefers-reduced-motion:reduce){.chat-panel,.send-button{animation:none;transition:none}}
+
+.runtime-settings{width:min(720px,100%);margin:18px auto 0;padding:11px 14px;border:1px solid #3a2b16;border-radius:12px;background:#070707}
+.runtime-settings summary{cursor:pointer;color:#d8bd82;font-size:11px;letter-spacing:.4px;list-style-position:inside}
+.runtime-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px}
+.runtime-fields label{display:flex;flex-direction:column;gap:6px;color:#b9aa8b;font-size:10px}
+.runtime-fields input,.runtime-fields select{width:100%;min-width:0;padding:10px;border:1px solid #392c19;border-radius:8px;outline:0;background:#050505;color:#fff;font:inherit;font-size:11px}
+.runtime-fields input:focus,.runtime-fields select:focus{border-color:#d9ad55;box-shadow:0 0 12px #d9ad5522}
+.runtime-fields button{align-self:end;min-height:36px;border:1px solid #f5d58a;border-radius:8px;background:linear-gradient(145deg,#f5d58a,#bd8b3d);color:#080604;font:inherit;font-size:11px;font-weight:800;cursor:pointer}
+.runtime-fields button:disabled{opacity:.55;cursor:wait}
+.connection-state.is-connected i{background:#77bd82;box-shadow:0 0 10px #77bd82}
+@media(max-width:600px){.runtime-settings{margin-top:14px;padding:10px}.runtime-fields{grid-template-columns:1fr}.runtime-fields button{width:100%}}

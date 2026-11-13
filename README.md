@@ -20,7 +20,7 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
 - [Local Model Registry](memory/MODEL_REGISTRY.md)
 - [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
-- [BLACK VANTA UI](docs/BLACK_PHANTOM_UI.md)
+- [BLACK VANTA UI](docs/BLACK_VANTA_UI.md)
 - [Tool evaluation protocol](docs/TOOL_EVALUATION.md)
 - [Agent operating system](docs/AGENT_OPERATING_SYSTEM.md)
 
@@ -34,6 +34,9 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - Local repository memory and canonical prompt providers: src/adapters/local-repository-memory-store.js
 - Approval-gated GitHub task branch/file and draft-PR writer: src/adapters/github-repository-writer.js
 - Chief Agent draft planner: src/core/chief-agent.js
+- Authenticated task gateway and durable task ledger: src/runtime/task-gateway.js
+- Self-hosted local workspace process runner: src/runtime/local-execution-runtime.js
+- Runtime API and deployment guide: docs/TASK_GATEWAY.md
 - Agent manifest and activation gates: src/core/agent-architect.js
 - Local-only Ollama model adapter: src/adapters/ollama-model-adapter.js
 - Chief Agent draft planner: src/core/chief-agent.js
@@ -43,7 +46,7 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - Tool registry and engineering memory: memory/
 
 ## Current implementation status
-The repository contains an interactive BLACK VANTA PWA preview with a working local chat composer, universal discovery/evaluation modules, a loopback-only Ollama adapter, a draft-only Chief Agent planner, Agent Architect validation gates, bounded local memory/prompt readers, and an approval-gated GitHub task-branch/file writer. The local model adapter has not yet been tested against an installed model, and no GitHub write credential or approval-verification service is configured. No backend task gateway, isolated code execution worker, live voice runtime, Android/iOS build worker, or autonomous task execution is connected yet. GitHub Pages serves static files only; Actions are ephemeral and quota-limited.
+The repository now includes a BLACK VANTA PWA that can connect to an authenticated self-hosted Task Gateway, discover local Ollama models, submit tasks and display execution results. The gateway persists task state, invokes Chief Agent planning with bounded discovery and engineering memory, then runs a local model tool loop (`run_command`, `read_file`, `write_file`, `list_files`, `finish_task`) in a workspace. Completion requires successful tool evidence. The host process runner is not a container/OS sandbox and runs with the service account's permissions; deploy it as an unprivileged user or inside a disposable container/VM behind HTTPS. Still pending: isolated container workers, multi-agent scheduling and activation, durable artifact/SBOM pipeline, live streaming and voice, Android/iOS build/signing, independent verification workers and production-grade deployment automation. GitHub Pages remains static hosting; GitHub Actions are ephemeral and quota-limited.
 
 ## Tests
 Run `npm test` with Node.js 20 or newer. CI uses Node.js 24.

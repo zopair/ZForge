@@ -1,7 +1,7 @@
 name: Deploy ZForge PWA
 on:
   push:
-    branches: [main, feat/agent-workspaces-experimental-freedom]
+    branches: [main, feat/agent-workspaces-experimental-freedom, feat/persistent-task-gateway-runtime]
   workflow_dispatch:
 permissions:
   contents: read
