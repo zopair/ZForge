@@ -14,7 +14,7 @@ function clone(value) { return structuredClone(value); }
 
 export class AgentFactory {
   constructor({ registry } = {}) {
-    if (!registry || typeof registry.get !== 'function' || typeof registry.list !== 'function') throw new TypeError('registry must provide get and list');
+    if (!registry || typeof registry.get !== 'function' || (!(registry instanceof Map) && typeof registry.list !== 'function')) throw new TypeError('registry must provide get and list');
     this.registry = registry;
   }
 
@@ -138,7 +138,8 @@ export class AgentFactory {
   }
 
   async listAgents() {
-    return (await this.registry.list()).map(record => ({
+    const records = this.registry instanceof Map ? [...this.registry.values()] : await this.registry.list();
+    return records.map(record => ({
       id: record.manifest.id,
       name: record.manifest.name,
       version: record.manifest.version,
