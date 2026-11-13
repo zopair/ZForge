@@ -183,7 +183,7 @@ export class TaskStore {
   }
 }
 
-export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, agentFactory = null, multiAgentCoordinator = null, androidBuildService = null, webBuildService = null, voiceService = null, artifactStore = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
+export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, agentFactory = null, multiAgentCoordinator = null, androidBuildService = null, webBuildService = null, webBrowserVerificationService = null, voiceService = null, artifactStore = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
   if (typeof token !== 'string' || token.length < 16) throw new TypeError('a gateway bearer token of at least 16 characters is required');
   if (!Number.isInteger(maxBodyBytes) || maxBodyBytes < 1024) throw new RangeError('maxBodyBytes must be at least 1024');
   if (!Array.isArray(allowedOrigins) || allowedOrigins.some(origin => typeof origin !== 'string' || !isValidOrigin(origin))) throw new TypeError('allowedOrigins must be an array of exact HTTP(S) origins');
@@ -432,6 +432,35 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
           return send(response, 200, completed);
         } catch (error) {
           const failed = await store.transition(task.id, 'failed', { error: error.message, details: { mode: 'web-build' } });
+          return send(response, 200, failed);
+        }
+      }
+      const webVerifyMatch = url.pathname.match(/^\/api\/tasks\/([a-f0-9-]{36})\/web-verify$/i);
+      if (webVerifyMatch && request.method === 'POST') {
+        if (!webBrowserVerificationService) return send(response, 503, { error: 'web_browser_verification_unavailable' });
+        const task = store.get(webVerifyMatch[1]);
+        if (!task) return send(response, 404, { error: 'task_not_found' });
+        const body = await readJson(request, maxBodyBytes);
+        if (body.confirmExecution !== true) return send(response, 409, { error: 'explicit_execution_confirmation_required' });
+        await store.transition(task.id, 'running', { details: { mode: 'web-browser-verification', projectPath: body.projectPath ?? '.' } });
+        try {
+          const result = await webBrowserVerificationService.verify({
+            workspaceId: task.workspaceId,
+            projectPath: body.projectPath ?? '.',
+            outputDirectory: body.outputDirectory ?? 'dist',
+            browsers: body.browsers ?? ['chromium', 'firefox', 'webkit'],
+            viewportWidth: body.viewportWidth ?? 390,
+            viewportHeight: body.viewportHeight ?? 844,
+          });
+          const status = result.status === 'passed' ? 'succeeded' : result.status === 'unavailable' ? 'inconclusive' : 'failed';
+          const completed = await store.transition(task.id, status, {
+            result,
+            error: status === 'succeeded' ? null : result.reason ?? 'One or more browser checks failed.',
+            details: { mode: 'web-browser-verification', ...result.summary },
+          });
+          return send(response, 200, completed);
+        } catch (error) {
+          const failed = await store.transition(task.id, 'failed', { error: error.message, details: { mode: 'web-browser-verification' } });
           return send(response, 200, failed);
         }
       }
