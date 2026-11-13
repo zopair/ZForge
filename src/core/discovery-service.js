@@ -2,7 +2,7 @@ import { buildDiscoveryPlan } from './discovery-engine.js';
 import { GitHubDiscoveryError } from '../adapters/github-discovery.js';
 
 export class UniversalDiscoveryService {
-  constructor({client,cache=new Map(),ttlMs=6*60*60*1000,maxQueriesPerRun=null,maxResultsPerQuery=15,maxVendorOrgsPerRun=2}={}){
+  constructor({client,cache=new Map(),ttlMs=6*60*60*1000,maxQueriesPerRun=null,maxResultsPerQuery=50,maxVendorOrgsPerRun=2}={}){
     if(!client||typeof client.searchRepositories!=='function')throw new TypeError('A GitHubDiscoveryClient-compatible client is required');
     if(!(cache instanceof Map))throw new TypeError('cache must be a Map-compatible in-memory cache');
     if(!Number.isInteger(ttlMs)||ttlMs<0)throw new RangeError('ttlMs must be a non-negative integer');
