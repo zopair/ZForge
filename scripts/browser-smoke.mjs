@@ -25,7 +25,7 @@ const origin = 'http://127.0.0.1:' + server.address().port;
 const landing = await fetch(origin);
 const landingHtml = await landing.text();
 assert.equal(landing.status, 200, 'static app should return HTTP 200: ' + landingHtml.slice(0, 200));
-assert.match(landingHtml, /<title>BLACK VANTA \\| ZForge<\\/title>/i, 'static app response should contain the BLACK VANTA title');
+assert.ok(landingHtml.includes('<title>BLACK VANTA | ZForge</title>'), 'static app response should contain the BLACK VANTA title');
 
 try {
   for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) {
