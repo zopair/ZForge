@@ -102,7 +102,7 @@ export const AGENT_MASTER_LIBRARY_SEEDS = Object.freeze(
     group.repositories.trim().split(/\s+/).filter(Boolean).map(fullName => Object.freeze({
       fullName,
       category,
-      projectType: group.projectType,
+      projectType: ['ethz-spylab/agentdojo', 'ritikraj7/cpu-centric-agentic-ai'].includes(fullName) ? 'BENCHMARK' : group.projectType,
       status: 'PENDING_REVIEW',
       installable: false,
       source: 'USER_SUPPLIED_AGENT_MASTER_LIBRARY',
