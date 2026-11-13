@@ -42,8 +42,9 @@ cmake --build build --config Release -j
 Install FFmpeg from the host distribution's free package repository. Install Piper from the maintained Open Home Foundation project and download the Jordanian Arabic voice plus its configuration:
 
 ```sh
-python3 -m pip install --user piper-tts
-python3 -m piper.download_voices ar_JO-kareem-medium --data-dir /opt/models
+python3 -m venv /opt/zforge-piper
+/opt/zforge-piper/bin/python -m pip install piper-tts
+/opt/zforge-piper/bin/python -m piper.download_voices ar_JO-kareem-medium --data-dir /opt/models
 ```
 
 Set `ZFORGE_WHISPER_BIN` to the built `whisper-cli`, `ZFORGE_WHISPER_MODEL` to `models/ggml-small.bin`, `ZFORGE_FFMPEG_BIN` to the host FFmpeg executable, `ZFORGE_PIPER_BIN` to the Python interpreter used for the Piper installation (for example `/usr/bin/python3`), and `ZFORGE_PIPER_MODEL` to `/opt/models/ar_JO-kareem-medium.onnx`. Keep the matching `.onnx.json` file beside the model. Verify the actual paths on the host before starting ZForge.
