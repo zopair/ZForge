@@ -84,6 +84,10 @@ ZForge supports license-compatible fork-and-modify, modified clones with preserv
 - Respect licenses, privacy, rate limits and the user's zero-budget requirement.
 - Keep actions observable and outcomes reproducible.
 
+## Phone-only Cloud Execution Fabric
+
+BLACK VANTA is a client-only PWA. The repository remains the source of truth for agents, prompts, tools, worker definitions and engineering memory. For phone-only use, an owner-authorized GitHub issue can trigger a disposable Actions runner; the runner provisions the model and toolchain, starts the existing ZForge runtime, and executes inside a constrained container. Results and artifacts return to the issue/workflow run. No runtime, model, build tool or agent is installed on the phone. See [CLOUD_EXECUTION.md](CLOUD_EXECUTION.md) for the exact asynchronous handoff and current limitations.
+
 ## Zero-budget resource policy
 No paid subscriptions, paid APIs, paid usage, trial credits or required commercial SaaS. Prefer local/self-hosted open-source tools. GitHub Pages is static hosting, not a backend; GitHub Actions is ephemeral and quota-limited, not a persistent server. Resource preferences must reflect actual host capacity and workload requirements.
 
