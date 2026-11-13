@@ -58,7 +58,7 @@ const voiceService = new LocalVoiceService({
   whisperCommand: process.env.ZFORGE_WHISPER_BIN ?? 'whisper-cli',
   whisperModelPath: process.env.ZFORGE_WHISPER_MODEL ?? null,
   ffmpegCommand: process.env.ZFORGE_FFMPEG_BIN ?? 'ffmpeg',
-  piperCommand: process.env.ZFORGE_PIPER_BIN ?? 'piper',
+  piperCommand: process.env.ZFORGE_PIPER_BIN ?? 'python3',
   piperModelPath: process.env.ZFORGE_PIPER_MODEL ?? null,
   timeoutMs: Number(process.env.ZFORGE_VOICE_TIMEOUT_MS ?? 120000),
 });
