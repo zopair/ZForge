@@ -26,6 +26,7 @@ const server = createServer(async (request, response) => {
     if (pathname === '/api/tasks' && request.method === 'POST') return json({ id: '12345678-1234-4234-8234-123456789012', status: 'queued' }, 201);
     if (pathname.endsWith('/agent-run')) return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { completed: true, summary: 'Browser smoke task verified', steps: 2, evidence: [] } });
     if (pathname.endsWith('/web-build')) return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { status: 'succeeded', manager: 'npm', artifacts: [{ id: 'artifact-web-1', filename: 'index.html', sizeBytes: 512 }] } });
+    if (pathname.endsWith('/web-verify')) return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { status: 'passed', summary: { total: 3, passed: 3, failed: 0 }, browsers: [{ name: 'chromium', status: 'passed', httpStatus: 200, title: 'Generated app' }, { name: 'firefox', status: 'passed', httpStatus: 200, title: 'Generated app' }, { name: 'webkit', status: 'passed', httpStatus: 200, title: 'Generated app' }] } });
     if (pathname.endsWith('/android-build')) return json({ status: 'succeeded', result: { status: 'succeeded', artifacts: [] } });
     return json({ error: 'not_found' }, 404);
   }
@@ -78,6 +79,9 @@ try {
       await page.locator('#web-build-button').click();
       await page.getByText(/اكتمل بناء تطبيق الويب/).waitFor();
       assert.equal(await page.locator('.artifact-link').count(), 1);
+      await page.locator('#web-verify-button').click();
+      await page.getByText(/اجتاز التطبيق اختبارات المتصفح: 3 من 3/).waitFor();
+      assert.ok((await page.locator('#conversation').innerText()).includes('webkit: passed'));
       if (name === 'chromium') {
         await page.locator('#voice-record-button').click();
         await page.waitForTimeout(350);
