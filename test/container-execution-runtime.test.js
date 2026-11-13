@@ -42,5 +42,5 @@ test('container runtime rejects unsupported engines and workspace cwd traversal'
   const hostRuntime = { getWorkspacePath: async () => '/tmp/ws', execute: async () => ({ exitCode: 0 }) };
   assert.throws(() => new ContainerExecutionRuntime({ hostRuntime, engine: 'bash' }), /podman or docker/i);
   const runtime = new ContainerExecutionRuntime({ hostRuntime });
-  await assert.rejects(() => runtime.execute({ workspaceId: 'ws-1', command: 'node', cwd: '../outside' }), /relative path/i);
+  await assert.rejects(() => runtime.execute({ workspaceId: 'ws-1', command: 'node', cwd: '../outside' }), /escapes workspace/i);
 });
