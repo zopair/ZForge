@@ -161,6 +161,10 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
       const supplied = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
       if (!supplied || !safeEqual(supplied, token)) return send(response, 401, { error: 'unauthorized' });
 
+      if (request.method === 'GET' && url.pathname === '/api/models') {
+        if (!agentService || typeof agentService.listModels !== 'function') return send(response, 503, { error: 'model_inventory_unavailable' });
+        return send(response, 200, { models: await agentService.listModels() });
+      }
       if (request.method === 'GET' && url.pathname === '/api/tasks') {
         return send(response, 200, { tasks: store.list() });
       }
