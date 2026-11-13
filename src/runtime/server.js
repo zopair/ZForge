@@ -1,5 +1,7 @@
 import { createTaskGateway } from './task-gateway.js';
 import { LocalExecutionRuntime } from './local-execution-runtime.js';
+import { OllamaModelAdapter } from '../adapters/ollama-model-adapter.js';
+import { AgentExecutionService } from '../core/agent-execution-service.js';
 
 const token = process.env.ZFORGE_GATEWAY_TOKEN;
 if (!token || token.length < 16) {
@@ -10,8 +12,11 @@ const host = process.env.ZFORGE_HOST ?? '127.0.0.1';
 const port = Number(process.env.ZFORGE_PORT ?? 8787);
 const dataDir = process.env.ZFORGE_DATA_DIR ?? './.zforge-data';
 const workspaceDir = process.env.ZFORGE_WORKSPACE_DIR ?? './.zforge-workspaces';
+const model = process.env.ZFORGE_MODEL ?? 'qwen3:8b';
 const runtime = await new LocalExecutionRuntime({ rootDir: workspaceDir }).initialize();
-const gateway = createTaskGateway({ dataDir, token, runtime });
+const modelAdapter = new OllamaModelAdapter({ baseUrl: process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434' });
+const agentService = new AgentExecutionService({ modelAdapter, runtime, maxSteps: Number(process.env.ZFORGE_AGENT_MAX_STEPS ?? 16) });
+const gateway = createTaskGateway({ dataDir, token, runtime, agentService, defaultModel: model });
 
 await gateway.ready;
 gateway.server.listen(port, host, () => {
