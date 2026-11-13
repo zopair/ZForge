@@ -13,6 +13,7 @@ export class GitHubDiscoveryClient {
     if (typeof query!=='string' || !query.trim()) throw new TypeError('query is required');
     if (!Number.isInteger(maxResults) || maxResults < 1 || maxResults > 500) throw new RangeError('maxResults must be 1..500');
     const results=[];
+    let totalCount=0;
     for (let page=1; page<=this.maxPages && results.length<maxResults; page++) {
       const url=new URL('/search/repositories', API);
       url.searchParams.set('q',query);
@@ -29,6 +30,7 @@ export class GitHubDiscoveryClient {
       }
       if (!response.ok) throw new GitHubDiscoveryError(`GitHub repository search failed with HTTP ${response.status}.`,{status:response.status});
       const payload=await response.json();
+      totalCount=Number.isInteger(payload.total_count)?payload.total_count:totalCount;
       for (const item of payload.items ?? []) results.push({
         id:item.id, fullName:item.full_name, name:item.name, description:item.description,
         htmlUrl:item.html_url, defaultBranch:item.default_branch, archived:item.archived,
@@ -38,8 +40,9 @@ export class GitHubDiscoveryClient {
         language:item.language, sizeKb:item.size, discoveryOnly:true,
         evidence:{source:'GitHub Search API',licenseTextInspected:false,dependenciesInspected:false,testsRun:false},
       });
-      if (!payload.items?.length || results.length>=Math.min(maxResults,payload.total_count ?? maxResults)) break;
+      if (!payload.items?.length || results.length>=Math.min(maxResults,totalCount)) break;
     }
-    return { query, count:results.length, results:results.slice(0,maxResults), complete:results.length<maxResults, source:'GitHub Search API', retrievedAt:new Date().toISOString() };
+    const truncated=results.length<Math.min(maxResults,totalCount);
+    return { query, count:results.length, totalCount, results:results.slice(0,maxResults), complete:!truncated, truncated, source:'GitHub Search API', retrievedAt:new Date().toISOString() };
   }
 }
