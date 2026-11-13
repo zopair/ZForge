@@ -126,7 +126,10 @@ try {
       await page.getByText(/Browser smoke task verified/).waitFor();
       await page.locator('.agent-progress-event').first().waitFor({ timeout: 10000 });
       assert.ok(await page.locator('.agent-progress-event').count() >= 3, name + ': specialist lifecycle and step events should be rendered');
-      assert.ok((await page.locator('#agent-progress-feed').innerText()).includes('researcher'), name + ': specialist identity should be visible in the live feed');
+      const progressFeed = await page.locator('#agent-progress-feed').innerText();
+      assert.match(progressFeed, /أحد الوكلاء الداخليين/, name + ': internal agent lifecycle should be summarized through ZForge');
+      assert.match(progressFeed, /الوكيل ينفذ الخطوة/, name + ': execution step progress should be visible');
+      assert.doesNotMatch(progressFeed, /researcher|agentId|taskId/, name + ': internal agent identifiers must not leak into the user-facing feed');
       await page.locator('.voice-output').waitFor({ timeout: 10000 });
       await page.locator('#web-build-button').click();
       await page.getByText(/اكتمل بناء تطبيق الويب/).waitFor();
