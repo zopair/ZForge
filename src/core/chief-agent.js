@@ -44,7 +44,7 @@ export class ChiefAgent{
       },
       capabilityGapDecisions,
       toolBuildBriefs,
-      curatedRepositorySeeds:(discovery.plan?.curatedRepositorySeeds??[]).map(seed=>({fullName:seed.fullName,category:seed.category,status:seed.status??'PENDING_REVIEW',installable:false})),
+      curatedRepositorySeeds:(discovery.plan?.curatedRepositorySeeds??[]).map(seed=>({fullName:seed.fullName,category:seed.category,usageClass:seed.usageClass,status:seed.status??'PENDING_REVIEW',installable:false})),
       unresolvedRepositoryReferences:discovery.plan?.unresolvedRepositoryReferences??[],
       repositoryEngineeringPolicy:{
         allowLicenseCompatibleForkAndModification:true,
