@@ -32,7 +32,7 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - Official release metadata adapter and review-only update monitor: src/adapters/github-release-monitor.js and src/core/release-monitor.js
 - Local-only Ollama model adapter: src/adapters/ollama-model-adapter.js
 - Local repository memory and canonical prompt providers: src/adapters/local-repository-memory-store.js
-- Approval-gated GitHub task branch/file writer: src/adapters/github-repository-writer.js
+- Approval-gated GitHub task branch/file and draft-PR writer: src/adapters/github-repository-writer.js
 - Chief Agent draft planner: src/core/chief-agent.js
 - Agent manifest and activation gates: src/core/agent-architect.js
 - Local-only Ollama model adapter: src/adapters/ollama-model-adapter.js
