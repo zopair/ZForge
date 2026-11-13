@@ -65,8 +65,7 @@ test('complete discovery with fully evaluated candidates and no eligible tool pr
         status: 'COMPLETE',
         complete: true,
         queryCatalogComplete: true,
-        candidateEvaluationComplete: true,
-        results: [{ fullName: 'example/closed-tool', evaluation: { status: 'REJECTED', eligible: false } }],
+        results: [],
       }),
     },
   });
@@ -91,4 +90,33 @@ test('repeated identical failures are identified without hiding the failure evid
   assert.equal(first.fingerprint, second.fingerprint);
   assert.equal(second.duplicateFailure, true);
   assert.equal(searches, 1);
+});
+
+
+test('completed discovery exposes unverified repositories for inspection instead of treating metadata as proof', async () => {
+  const engine = new SelfHealingEngineeringEngine({
+    discoveryService: {
+      discover: async () => ({
+        status: 'COMPLETE',
+        complete: true,
+        queryCatalogComplete: true,
+        results: [{
+          fullName: 'example/candidate',
+          htmlUrl: 'https://github.com/example/candidate',
+          license: { spdxId: 'MIT' },
+          archived: false,
+          discoveryOnly: true,
+        }],
+      }),
+    },
+  });
+  const result = await engine.investigate({
+    request: 'Build a Vite web frontend',
+    failure: { stderr: 'Cannot find module vite' },
+  });
+  assert.equal(result.status, 'CANDIDATES_REQUIRE_EVALUATION');
+  assert.equal(result.alternatives.length, 0);
+  assert.equal(result.candidatesToEvaluate[0].fullName, 'example/candidate');
+  assert.equal(result.candidatesToEvaluate[0].discoveryOnly, true);
+  assert.ok(result.nextActions.includes('VERIFY_LICENSE_AND_NOTICES'));
 });
