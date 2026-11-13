@@ -22,6 +22,7 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
 - [BLACK VANTA UI](docs/BLACK_VANTA_UI.md)
 - [Web Build Worker](docs/WEB_BUILD_WORKER.md)
+- [Generated Web App Browser Verification](docs/WEB_BROWSER_VERIFICATION.md)
 - [Browser QA](docs/BROWSER_QA.md)
 - [Live Agent Progress](docs/LIVE_AGENT_PROGRESS.md)
 - [Local Voice Runtime](docs/LOCAL_VOICE.md)

@@ -24,7 +24,7 @@ Requires bearer authentication and `{ "confirmExecution": true }`. Optional fiel
 
 ## Limits and evidence
 
-The worker uses the existing workspace runtime process limits and an 840-second default timeout. It publishes at most 200 files by default. A successful result proves that the declared tests (if present) and build command exited successfully and that generated static files were found and stored. It does not prove cross-browser compatibility; browser QA is a separate verification stage.
+The worker uses the existing workspace runtime process limits and an 840-second default timeout. It publishes at most 200 files by default. A successful result proves that the declared tests (if present) and build command exited successfully and that generated static files were found and stored. It does not prove cross-browser compatibility; run the [Generated Web App Browser Verification](WEB_BROWSER_VERIFICATION.md) stage after a successful build.
 
 ## Verification
 

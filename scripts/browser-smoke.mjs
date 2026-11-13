@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { chromium, firefox, webkit } from 'playwright';
+import { WebBrowserVerificationService } from '../src/runtime/web-browser-verification-service.js';
 
 const root = resolve('.');
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
@@ -25,6 +26,7 @@ const server = createServer(async (request, response) => {
     if (pathname === '/api/tasks' && request.method === 'POST') return json({ id: '12345678-1234-4234-8234-123456789012', status: 'queued' }, 201);
     if (pathname.endsWith('/agent-run')) return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { completed: true, summary: 'Browser smoke task verified', steps: 2, evidence: [] } });
     if (pathname.endsWith('/web-build')) return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { status: 'succeeded', manager: 'npm', artifacts: [{ id: 'artifact-web-1', filename: 'index.html', sizeBytes: 512 }] } });
+    if (pathname.endsWith('/web-verify')) return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { status: 'passed', summary: { total: 3, passed: 3, failed: 0 }, browsers: [{ name: 'chromium', status: 'passed', httpStatus: 200, title: 'Generated app' }, { name: 'firefox', status: 'passed', httpStatus: 200, title: 'Generated app' }, { name: 'webkit', status: 'passed', httpStatus: 200, title: 'Generated app' }] } });
     if (pathname.endsWith('/android-build')) return json({ status: 'succeeded', result: { status: 'succeeded', artifacts: [] } });
     return json({ error: 'not_found' }, 404);
   }
@@ -77,6 +79,9 @@ try {
       await page.locator('#web-build-button').click();
       await page.getByText(/اكتمل بناء تطبيق الويب/).waitFor();
       assert.equal(await page.locator('.artifact-link').count(), 1);
+      await page.locator('#web-verify-button').click();
+      await page.getByText(/اجتاز التطبيق اختبارات المتصفح: 3 من 3/).waitFor();
+      assert.ok((await page.locator('#conversation').innerText()).includes('webkit: passed'));
       if (name === 'chromium') {
         await page.locator('#voice-record-button').click();
         await page.waitForTimeout(350);
@@ -101,3 +106,32 @@ try {
 } finally {
   await new Promise(resolveClose => server.close(resolveClose));
 }
+
+const previewFiles = {
+  'dist/index.html': Buffer.from('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Generated App QA</title><link rel="stylesheet" href="/assets/app.css"></head><body><main id="app"><h1>Generated application preview</h1></main><script src="/assets/app.js"></script></body></html>'),
+  'dist/assets/app.css': Buffer.from('html,body{margin:0;padding:0}main{max-width:100%;padding:16px}h1{font-size:24px}'),
+  'dist/assets/app.js': Buffer.from("document.getElementById('app').dataset.ready='true';"),
+};
+const previewRuntime = {
+  listFiles: async () => Object.keys(previewFiles).map(path => ({ path, type: 'file' })),
+  readBuffer: async ({ path }) => {
+    if (!previewFiles[path]) throw new Error('preview fixture file not found: ' + path);
+    return previewFiles[path];
+  },
+};
+const verifier = new WebBrowserVerificationService({
+  runtime: previewRuntime,
+  browserTypes: { chromium, firefox, webkit },
+  timeoutMs: 20000,
+});
+const verification = await verifier.verify({
+  workspaceId: 'browser-smoke-workspace',
+  projectPath: '.',
+  outputDirectory: 'dist',
+  browsers: ['chromium', 'firefox', 'webkit'],
+  viewportWidth: 390,
+  viewportHeight: 844,
+});
+assert.equal(verification.status, 'passed', 'generated web preview should pass all engines: ' + JSON.stringify(verification));
+assert.deepEqual(verification.summary, { total: 3, passed: 3, failed: 0 });
+process.stdout.write('generated web app preview: Chromium, Firefox and WebKit passed\\n');

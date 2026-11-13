@@ -12,6 +12,7 @@ const androidBuildButton=document.getElementById("android-build-button");
 const webProjectPath=document.getElementById("web-project-path");
 const webOutputDirectory=document.getElementById("web-output-directory");
 const webBuildButton=document.getElementById("web-build-button");
+const webVerifyButton=document.getElementById("web-verify-button");
 const connectButton=document.getElementById("connect-runtime");
 const runtimeBadge=document.getElementById("runtime-badge");
 const chiefStatus=document.getElementById("chief-status");
@@ -25,6 +26,7 @@ let runtimeBaseUrl="";
 let runtimeToken="";
 let connected=false;
 let latestTaskId=null;
+let webBuildReady=false;
 let voiceCapabilities={transcription:false,synthesis:false};
 let activeRecorder=null;
 let activeRecordingStream=null;
@@ -38,6 +40,7 @@ function setConnectionState(value){
   executionStatus.textContent=value?"جاهز لتنفيذ المهام":"بانتظار الاتصال";
   androidBuildButton.disabled=!(value&&latestTaskId);
   webBuildButton.disabled=!(value&&latestTaskId);
+  webVerifyButton.disabled=!(value&&latestTaskId&&webBuildReady);
   voiceRecordButton.disabled=!(value&&voiceEnabledInput.checked&&voiceCapabilities.transcription);
   document.querySelector(".connection-state")?.classList.toggle("is-connected",value);
 }
@@ -339,6 +342,8 @@ connectButton.addEventListener("click",async()=>{
 webBuildButton.addEventListener("click",async()=>{
   if(!connected||!latestTaskId)return;
   webBuildButton.disabled=true;
+  webBuildReady=false;
+  webVerifyButton.disabled=true;
   const originalLabel=webBuildButton.textContent;
   webBuildButton.textContent="جارٍ اختبار وبناء تطبيق الويب...";
   executionStatus.textContent="جارٍ اختبار وبناء تطبيق الويب...";
@@ -351,6 +356,8 @@ webBuildButton.addEventListener("click",async()=>{
     if(completed.status==="succeeded"&&result.status==="succeeded"){
       appendMessage("اكتمل بناء تطبيق الويب باستخدام "+result.manager+". تم نشر "+(result.artifacts??[]).length+" ملفاً مع بصمات SHA-256.");
       for(const artifact of result.artifacts??[])appendArtifactLink(artifact);
+      webBuildReady=true;
+      webVerifyButton.disabled=!(connected&&latestTaskId);
       executionStatus.textContent="بناء الويب مكتمل";
     }else{
       appendMessage("فشل بناء تطبيق الويب: "+(result.error||completed.error||"لم يتم إنشاء مخرجات ثابتة."));
@@ -362,6 +369,51 @@ webBuildButton.addEventListener("click",async()=>{
   }finally{
     webBuildButton.textContent=originalLabel;
     webBuildButton.disabled=!(connected&&latestTaskId);
+  }
+});
+
+webVerifyButton.addEventListener("click",async()=>{
+  if(!connected||!latestTaskId||!webBuildReady)return;
+  webVerifyButton.disabled=true;
+  const originalLabel=webVerifyButton.textContent;
+  webVerifyButton.textContent="جارٍ اختبار المتصفحات...";
+  executionStatus.textContent="جارٍ تشغيل التطبيق المبني في المتصفحات...";
+  try{
+    const completed=await api("/api/tasks/"+encodeURIComponent(latestTaskId)+"/web-verify",{
+      method:"POST",
+      body:{
+        confirmExecution:true,
+        projectPath:webProjectPath.value.trim()||".",
+        outputDirectory:webOutputDirectory.value,
+        browsers:["chromium","firefox","webkit"],
+        viewportWidth:390,
+        viewportHeight:844
+      }
+    });
+    const result=completed.result??{};
+    if(completed.status==="succeeded"&&result.status==="passed"){
+      appendMessage("اجتاز التطبيق اختبارات المتصفح: "+result.summary.passed+" من "+result.summary.total+".");
+      for(const browser of result.browsers??[]){
+        appendMessage(browser.name+": "+browser.status+" · HTTP "+browser.httpStatus+" · "+browser.title);
+      }
+      executionStatus.textContent="اختبارات المتصفح مكتملة";
+    }else if(result.status==="unavailable"){
+      appendMessage("اختبار المتصفح غير متاح: "+(result.reason||completed.error||"Playwright غير مثبت على جهاز المحرك."));
+      executionStatus.textContent="Playwright غير مهيأ";
+    }else{
+      appendMessage("لم يجتز التطبيق جميع اختبارات المتصفح: "+(result.summary?.passed??0)+" نجح، "+(result.summary?.failed??0)+" فشل.");
+      for(const browser of result.browsers??[]){
+        const issues=[...(browser.pageErrors??[]),...(browser.consoleErrors??[]),...(browser.failedRequests??[])];
+        appendMessage(browser.name+": "+(browser.error||issues.join(" | ")||"فشل التحقق من الصفحة أو التخطيط."));
+      }
+      executionStatus.textContent="اختبارات المتصفح بها إخفاقات";
+    }
+  }catch(error){
+    appendMessage("تعذر اختبار التطبيق في المتصفحات: "+error.message);
+    executionStatus.textContent="تعذر اختبار المتصفحات";
+  }finally{
+    webVerifyButton.textContent=originalLabel;
+    webVerifyButton.disabled=!(connected&&latestTaskId&&webBuildReady);
   }
 });
 
@@ -411,6 +463,8 @@ form.addEventListener("submit",async event=>{
   try{
     const task=await api("/api/tasks",{method:"POST",body:{request:message}});
     latestTaskId=task.id;
+    webBuildReady=false;
+    webVerifyButton.disabled=true;
     androidBuildButton.disabled=false;
     webBuildButton.disabled=false;
     const runBody={model:runtimeModelSelect.value,confirmExecution:true};
