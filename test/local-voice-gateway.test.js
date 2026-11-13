@@ -14,7 +14,7 @@ test('voice gateway authenticates and routes audio to local transcription and sy
     capabilities: () => ({ transcription: false, synthesis: false, localOnly: true }),
     inspectCapabilities: async () => ({ transcription: true, synthesis: true, localOnly: true, checks: { whisperExecutable: true, piperModule: true } }),
     transcribe: async input => { received.audio = input.audio; received.contentType = input.contentType; return { text: 'local words', engine: 'whisper.cpp', local: true }; },
-    synthesize: async input => { received.text = input.text; return { audio: wav, contentType: 'audio/wav' }; },
+    synthesize: async input => { received.text = input.text; received.engine = input.engine; return { audio: wav, contentType: 'audio/wav' }; },
   };
   const gateway = createTaskGateway({ dataDir: root, token: 'local-voice-gateway-token', voiceService });
   await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
@@ -35,6 +35,7 @@ test('voice gateway authenticates and routes audio to local transcription and sy
     assert.equal(synthesized.headers.get('content-type'), 'audio/wav');
     assert.equal(Buffer.from(await synthesized.arrayBuffer()).toString(), wav.toString());
     assert.equal(received.text, 'hello');
+    assert.equal(received.engine, 'auto');
   } finally {
     await new Promise(resolve => gateway.server.close(resolve));
     await rm(root, { recursive: true, force: true });
