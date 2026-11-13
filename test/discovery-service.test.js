@@ -37,7 +37,7 @@ test('discovery service pauses on rate limits and does not retry or bypass',asyn
 
 test('discovery service enumerates vendor organizations in bounded batches',async()=>{
   const scanned=[];
-  const client={searchRepositories:async()=>({results:[]}),listOrganizationRepositories:async org=>{scanned.push(org);return{results:[{id:org,fullName:`${org}/repo`}]};}};
+  const client={searchRepositories:async()=>({results:[]}),listOrganizationRepositories:async org=>{scanned.push(org);return{results:[{id:org,fullName:`${org}/repo`}],count:1,complete:true};}};
   const service=new UniversalDiscoveryService({client,maxQueriesPerRun:1,maxVendorOrgsPerRun:2});
   const result=await service.discover({capabilities:['android'],queryOffset:0,vendorOffset:0});
   assert.equal(scanned.length,2);
