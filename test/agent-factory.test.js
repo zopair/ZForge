@@ -48,7 +48,7 @@ test('factory keeps new agents proposed until required tests, reviews and indepe
   assert.equal(active.activated, true);
   assert.equal(active.status, 'ACTIVE');
   const profile = await factory.getExecutionProfile('builder-agent');
-  assert.deepEqual(profile.allowedTools.sort(), ['publish_artifact', 'read_file', 'run_command']);
+  assert.deepEqual(profile.allowedTools.sort(), ['finish_task', 'publish_artifact', 'read_file', 'run_command']);
 });
 
 test('factory blocks failed or missing tests and unresolved reviews', async () => {
