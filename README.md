@@ -22,10 +22,11 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - [Agent operating system](docs/AGENT_OPERATING_SYSTEM.md)
 
 ## Internal components
-- Discovery planner and strict license/zero-cost gates: src/core/discovery-engine.js
+- Discovery planner, strict license/zero-cost gates and toolchain composition: src/core/discovery-engine.js
+- Bounded discovery orchestration with query budget and cache: src/core/discovery-service.js
 - Read-only GitHub search adapter with official rate-limit stop: src/adapters/github-discovery.js
-- Toolchain compatibility composition: src/core/discovery-engine.js
-- Release review monitor (never auto-upgrades): src/core/release-monitor.js
+- Repository metadata/license/manifest inspector: src/adapters/github-repository-inspector.js
+- Official release metadata adapter and review-only update monitor: src/adapters/github-release-monitor.js and src/core/release-monitor.js
 - Chief Agent: prompts/CHIEF_AGENT.md
 - Agent Architect: prompts/AGENT_ARCHITECT.md
 - Tool registry and engineering memory: memory/
