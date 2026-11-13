@@ -58,8 +58,8 @@ export class AndroidBuildService {
     const execution = await this.runtime.execute({
       workspaceId,
       command: 'bash',
-      args: [project === '.' ? './gradlew' : './' + project + '/gradlew', '--no-daemon', ...tasks],
-      cwd: '.',
+      args: ['./gradlew', '--no-daemon', ...tasks],
+      cwd: project,
       env,
       timeoutMs: this.timeoutMs,
     });
