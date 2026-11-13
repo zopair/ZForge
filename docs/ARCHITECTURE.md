@@ -55,7 +55,7 @@ The initial `AgentWorkspaceManager` control plane supports:
 - Successful, failed and inconclusive outcomes, including metrics and artifacts.
 - Promotion of successful experiments to reusable destinations.
 
-The workspace manager remains the runtime-neutral control plane. PR #3 adds a self-hosted local process adapter and authenticated task gateway; see TASK_GATEWAY.md. Browser automation, container isolation, model-driven tool orchestration and live PWA event streaming remain separate integration layers.
+The workspace manager remains the runtime-neutral control plane. Workspace state, experiment outcomes and observations are now persisted locally with atomic replacement and restored on server startup. PR #3 adds a self-hosted local process adapter and authenticated task gateway; see TASK_GATEWAY.md. Browser automation, container isolation, model-driven tool orchestration and live PWA event streaming remain separate integration layers.
 
 ## Chief Agent lifecycle
 1. Understand the desired outcome and relevant constraints.
