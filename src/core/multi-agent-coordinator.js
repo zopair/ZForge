@@ -32,13 +32,15 @@ function validatePlan({ workspaceId, tasks } = {}) {
 }
 
 export class MultiAgentCoordinator {
-  constructor({ agentFactory, agentService, maxParallel = 3 } = {}) {
+  constructor({ agentFactory, agentService, maxParallel = 3, defaultModel = 'qwen3:8b' } = {}) {
     if (!agentFactory || typeof agentFactory.getExecutionProfile !== 'function') throw new TypeError('agentFactory.getExecutionProfile is required');
     if (!agentService || typeof agentService.runTask !== 'function') throw new TypeError('agentService.runTask is required');
     if (!Number.isInteger(maxParallel) || maxParallel < 1 || maxParallel > 16) throw new RangeError('maxParallel must be between 1 and 16');
     this.agentFactory = agentFactory;
     this.agentService = agentService;
     this.maxParallel = maxParallel;
+    if (typeof defaultModel !== 'string' || !defaultModel.trim()) throw new TypeError('defaultModel is required');
+    this.defaultModel = defaultModel;
   }
 
   async executePlan({ workspaceId, tasks } = {}) {
@@ -69,7 +71,7 @@ export class MultiAgentCoordinator {
           }).join('\n');
           const execution = await this.agentService.runTask({
             request: task.request,
-            model: task.model,
+            model: task.model ?? this.defaultModel,
             workspaceId: task.workspaceId ?? `${workspaceId}-${task.id}`,
             plan: [task.plan, dependencyContext].filter(Boolean).join('\n\n') || null,
             allowedTools: profile.allowedTools,
