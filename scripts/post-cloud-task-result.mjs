@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { createApprovedPlanSnapshot } from '../src/core/approved-plan-snapshot.js';
 
 const event = JSON.parse(await readFile(process.env.GITHUB_EVENT_PATH, 'utf8'));
 const repository = process.env.GITHUB_REPOSITORY;
@@ -15,7 +16,21 @@ try {
   report = JSON.parse(await readFile(process.env.ZFORGE_CLOUD_RESULT_FILE, 'utf8'));
 } catch {}
 
+let planSnapshotMarker = '';
+if (report.status === 'awaiting_approval' && report.plan) {
+  const snapshot = createApprovedPlanSnapshot({
+    taskId: report.taskId,
+    plan: report.plan,
+    generatedAt: report.generatedAt,
+  });
+  if (snapshot.planSha256 !== report.planSha256) {
+    throw new Error('The plan report fingerprint does not match the exact plan snapshot.');
+  }
+  planSnapshotMarker = '<!-- ZFORGE_PLAN_SNAPSHOT_V1:' + snapshot.encoded + ' -->';
+}
+
 const lines = [
+  planSnapshotMarker,
   '## ZForge Cloud Execution',
   '',
   '**Status:** ' + String(report.status ?? 'unknown').toUpperCase(),
