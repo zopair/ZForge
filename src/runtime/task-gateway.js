@@ -13,6 +13,13 @@ const TRANSITIONS = {
   cancelled: new Set(),
 };
 
+function isValidOrigin(value) {
+  try {
+    const url = new URL(value);
+    return ['http:', 'https:'].includes(url.protocol) && url.origin === value && url.pathname === '/' && !url.search && !url.hash;
+  } catch { return false; }
+}
+
 function safeEqual(left, right) {
   const a = Buffer.from(left);
   const b = Buffer.from(right);
