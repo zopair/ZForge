@@ -33,7 +33,7 @@ test('Chief Agent includes a proposed zero-cost internal build brief when comple
     model: 'local-model',
   });
   const result = await agent.planTask({ request: 'Build offline Arabic OCR', capabilities: ['offline-arabic-ocr'] });
-  const context = JSON.parse(submittedPrompt.slice(submittedPrompt.indexOf('\\n') + 1));
+  const context = JSON.parse(submittedPrompt.split(String.fromCharCode(10)).slice(1).join(String.fromCharCode(10)));
   assert.equal(context.capabilityGapDecisions[0].action, 'BUILD_INTERNAL_TOOL');
   assert.equal(context.toolBuildBriefs[0].zeroBudgetOnly, true);
   assert.equal(context.toolBuildBriefs[0].openSourceOnly, true);
@@ -51,7 +51,7 @@ test('Chief Agent does not create a build brief while discovery is incomplete', 
     model: 'local-model',
   });
   await agent.planTask({ request: 'Find offline OCR', capabilities: ['offline-arabic-ocr'] });
-  const context = JSON.parse(submittedPrompt.slice(submittedPrompt.indexOf('\\n') + 1));
+  const context = JSON.parse(submittedPrompt.split(String.fromCharCode(10)).slice(1).join(String.fromCharCode(10)));
   assert.equal(context.capabilityGapDecisions[0].action, 'CONTINUE_DISCOVERY');
   assert.equal(context.toolBuildBriefs.length, 0);
 });
