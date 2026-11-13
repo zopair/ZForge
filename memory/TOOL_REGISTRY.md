@@ -13,7 +13,7 @@ Canonical index of category-specific evaluations. Popularity is discovery-only a
 ## Internal discovery components (implementation status, not third-party approval)
 | Component | Location | State | Evidence |
 |---|---|---|---|
-| Discovery taxonomy/query planner | src/core/discovery-engine.js | Implemented; CI passed 49/49 | test/discovery-engine.test.js |
+| Discovery taxonomy/query planner | src/core/discovery-engine.js | Implemented; CI passed 50/50 | test/discovery-engine.test.js |
 | Bounded discovery orchestration/cache | src/core/discovery-service.js | Implemented; process-local cache only | test/discovery-service.test.js |
 | Bounded discovery orchestration/cache | src/core/discovery-service.js | Implemented; process-local cache only; CI passed 39/39 | test/discovery-service.test.js |
 | License classifier and eligibility gates | src/core/discovery-engine.js | Implemented; conservative allowlist | test/discovery-engine.test.js |
