@@ -96,7 +96,7 @@ export class WebBrowserVerificationService {
     const server = createServer(async (request, response) => {
       try {
         const url = new URL(request.url, 'http://127.0.0.1');
-        let relativePath = decodeURIComponent(url.pathname).replace(/^\\/+/, '');
+        let relativePath = decodeURIComponent(url.pathname).replace(/^\/+/, '');
         if (!relativePath) relativePath = 'index.html';
         if (relativePath.includes('\\0') || relativePath.includes('\\\\') || relativePath.split('/').some(segment => segment === '.' || segment === '..')) {
           response.writeHead(400, { 'Cache-Control': 'no-store' });
