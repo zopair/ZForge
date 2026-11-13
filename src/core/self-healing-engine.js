@@ -68,8 +68,52 @@ export function classifyEngineeringFailure(failure = {}) {
   };
 }
 
+async function discoverInBatches(discoveryService, { capabilities, keywords }, maxBatches) {
+  const results = new Map();
+  const searchedQueries = [];
+  const failedQueries = [];
+  let queryOffset = 0;
+  let queryPage = 1;
+  let latest = { status: 'UNKNOWN', complete: false, results: [] };
+  let batchesRun = 0;
+
+  for (let index = 0; index < maxBatches; index += 1) {
+    const batch = await discoveryService.discover({
+      capabilities,
+      keywords,
+      queryOffset,
+      queryPage,
+      includeVendorSeeds: false,
+    });
+    if (!batch || typeof batch !== 'object') throw new TypeError('discovery service returned an invalid batch');
+    batchesRun += 1;
+    latest = batch;
+    for (const item of batch.results ?? []) {
+      const key = String(item.id ?? item.fullName ?? item.htmlUrl ?? JSON.stringify(item));
+      results.set(key, item);
+    }
+    searchedQueries.push(...(batch.searchedQueries ?? []));
+    failedQueries.push(...(batch.failedQueries ?? []));
+    if (batch.complete === true || batch.rateLimit || batch.status === 'PARTIAL_ERROR') break;
+
+    const nextOffset = Number.isInteger(batch.nextOffset) ? batch.nextOffset : queryOffset;
+    const nextPage = Number.isInteger(batch.nextQueryPage) ? batch.nextQueryPage : 1;
+    if (nextOffset === queryOffset && nextPage <= queryPage) break;
+    queryOffset = nextOffset;
+    queryPage = nextPage;
+  }
+
+  return {
+    ...latest,
+    results: [...results.values()],
+    searchedQueries,
+    failedQueries,
+    batchesRun,
+  };
+}
+
 export class SelfHealingEngineeringEngine {
-  constructor({ discoveryService, memoryStore = null, maxKeywords = 10 } = {}) {
+  constructor({ discoveryService, memoryStore = null, maxKeywords = 10, maxDiscoveryBatches = 3 } = {}) {
     if (!discoveryService || typeof discoveryService.discover !== 'function') {
       throw new TypeError('discoveryService.discover is required');
     }
@@ -79,9 +123,13 @@ export class SelfHealingEngineeringEngine {
     if (!Number.isInteger(maxKeywords) || maxKeywords < 1 || maxKeywords > 20) {
       throw new RangeError('maxKeywords must be between 1 and 20');
     }
+    if (!Number.isInteger(maxDiscoveryBatches) || maxDiscoveryBatches < 1 || maxDiscoveryBatches > 8) {
+      throw new RangeError('maxDiscoveryBatches must be between 1 and 8');
+    }
     this.discoveryService = discoveryService;
     this.memoryStore = memoryStore;
     this.maxKeywords = maxKeywords;
+    this.maxDiscoveryBatches = maxDiscoveryBatches;
   }
 
   async investigate({ request, failure, previousAttempts = [] } = {}) {
@@ -120,13 +168,7 @@ export class SelfHealingEngineeringEngine {
     }
 
     const [discoveryResult, memoryResult] = await Promise.allSettled([
-      this.discoveryService.discover({
-        capabilities,
-        keywords,
-        queryOffset: 0,
-        queryPage: 1,
-        includeVendorSeeds: false,
-      }),
+      discoverInBatches(this.discoveryService, { capabilities, keywords }, this.maxDiscoveryBatches),
       this.memoryStore
         ? this.memoryStore.loadRelevant({ request, capabilities })
         : Promise.resolve({}),
