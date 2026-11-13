@@ -18,7 +18,7 @@ Canonical index of category-specific evaluations. Popularity is discovery-only a
 | Bounded discovery orchestration/cache | src/core/discovery-service.js | Implemented; process-local cache only; CI pending | test/discovery-service.test.js |
 | License classifier and eligibility gates | src/core/discovery-engine.js | Implemented; conservative allowlist | test/discovery-engine.test.js |
 | Toolchain compatibility composer | src/core/discovery-engine.js | Implemented; basic capability/conflict graph | test/discovery-engine.test.js |
-| GitHub public repository search | src/adapters/github-discovery.js | Implemented; read-only and rate-limit-aware | test/github-discovery.test.js |
+| GitHub public repository search | src/adapters/github-discovery.js | Implemented; read-only, rate-limit-aware, includes public organization enumeration | test/github-discovery.test.js |
 | Repository metadata/license/manifest inspection | src/adapters/github-repository-inspector.js | Implemented; no code execution; manual review still required | test/github-repository-inspector.test.js |
 | Official GitHub release metadata | src/adapters/github-release-monitor.js | Implemented; read-only | test/github-release-monitor.test.js |
 | Release update review | src/core/release-monitor.js | Implemented; review-only, no auto-upgrade | test/discovery-engine.test.js |
