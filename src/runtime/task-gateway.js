@@ -347,6 +347,7 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
             plan: planning?.plan ?? (typeof body.approvedPlan === 'string' ? body.approvedPlan : null),
             allowedTools: executionProfile?.allowedTools ?? null,
             resourceLimits: executionProfile?.resourceLimits ?? null,
+            onProgress: event => store.appendEvent(task.id, event.type, event.details),
           });
           const result = { ...execution, agentProfile: executionProfile ? { agentId: executionProfile.agentId, name: executionProfile.name, version: executionProfile.version } : null, planning: planning ? {
             status: planning.status,
@@ -430,7 +431,7 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
         if (body.confirmExecution !== true) return send(response, 409, { error: 'explicit_execution_confirmation_required' });
         await store.transition(task.id, 'running', { details: { mode: 'multi-agent-orchestration', taskCount: Array.isArray(body.tasks) ? body.tasks.length : 0 } });
         try {
-          const result = await multiAgentCoordinator.executePlan({ workspaceId: task.workspaceId, tasks: body.tasks });
+          const result = await multiAgentCoordinator.executePlan({ workspaceId: task.workspaceId, tasks: body.tasks, onProgress: event => store.appendEvent(task.id, event.type, event.details) });
           const status = result.status === 'completed' ? 'succeeded' : result.status === 'partial' ? 'inconclusive' : 'failed';
           const completed = await store.transition(task.id, status, {
             result,
