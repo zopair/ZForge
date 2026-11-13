@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { buildDiscoveryPlan } from '../core/discovery-engine.js';
 
 const TASK_STATES = new Set(['queued', 'running', 'succeeded', 'failed', 'inconclusive', 'cancelled']);
 const TRANSITIONS = {
@@ -188,6 +189,9 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
   if (!Number.isInteger(maxBodyBytes) || maxBodyBytes < 1024) throw new RangeError('maxBodyBytes must be at least 1024');
   if (!Array.isArray(allowedOrigins) || allowedOrigins.some(origin => typeof origin !== 'string' || !isValidOrigin(origin))) throw new TypeError('allowedOrigins must be an array of exact HTTP(S) origins');
   const store = new TaskStore({ dataDir, clock });
+  const repositorySeedCatalog = buildDiscoveryPlan({ maxQueries: 500 }).allRepositorySeeds;
+  const repositoryCategories = new Set(repositorySeedCatalog.map(item => item.category));
+  const repositoryProjectTypes = new Set(repositorySeedCatalog.flatMap(item => [item.projectType, ...(item.projectTypes ?? [])].filter(Boolean)));
   const ready = store.initialize();
   const server = createServer(async (request, response) => {
     try {
@@ -217,6 +221,35 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
       const supplied = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
       if (!supplied || !safeEqual(supplied, token)) return send(response, 401, { error: 'unauthorized' });
 
+      if (request.method === 'GET' && url.pathname === '/api/repositories/catalog') {
+        const rawLimit = url.searchParams.get('limit');
+        const rawOffset = url.searchParams.get('offset');
+        const limit = rawLimit === null ? 50 : Number(rawLimit);
+        const offset = rawOffset === null ? 0 : Number(rawOffset);
+        const category = url.searchParams.get('category');
+        const projectType = url.searchParams.get('projectType');
+        if (!Number.isInteger(limit) || limit < 1 || limit > 100) return send(response, 400, { error: 'limit_must_be_1_to_100' });
+        if (!Number.isInteger(offset) || offset < 0 || offset > 10000) return send(response, 400, { error: 'offset_must_be_0_to_10000' });
+        if (category && !repositoryCategories.has(category)) return send(response, 400, { error: 'unknown_repository_category', categories: [...repositoryCategories].sort() });
+        if (projectType && !repositoryProjectTypes.has(projectType)) return send(response, 400, { error: 'unknown_repository_project_type', projectTypes: [...repositoryProjectTypes].sort() });
+        const filtered = repositorySeedCatalog.filter(item =>
+          (!category || item.category === category) &&
+          (!projectType || item.projectType === projectType || item.projectTypes?.includes(projectType)),
+        );
+        const items = filtered.slice(offset, offset + limit).map(item => ({
+          ...item,
+          htmlUrl: `https://github.com/${item.fullName}`,
+          installable: false,
+          status: item.status ?? 'PENDING_REVIEW',
+          clonePolicy: item.clonePolicy ?? 'ON_DEMAND',
+        }));
+        return send(response, 200, {
+          catalogVersion: 1, total: filtered.length, offset, limit,
+          nextOffset: offset + items.length < filtered.length ? offset + items.length : null,
+          categories: [...repositoryCategories].sort(),
+          projectTypes: [...repositoryProjectTypes].sort(), items,
+        });
+      }
       if (request.method === 'GET' && url.pathname === '/api/agents') {
         if (!agentFactory) return send(response, 503, { error: 'agent_factory_unavailable' });
         return send(response, 200, { agents: await agentFactory.listAgents() });
