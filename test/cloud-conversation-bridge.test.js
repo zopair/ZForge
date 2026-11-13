@@ -37,30 +37,29 @@ test('rejects malformed correlation identifiers', () => {
   assert.throws(() => extractCloudConversationReply([], 'not-an-id'), /correlation id/i);
 });
 
-
 test('cloud chat creates the issue directly with an authenticated owner token', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../assets/cloud-execution.js', import.meta.url), 'utf8');
-  assert.match(source, /POST.*\/issues|method:\s*'POST'/s);
-  assert.match(source, /Authorization:\s*'Bearer '\s*\+/);
+  assert.match(source, /POST.*\\/issues|method:\\s*'POST'/s);
+  assert.match(source, /Authorization:\\s*'Bearer '\\s*\\+/);
   assert.match(source, /githubToken/);
-  assert.doesNotMatch(source, /issues\/new/);
+  assert.doesNotMatch(source, /issues\\/new/);
   assert.doesNotMatch(source, /فتح طلب التنفيذ السحابي/);
 });
 
 test('cloud chat polls the created issue directly and allows the full worker timeout', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../assets/cloud-execution.js', import.meta.url), 'utf8');
-  assert.match(source, /POLL_INTERVAL_MS\s*=\s*15000/);
-  assert.match(source, /MAX_WAIT_MS\s*=\s*49\s*\*\s*60\s*\*\s*1000/);
-  assert.match(source, /\/issues\/.*\/comments/);
-  assert.doesNotMatch(source, /search\/issues/);
+  assert.match(source, /POLL_INTERVAL_MS\\s*=\\s*15000/);
+  assert.match(source, /MAX_WAIT_MS\\s*=\\s*49\\s*\\*\\s*60\\s*\\*\\s*1000/);
+  assert.match(source, /\\/issues\\/.*\\/comments/);
+  assert.doesNotMatch(source, /search\\/issues/);
 });
 
 test('GitHub access token is held in page memory and can be cleared explicitly', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../assets/cloud-execution.js', import.meta.url), 'utf8');
-  assert.match(source, /let githubToken\s*=\s*''/);
-  assert.match(source, /githubToken\s*=\s*''/);
+  assert.match(source, /let githubToken\\s*=\\s*''/);
+  assert.match(source, /githubToken\\s*=\\s*''/);
   assert.doesNotMatch(source, /localStorage|sessionStorage/);
 });
