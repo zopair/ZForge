@@ -1,19 +1,25 @@
 # Agent Operating System
 
 ## Mandatory Chief Agent preflight
-Read canonical Chief Agent instructions and these memory files before each substantive task: TOOL_REGISTRY, ISSUES, SOLUTIONS, FAILED_APPROACHES, WORKAROUNDS, AGENT_LEARNINGS, RESOURCE_LIMITS. Then retrieve category-specific evaluations and relevant agent definitions. If unavailable, disclose the gap.
+Read canonical Chief Agent instructions and memory files before each substantive task: TOOL_REGISTRY, ISSUES, SOLUTIONS, FAILED_APPROACHES, WORKAROUNDS, AGENT_LEARNINGS, RESOURCE_LIMITS, COMPATIBILITY_MATRIX, VERSION_REGISTRY, DISCOVERY_RUNS and REJECTED_CANDIDATES. Then retrieve category-specific evaluations and relevant agent definitions. If unavailable, disclose the gap.
 
 ## Task envelope
-Outcome; constraints; acceptance criteria; risk; selected tools and evidence; agent roles and permissions; ordered plan; verification; resource ceiling; rollback; final evidence.
+Outcome; constraints; acceptance criteria; risk; zero-budget/open-source requirement; selected tools and evidence; compatibility graph; agent roles and permissions; ordered plan; verification; resource ceiling; rollback; final evidence.
 
 ## Specialist contract
-Return findings, changed artifacts, tests, unresolved risks, resource use, and proposed memory updates. Never self-certify authored work.
+Return findings, changed artifacts, tests, unresolved risks, license/dependency inventory, resource use and proposed memory updates. Never self-certify authored work.
 
 ## Agent Architect
-Create agents only for recurring/high-value capability gaps. Specify mission, non-goals, inputs/outputs, tools, permissions, security, resource budget, tests, and rollback. New agents must pass representative, edge-case, adversarial, and quota-failure tests before activation.
+Create agents only for recurring/high-value capability gaps. Discover and evaluate open-source tools first. Specify mission, non-goals, inputs/outputs, tools, permissions, security, resource budget, tests and rollback. New agents must pass representative, edge-case, adversarial, missing-dependency, quota-failure and offline tests where required before activation.
+
+## Chief Agent discovery workflow
+Use ZUOI for bounded semantic discovery when a task needs tools or a capability refresh. Inspect canonical sources and licenses, reject paid/closed dependencies, quarantine unknowns, benchmark candidates, compose compatible toolchains and preserve evidence. Never rank by popularity. Search across vendor organizations and independent projects; do not limit the search to a static catalog.
 
 ## Prompt evolution
-Generate a task-specific prompt from canonical instructions plus relevant verified tools, prior solutions, failures, and acceptance criteria. Keep canonical prompts immutable during execution. Promote changes only with evidence, regression tests, and rollback.
+Generate a task-specific prompt from canonical instructions plus relevant verified tools, prior solutions, failures, release pins and acceptance criteria. Keep canonical prompts immutable during execution. Promote changes only with evidence, regression tests, review and rollback.
+
+## Execution and safety
+PWA is presentation only. Keep credentials server-side. Use isolated ephemeral workspaces, least privilege, resource limits and default-deny network. Do not execute unreviewed scripts. Require explicit approval for merge to main, publication, signing, deletion, permission/secret changes and canonical policy changes.
 
 ## Verification
-No completion claim without evidence. Record exact error, environment, root-cause confidence, proven fix, verification, and regression prevention. Mark hypotheses as hypotheses.
+No completion claim without evidence. Record exact error, environment, root-cause confidence, proven fix, verification, license findings, compatibility and regression prevention. Mark hypotheses as hypotheses.
