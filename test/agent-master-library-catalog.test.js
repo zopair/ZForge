@@ -13,7 +13,7 @@ test('imports all 64 supplied agent-library repositories as non-installable revi
   for (const item of AGENT_MASTER_LIBRARY_SEEDS) {
     assert.match(item.fullName, /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/);
     assert.ok(AGENT_MASTER_LIBRARY_CATEGORIES.includes(item.category));
-    assert.ok(['FRAMEWORK', 'CODING_AGENT', 'COMPUTER_USE_AGENT', 'DOMAIN_AGENT', 'MEMORY_RAG', 'SKILL_LIBRARY', 'PROTOCOL', 'BENCHMARK'].includes(item.projectType));
+    assert.ok(['FRAMEWORK', 'CODING_AGENT', 'COMPUTER_USE_AGENT', 'DOMAIN_AGENT', 'MEMORY_RAG', 'SKILL_LIBRARY', 'PROTOCOL', 'BENCHMARK', 'REFERENCE_COLLECTION'].includes(item.projectType));
     assert.equal(item.status, 'PENDING_REVIEW');
     assert.equal(item.installable, false);
     assert.equal(item.source, 'USER_SUPPLIED_AGENT_MASTER_LIBRARY');
@@ -28,7 +28,7 @@ test('agent library import retains specialist taxonomy and distinguishes executa
   assert.equal(byName['ethz-spylab/agentdojo'].projectType, 'BENCHMARK');
   assert.equal(byName['primeradiant/superpowers'].projectType, 'SKILL_LIBRARY');
   assert.equal(byName['rbr7/ClinClaw'].category, 'medical-healthcare');
-  assert.equal(byName['OpenHands/OpenHands'].projectType, 'CODING_AGENT');
+  assert.equal(byName['All-Hands-AI/OpenHands'].projectType, 'CODING_AGENT');
 });
 
 test('discovery plan includes agent library identities and exact-owner queries without bypassing query budgets', () => {
@@ -37,7 +37,7 @@ test('discovery plan includes agent library identities and exact-owner queries w
   assert.ok(plan.curatedRepositorySeeds.length >= 120);
   assert.ok(plan.allRepositorySeeds.some(item => item.fullName === 'Significant-Gravitas/AutoGPT'));
   assert.ok(plan.allRepositorySeeds.some(item => item.fullName === 'modelcontextprotocol/modelcontextprotocol'));
-  assert.ok(plan.agentMasterLibraryQueries.some(query => query.includes('user:OpenHands')));
+  assert.ok(plan.agentMasterLibraryQueries.some(query => query.includes('user:All-Hands-AI')));
   assert.ok(plan.queries.length <= 500);
   assert.equal(plan.queryCatalogComplete, plan.totalQueryCount <= 500);
 });
