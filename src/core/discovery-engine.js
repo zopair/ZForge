@@ -69,10 +69,11 @@ export function buildDiscoveryPlan({ capabilities = [], keywords = [], maxQuerie
     searchSources: ['GitHub repository search API','GitHub organization repositories','GitHub topics','official project documentation','official release metadata'],
   };
 }
-export function classifyLicense(input) {
+export function classifyLicense(input, { artifactType = 'software' } = {}) {
   const spdxId = typeof input === 'string' ? input : input?.spdxId ?? input?.spdx_id ?? null;
   if (!spdxId || typeof spdxId !== 'string' || spdxId === 'NOASSERTION') return { status:'UNKNOWN', spdxId:null, reason:'No verifiable SPDX license identifier.' };
   const normalized = spdxId.trim();
+  if (normalized === 'OFL-1.1' && artifactType !== 'font') return { status:'UNKNOWN', spdxId:normalized, reason:'OFL is evaluated only for font artifacts, not software dependencies.' };
   const upper = normalized.toUpperCase();
   if (NON_OPEN_SOURCE_MARKERS.some(marker => upper.includes(marker))) return { status:'NOT_OPEN_SOURCE', spdxId:normalized, reason:'License is source-available or has non-open-source restrictions.' };
   if (OPEN_SOURCE_LICENSES.has(normalized)) return { status:'OPEN_SOURCE', spdxId:normalized, reason:'SPDX identifier is in the conservative OSI-compatible allowlist; inspect full license text and dependency licenses before integration.' };
