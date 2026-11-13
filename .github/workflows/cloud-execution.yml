@@ -40,6 +40,11 @@ jobs:
           docker run --rm zforge-cloud-worker:latest sdkmanager --version
           docker run --rm zforge-cloud-worker:latest python3 --version
 
+      - name: Install host-side Playwright browser verification engines
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium firefox webkit
+
       - name: Install Ollama on the ephemeral worker
         shell: bash
         run: |
