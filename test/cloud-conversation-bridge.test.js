@@ -40,6 +40,7 @@ test('rejects malformed correlation identifiers', () => {
 test('browser correlation search uses the same colon-delimited issue title marker', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../assets/cloud-execution.js', import.meta.url), 'utf8');
+  assert.match(source, /in:title \"ZForgeChat:/);
   assert.match(source, /ZForgeChat:/);
   assert.doesNotMatch(source, /ZForgeChat-/);
 });
