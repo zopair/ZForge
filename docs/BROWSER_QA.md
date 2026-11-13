@@ -19,5 +19,5 @@ Run locally after installing Playwright and its three browser engines:
 ```sh
 npm install --no-save --package-lock=false playwright@1.56.1
 npx playwright install chromium firefox webkit
-node test/browser-smoke.mjs
+node scripts/browser-smoke.mjs
 ```
