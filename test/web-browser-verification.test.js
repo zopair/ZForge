@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { WebBrowserVerificationService } from '../src/runtime/web-browser-verification-service.js';
 
-function browserHarness({ status = 200, layout = { title: 'Generated app', viewportWidth: 390, documentWidth: 390 }, pageErrors = [], consoleErrors = [], launchError = null } = {}) {
+function browserHarness({ status = null, layout = { title: 'Generated app', viewportWidth: 390, documentWidth: 390 }, pageErrors = [], consoleErrors = [], launchError = null } = {}) {
   const visits = [];
   const browserTypes = {};
   for (const name of ['chromium', 'firefox', 'webkit']) {
