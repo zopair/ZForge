@@ -91,17 +91,35 @@ function appendProgressEvent(event){
 
 async function streamTaskEvents(taskId,signal){
   let cursor=0;
-  while(!signal.aborted){
-    try{
-      const payload=await api("/api/tasks/"+encodeURIComponent(taskId)+"/events?after="+cursor);
-      for(const event of payload.events??[])appendProgressEvent(event);
-      cursor=payload.cursor??cursor;
-      if(["succeeded","failed","inconclusive","cancelled"].includes(payload.status))break;
-    }catch(error){
+  let terminal=false;
+  const readEvents=async requestSignal=>{
+    const payload=await api("/api/tasks/"+encodeURIComponent(taskId)+"/events?after="+cursor,{signal:requestSignal});
+    for(const event of payload.events??[])appendProgressEvent(event);
+    cursor=payload.cursor??cursor;
+    terminal=["succeeded","failed","inconclusive","cancelled"].includes(payload.status);
+  };
+  const waitForNextPoll=()=>new Promise(resolve=>{
+    const finish=()=>{
+      window.clearTimeout(timer);
+      signal.removeEventListener("abort",finish);
+      resolve();
+    };
+    const timer=window.setTimeout(finish,800);
+    signal.addEventListener("abort",finish,{once:true});
+  });
+  while(!signal.aborted&&!terminal){
+    try{await readEvents(signal);}
+    catch(error){
       if(!signal.aborted)executionStatus.textContent="توقف بث التقدم: "+error.message;
       break;
     }
-    await new Promise(resolve=>window.setTimeout(resolve,800));
+    if(!terminal&&!signal.aborted)await waitForNextPoll();
+  }
+  // The task POST can finish before the next poll. Drain once after abort so
+  // the final specialist events are not lost from the visible activity feed.
+  if(signal.aborted&&!terminal){
+    try{await readEvents(undefined);}
+    catch(error){executionStatus.textContent="تعذر استكمال سجل تقدم المهمة: "+error.message;}
   }
 }
 
@@ -245,14 +263,15 @@ function appendArtifactLink(artifact){
   conversation.scrollTop=conversation.scrollHeight;
 }
 
-async function api(path,{method="GET",body}={}){
+async function api(path,{method="GET",body,signal}={}){
   const response=await fetch(runtimeBaseUrl+path,{
     method,
     headers:{
       Authorization:"Bearer "+runtimeToken,
       ...(body?{"Content-Type":"application/json"}:{})
     },
-    ...(body?{body:JSON.stringify(body)}:{})
+    ...(body?{body:JSON.stringify(body)}:{}),
+    ...(signal?{signal}:{})
   });
   const payload=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(payload.error||("Gateway returned HTTP "+response.status));
