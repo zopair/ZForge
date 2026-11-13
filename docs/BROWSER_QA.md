@@ -12,7 +12,7 @@ The browser smoke suite runs against the real BLACK VANTA static files served ov
 6. Check mobile viewport layout for horizontal overflow and a visible composer.
 7. Fail on browser page exceptions or console errors.
 
-The suite does not use a paid browser cloud or external test service. Playwright is installed only in the ephemeral GitHub Actions runner; it is not a production runtime dependency. The gateway responses are deterministic fixtures, so this suite verifies browser integration and UI behavior, not a live Ollama inference or a production server connection.
+The suite does not use a paid browser cloud or external test service. Playwright is installed only in the ephemeral GitHub Actions runner; it is not a production runtime dependency. The gateway responses are deterministic fixtures, so this suite verifies browser integration and UI behavior, not a live Ollama inference, production voice-model quality or a production server connection. A separate web-build integration test runs actual npm test/build scripts through LocalExecutionRuntime and verifies the published artifact's bytes and SHA-256 metadata.
 
 Run locally after installing Playwright and its three browser engines:
 

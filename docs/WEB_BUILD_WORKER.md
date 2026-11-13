@@ -25,3 +25,7 @@ Requires bearer authentication and `{ "confirmExecution": true }`. Optional fiel
 ## Limits and evidence
 
 The worker uses the existing workspace runtime process limits and an 840-second default timeout. It publishes at most 200 files by default. A successful result proves that the declared tests (if present) and build command exited successfully and that generated static files were found and stored. It does not prove cross-browser compatibility; browser QA is a separate verification stage.
+
+## Verification
+
+`test/web-build-service.test.js` covers package-manager selection, output discovery, and no-publication behavior on failure. `test/web-build-integration.test.js` additionally executes real `npm run test` and `npm run build` scripts through `LocalExecutionRuntime` using a dependency-free sample web project, then reads the published HTML artifact back from `LocalArtifactStore` to verify its bytes and SHA-256 metadata. A failing real test command is verified to prevent both build execution and artifact publication. This integration fixture is self-contained and does not download packages or require a paid service.

@@ -18,8 +18,10 @@ const server = createServer(async (request, response) => {
     if (pathname === '/api/health') return json({ status: 'ok' });
     if (pathname === '/api/models') return json({ models: ['qwen3:8b'] });
     if (pathname === '/api/agents') return json({ agents: [] });
-    
-    if (pathname.endsWith('/events')) return json({ taskId: '12345678-1234-4234-8234-123456789012', status: 'succeeded', cursor: 3, events: [{ sequence: 2, type: 'agent.step.started', details: { step: 1 } }, { sequence: 3, type: 'agent.completed', details: { step: 1 } }] });
+    if (pathname === '/api/voice/capabilities') return json({ capabilities: { transcription: true, synthesis: true, localOnly: true } });
+    if (pathname === '/api/voice/transcribe') return json({ text: 'recognized local speech', engine: 'whisper.cpp', local: true });
+    if (pathname === '/api/voice/synthesize') { response.writeHead(200, { 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' }); return response.end(Buffer.from('RIFF0000WAVEdata')); }
+    if (pathname.endsWith('/events')) return json({ taskId: '12345678-1234-4234-8234-123456789012', status: 'succeeded', cursor: 4, events: [{ sequence: 2, type: 'agent.task.started', details: { taskId: 'research', agentId: 'researcher' } }, { sequence: 3, type: 'agent.step.started', details: { step: 1 } }, { sequence: 4, type: 'agent.task.completed', details: { taskId: 'research', agentId: 'researcher' } }] });
     if (pathname === '/api/tasks' && request.method === 'POST') return json({ id: '12345678-1234-4234-8234-123456789012', status: 'queued' }, 201);
     if (pathname.endsWith('/agent-run')) return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { completed: true, summary: 'Browser smoke task verified', steps: 2, evidence: [] } });
     if (pathname.endsWith('/web-build')) return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { status: 'succeeded', manager: 'npm', artifacts: [{ id: 'artifact-web-1', filename: 'index.html', sizeBytes: 512 }] } });
@@ -47,9 +49,10 @@ assert.ok(landingHtml.includes('<title>BLACK VANTA | ZForge</title>'), 'static a
 
 try {
   for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) {
-    const browser = await engine.launch({ headless: true });
+    const browser = await engine.launch({ headless: true, args: name === 'chromium' ? ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] : [] });
     try {
-      const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, permissions: name === 'chromium' ? ['microphone'] : [] });
+      const page = await context.newPage();
       const pageErrors = [];
       page.on('pageerror', error => pageErrors.push(error.message));
       page.on('console', message => { if (message.type() === 'error') pageErrors.push(message.text()); });
@@ -63,13 +66,24 @@ try {
       await page.locator('#runtime-token').fill('browser-test-token-123456');
       await page.locator('#connect-runtime').click();
       await page.getByText(/تم الاتصال بالمحرك/).waitFor();
+      await page.locator('#voice-enabled').check();
       await page.locator('#chat-input').fill('اختبر تطبيق الويب');
       await page.locator('#send-button').click();
       await page.getByText(/Browser smoke task verified/).waitFor();
       await page.locator('.agent-progress-event').first().waitFor({ timeout: 10000 });
+      assert.ok(await page.locator('.agent-progress-event').count() >= 3, name + ': specialist lifecycle and step events should be rendered');
+      assert.ok((await page.locator('#agent-progress-feed').innerText()).includes('researcher'), name + ': specialist identity should be visible in the live feed');
+      await page.locator('.voice-output').waitFor({ timeout: 10000 });
       await page.locator('#web-build-button').click();
       await page.getByText(/اكتمل بناء تطبيق الويب/).waitFor();
       assert.equal(await page.locator('.artifact-link').count(), 1);
+      if (name === 'chromium') {
+        await page.locator('#voice-record-button').click();
+        await page.waitForTimeout(350);
+        await page.locator('#voice-record-button').click();
+        await page.waitForFunction(() => document.getElementById('chat-input').value === 'recognized local speech', null, { timeout: 10000 });
+        assert.equal(await page.locator('.voice-output').count(), 1);
+      }
       const layout = await page.evaluate(() => ({
         viewport: document.documentElement.clientWidth,
         scroll: document.documentElement.scrollWidth,
@@ -78,7 +92,7 @@ try {
       assert.ok(layout.composerVisible, name + ': composer should be visible');
       assert.ok(layout.scroll <= layout.viewport + 1, name + ': mobile layout should not overflow horizontally');
       assert.deepEqual(pageErrors, [], name + ': browser console and page errors should be empty');
-      await page.close();
+      await context.close();
       process.stdout.write(name + ': BLACK VANTA connection, task execution, web build UI and mobile RTL layout passed\n');
     } finally {
       await browser.close();
