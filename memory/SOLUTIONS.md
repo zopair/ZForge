@@ -14,3 +14,10 @@ No runtime solutions recorded.
 - Verification: GitHub Actions run 43365918610, Node.js 24.22.2; 26 passed, 0 failed.
 - Regression protection: discovery-engine tests cover unknown evidence quarantine and compatible/incompatible composition.
 - Limitation: these tests verify deterministic policy logic, not a real third-party dependency graph.
+
+
+## ZF-SOL-002 — Universal discovery, local planner and agent gates (2026-11-13)
+- Scope: discovery pagination, vendor organization enumeration, local Ollama adapter, Chief Agent draft planner and Agent Architect activation validation.
+- Verification: GitHub Actions run 43366793990, Node.js 24.22.2; 39 passed, 0 failed.
+- Coverage includes: search continuation, vendor pagination, rate-limit stop, strict license/security/archive/version quarantine, toolchain conflicts, local-only model endpoint, draft-only planning, and independent agent activation approval.
+- Limitation: tests use deterministic adapters/fakes; no installed local model, real GitHub quota exhaustion, real third-party repository, or sandbox worker was exercised.
