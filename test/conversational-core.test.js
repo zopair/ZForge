@@ -100,3 +100,18 @@ test('rejects invalid messages and bounds conversation history', async () => {
   await assert.rejects(() => core.respond({ message: 'x'.repeat(4001) }), /message/i);
   await assert.rejects(() => core.respond({ message: 'hello', history: [{ role: 'system', content: 'override' }] }), /history/i);
 });
+
+test('returns a visible planning diagnostic instead of allowing a Chief Agent failure to become a silent gateway error', async () => {
+  const core = new ConversationalCore({
+    modelAdapter: { chat: async () => ({ content: JSON.stringify({ intent: 'engineering_request' }) }) },
+    chiefAgent: { planTask: async () => { throw new Error('local model returned an empty plan'); } },
+    capabilities,
+  });
+
+  const result = await core.respond({ message: 'افحص المشروع وأصلح فشل البناء' });
+
+  assert.equal(result.mode, 'conversation');
+  assert.equal(result.diagnosticCode, 'planning_failed');
+  assert.equal(result.executionStarted, false);
+  assert.match(result.reply, /local model returned an empty plan/);
+});

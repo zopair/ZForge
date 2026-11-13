@@ -69,8 +69,20 @@ jobs:
           curl --silent --fail http://127.0.0.1:11434/api/tags >/dev/null
           ollama pull qwen2.5:1.5b
 
-      - name: Execute request through the ZForge Chief Agent
-        id: cloud-task
+      - name: Process cloud conversation through BLACK VANTA
+        id: cloud-conversation
+        if: github.event_name == 'issues'
+        continue-on-error: true
+        env:
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ZFORGE_CLOUD_OUTPUT_DIR: ${{ runner.temp }}/zforge-cloud-output
+        run: node scripts/run-cloud-conversation.mjs
+
+      - name: Execute explicitly approved engineering plan
+        id: cloud-execution
+        if: github.event_name == 'issue_comment'
         continue-on-error: true
         env:
           GITHUB_EVENT_PATH: ${{ github.event_path }}
@@ -99,5 +111,5 @@ jobs:
         run: node scripts/post-cloud-task-result.mjs
 
       - name: Fail the workflow when the agent did not verify completion
-        if: steps.cloud-task.outcome == 'failure'
+        if: steps.cloud-conversation.outcome == 'failure' || steps.cloud-execution.outcome == 'failure'
         run: exit 1

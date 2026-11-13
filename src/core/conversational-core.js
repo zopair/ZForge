@@ -130,12 +130,26 @@ export class ConversationalCore {
     }
 
     const availableAgents = this.agentFactory ? await this.agentFactory.listAgents() : [];
-    const planning = await this.chiefAgent.planTask({
-      request: cleanMessage,
-      capabilities: [],
-      keywords: [...new Set(cleanMessage.match(/[\p{L}\p{N}._+-]{3,}/gu) ?? [])].slice(0, 12),
-      availableAgents,
-    });
+    let planning;
+    try {
+      planning = await this.chiefAgent.planTask({
+        request: cleanMessage,
+        capabilities: [],
+        keywords: [...new Set(cleanMessage.match(/[\\p{L}\\p{N}._+-]{3,}/gu) ?? [])].slice(0, 12),
+        availableAgents,
+      });
+    } catch (error) {
+      const detail = typeof error?.message === 'string' && error.message.trim()
+        ? error.message.trim().slice(0, 500)
+        : 'unknown_planning_error';
+      return {
+        mode: 'conversation',
+        intent: 'engineering_request',
+        diagnosticCode: 'planning_failed',
+        reply: 'تعذر إعداد خطة موثوقة لهذا الطلب، ولم يبدأ أي تنفيذ. سبب التعثر: ' + detail + '. يمكنك إعادة المحاولة أو تضييق نطاق الطلب.',
+        executionStarted: false,
+      };
+    }
 
     if (!planning || typeof planning.plan !== 'string' || !planning.plan.trim() || planning.requiresApproval !== true || planning.executionStarted !== false) {
       return { mode: 'conversation', intent: 'engineering_request', reply: 'تعذر إعداد خطة موثوقة للطلب. لم يبدأ أي تنفيذ؛ يمكننا توضيح النطاق ثم المحاولة مجدداً.', executionStarted: false };
