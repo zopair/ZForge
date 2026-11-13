@@ -26,7 +26,7 @@ export class UniversalDiscoveryService {
       ?organizations.slice(vendorOffset,vendorOffset+this.maxVendorOrgsPerRun):[];
     const results=new Map();const searched=[];const cached=[];const queryReports=[];
     const organizationScans=[];const organizationCached=[];
-    let rateLimit=null;const apiErrors=[];let nextOffset=queryOffset;let nextQueryPage=queryPage;
+    let rateLimit=null;const apiErrors=[];let nextOffset=queryOffset;let nextQueryPage=queryPage;let nextVendorOffset=vendorOffset;let nextVendorPage=vendorPage;
     const addResults=items=>{for(const item of items??[])results.set(String(item.id??item.fullName),item);};
     for(let index=0;index<selected.length;index++){
       const query=selected[index];const page=index===0?queryPage:1;const key=`query:${query}:page:${page}`;
