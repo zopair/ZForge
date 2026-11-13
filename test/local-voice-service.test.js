@@ -201,5 +201,6 @@ test('automatic voice selection uses Piper for mixed Latin text and refuses unsu
       kemetoneEspeakCommand: espeak,
     });
     await assert.rejects(() => egyptianOnly.synthesize({ text: 'Build complete: 2 tasks', engine: 'auto' }), /Arabic-script text only/i);
+    await assert.rejects(() => egyptianOnly.synthesize({ text: 'اكتملت المهمة ٢', engine: 'auto' }), /Arabic-script text only/i);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
