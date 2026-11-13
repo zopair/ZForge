@@ -2,6 +2,9 @@ const API = 'https://api.github.com';
 export class GitHubDiscoveryError extends Error {
   constructor(message, { status = 0, resetAt = null } = {}) { super(message); this.name='GitHubDiscoveryError'; this.status=status; this.resetAt=resetAt; }
 }
+function normalizeRepository(item){
+  return {id:item.id,fullName:item.full_name,name:item.name,description:item.description,htmlUrl:item.html_url,defaultBranch:item.default_branch,archived:item.archived,pushedAt:item.pushed_at,updatedAt:item.updated_at,stars:item.stargazers_count,forks:item.forks_count,openIssues:item.open_issues_count,topics:item.topics??[],license:item.license?{spdxId:item.license.spdx_id,name:item.license.name,url:item.license.url}:null,language:item.language,sizeKb:item.size,discoveryOnly:true,evidence:{source:'GitHub API',licenseTextInspected:false,dependenciesInspected:false,testsRun:false}};
+}
 export class GitHubDiscoveryClient {
   constructor({ token = null, fetchImpl = globalThis.fetch, perPage = 30, maxPages = 2 } = {}) {
     if (typeof fetchImpl !== 'function') throw new TypeError('fetchImpl must be a function');
@@ -31,15 +34,7 @@ export class GitHubDiscoveryClient {
       if (!response.ok) throw new GitHubDiscoveryError(`GitHub repository search failed with HTTP ${response.status}.`,{status:response.status});
       const payload=await response.json();
       totalCount=Number.isInteger(payload.total_count)?payload.total_count:totalCount;
-      for (const item of payload.items ?? []) results.push({
-        id:item.id, fullName:item.full_name, name:item.name, description:item.description,
-        htmlUrl:item.html_url, defaultBranch:item.default_branch, archived:item.archived,
-        pushedAt:item.pushed_at, updatedAt:item.updated_at, stars:item.stargazers_count,
-        forks:item.forks_count, openIssues:item.open_issues_count, topics:item.topics ?? [],
-        license:item.license ? {spdxId:item.license.spdx_id,name:item.license.name,url:item.license.url} : null,
-        language:item.language, sizeKb:item.size, discoveryOnly:true,
-        evidence:{source:'GitHub Search API',licenseTextInspected:false,dependenciesInspected:false,testsRun:false},
-      });
+      for (const item of payload.items ?? []) results.push(normalizeRepository(item));
       if (!payload.items?.length || results.length>=Math.min(maxResults,totalCount)) break;
     }
     const truncated=results.length<Math.min(maxResults,totalCount);
