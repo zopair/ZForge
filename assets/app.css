@@ -50,3 +50,7 @@ body{background:#030303;color:#fff}
 
 .runtime-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:600px){.runtime-fields{grid-template-columns:1fr}}
+
+#android-build-button{grid-column:1/-1;min-height:42px;border:1px solid #f5d58a;border-radius:9px;background:linear-gradient(145deg,#f5d58a,#bd8b3d);color:#080604;font-weight:800;letter-spacing:.2px}
+#android-build-button:disabled{opacity:.42;cursor:not-allowed}
+#android-project-path{direction:ltr;text-align:left}
