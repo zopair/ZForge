@@ -28,6 +28,8 @@ jobs:
           node --check src/core/cloud-task-contract.js
           node --check src/runtime/server.js
           node --check scripts/run-cloud-task.mjs
+          node --check scripts/run-cloud-conversation.mjs
+          node --check src/core/cloud-conversation-bridge.js
           node --check scripts/post-cloud-task-result.mjs
           node --check assets/cloud-execution.js
       - name: Validate offline KemeTone Python adapter syntax

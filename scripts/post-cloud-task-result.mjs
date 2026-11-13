@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { createApprovedPlanSnapshot } from '../src/core/approved-plan-snapshot.js';
+import { extractCloudConversationId, createCloudConversationMarker } from '../src/core/cloud-conversation-bridge.js';
 
 const event = JSON.parse(await readFile(process.env.GITHUB_EVENT_PATH, 'utf8'));
 const repository = process.env.GITHUB_REPOSITORY;
@@ -29,11 +30,15 @@ if (report.status === 'awaiting_approval' && report.plan) {
   planSnapshotMarker = '<!-- ZFORGE_PLAN_SNAPSHOT_V1:' + snapshot.encoded + ' -->';
 }
 
+const correlationId = extractCloudConversationId(event.issue.title);
+const conversationMarker = correlationId ? createCloudConversationMarker(correlationId) : '';
 const lines = [
+  conversationMarker,
   planSnapshotMarker,
-  '## ZForge Cloud Execution',
+  '## BLACK VANTA · ZForge',
   '',
   '**Status:** ' + String(report.status ?? 'unknown').toUpperCase(),
+  report.reply ? String(report.reply).slice(0, 9000) : '',
   report.status === 'awaiting_approval' ? '**Execution:** NOT STARTED — awaiting explicit owner approval.' : '',
   report.summary ? '**Result:** ' + String(report.summary).slice(0, 3000) : '',
   report.error ? '**Details:** ' + String(report.error).slice(0, 2500) : '',
@@ -42,6 +47,7 @@ const lines = [
   report.status === 'awaiting_approval' ? 'To approve this exact plan, comment: `/approve-plan ' + String(report.planSha256 ?? '') + '`' : '',
   Number.isInteger(report.steps) ? '**Agent steps:** ' + report.steps : '',
   '**Model:** ' + String(report.model ?? 'qwen2.5:1.5b'),
+  '[Open GitHub task](' + event.issue.html_url + ')',
   runUrl ? '[Open cloud worker run and download artifacts](' + runUrl + ')' : '',
   '',
   '_This worker ran on an ephemeral GitHub Actions runner. No phone-side runtime or installation was used._',

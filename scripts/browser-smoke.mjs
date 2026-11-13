@@ -73,6 +73,7 @@ try {
       assert.equal(cloudHandoffUrl.origin, 'https://github.com', name + ': cloud handoff should use GitHub issue creation');
       assert.equal(cloudHandoffUrl.pathname, '/zopair/ZForge/issues/new', name + ': cloud handoff should target the ZForge repository');
       assert.match(cloudHandoffUrl.searchParams.get('title') ?? '', /^\[ZForge Cloud Task\]/, name + ': cloud task issue title should carry the execution prefix');
+      assert.match(cloudHandoffUrl.searchParams.get('title') ?? '', /\[ZForgeChat:[a-f0-9-]{36}\]/i, name + ': cloud task issue title should carry a reply correlation id');
       assert.equal(cloudHandoffUrl.searchParams.get('body'), 'Build a sample PWA', name + ': cloud task body should preserve the user request');
       assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
       const visualContract = await page.evaluate(() => {
