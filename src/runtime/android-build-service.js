@@ -39,9 +39,9 @@ export class AndroidBuildService {
     await this.runtime.createWorkspace({ id: workspaceId });
     const files = await this.runtime.listFiles({ workspaceId, path: project, maxEntries: 5000 });
     const normalize = path => project === '.' ? path.replace(/^\.\//, '') : path;
-    const entries = files.map(entry => ({ ...entry, path: normalize(entry.path.replace(/\\/g, '/')) }));
-    const wrapper = entries.some(entry => entry.type === 'file' && (entry.path === 'gradlew' || entry.path === project + '/gradlew'));
-    const settings = entries.some(entry => entry.type === 'file' && /(^|\/)settings\.gradle(\.kts)?$/.test(entry.path));
+    const projectEntries = files.map(entry => ({ ...entry, path: normalize(entry.path.replace(/\\/g, '/')) }));
+    const wrapper = projectEntries.some(entry => entry.type === 'file' && (entry.path === 'gradlew' || entry.path === project + '/gradlew'));
+    const settings = projectEntries.some(entry => entry.type === 'file' && /(^|\/)settings\.gradle(\.kts)?$/.test(entry.path));
     if (!wrapper) throw new Error('Gradle wrapper (gradlew) was not found in the Android project');
     if (!settings) throw new Error('Gradle settings file was not found in the Android project');
     const tasks = [];
@@ -66,6 +66,8 @@ export class AndroidBuildService {
     if (execution.exitCode !== 0) {
       return { status: 'failed', workspaceId, projectPath: project, variant, formats, exitCode: execution.exitCode, stdout: execution.stdout ?? '', stderr: execution.stderr ?? '', artifacts: [], error: 'Gradle build or test task failed; no artifacts were published.' };
     }
+    const outputFiles = await this.runtime.listFiles({ workspaceId, path: project, maxEntries: 5000 });
+    const entries = outputFiles.map(entry => ({ ...entry, path: normalize(entry.path.replace(/\\/g, '/')) }));
     const outputMarkers = [];
     if (formats.includes('apk')) outputMarkers.push('/build/outputs/apk/debug/');
     if (formats.includes('aab')) outputMarkers.push('/build/outputs/bundle/debug/');
