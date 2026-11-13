@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile, cp, lstat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { normalizeCloudTaskRequest, getCloudTaskPhase } from '../src/core/cloud-task-contract.js';
+import { decodeApprovedPlanSnapshot } from '../src/core/approved-plan-snapshot.js';
 
 const outputDir = process.env.ZFORGE_CLOUD_OUTPUT_DIR ?? join(tmpdir(), 'zforge-cloud-output');
 const resultPath = join(outputDir, 'cloud-task-result.json');
@@ -45,10 +46,51 @@ async function api(baseUrl, token, path, { method = 'GET', body, timeoutMs = 300
   return payload;
 }
 
+async function githubApi(repository, token, path, { method = 'GET', body } = {}) {
+  const response = await fetch('https://api.github.com/repos/' + repository + path, {
+    method,
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: 'Bearer ' + token,
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error('GitHub approval record request failed with HTTP ' + response.status);
+  return payload;
+}
+
 try {
   if (!eventPath) throw new Error('GitHub issue event payload is unavailable.');
   const event = JSON.parse(await readFile(eventPath, 'utf8'));
   const { phase } = getCloudTaskPhase({ action: event.action, issue: event.issue, comment: event.comment });
+  let approvedPlanSnapshot = null;
+  if (phase === 'execute') {
+    const repository = process.env.GITHUB_REPOSITORY;
+    const githubToken = process.env.GITHUB_TOKEN;
+    if (!repository || !githubToken) throw new Error('GitHub read/write credentials are required to verify the approved plan.');
+    const approvalMatch = event.comment.body.trim().match(/^\\/approve-plan ([a-f0-9]{64})$/);
+    if (!approvalMatch) throw new Error('Approval command is malformed.');
+    const digest = approvalMatch[1];
+    const comments = await githubApi(repository, githubToken, '/issues/' + event.issue.number + '/comments?per_page=100');
+    const snapshotComment = [...comments].reverse().find(comment =>
+      comment?.user?.login === 'github-actions[bot]'
+      && typeof comment.body === 'string'
+      && comment.body.includes('ZFORGE_PLAN_SNAPSHOT_V1:')
+    );
+    const marker = snapshotComment?.body?.match(/<!--\\s*ZFORGE_PLAN_SNAPSHOT_V1:([A-Za-z0-9+/=]+)\\s*-->/);
+    if (!marker) throw new Error('The original immutable plan snapshot was not found.');
+    approvedPlanSnapshot = decodeApprovedPlanSnapshot(marker[1], { expectedDigest: digest });
+    const claimMarker = '<!-- ZFORGE_EXECUTION_CLAIM_V1:' + digest + ' -->';
+    const alreadyClaimed = comments.some(comment => comment?.user?.login === 'github-actions[bot]' && comment.body?.includes(claimMarker));
+    if (alreadyClaimed) throw new Error('This exact plan has already been claimed for execution; create a new plan to run it again.');
+    await githubApi(repository, githubToken, '/issues/' + event.issue.number + '/comments', {
+      method: 'POST',
+      body: { body: claimMarker + '\\nExecution claim for plan ' + digest + ' (approval comment #' + event.comment.id + ').' },
+    });
+  }
   const { request } = normalizeCloudTaskRequest({
     author: event.issue?.user?.login,
     title: event.issue?.title,
@@ -109,7 +151,7 @@ try {
 
   const task = await api(baseUrl, token, '/api/tasks', {
     method: 'POST',
-    body: { request },
+    body: { request, metadata: phase === 'execute' ? { approvedPlanTaskId: approvedPlanSnapshot.taskId, approvedPlanSha256: approvedPlanSnapshot.planSha256 } : {} },
   });
   taskWorkspacePath = join(workspaceDir, task.workspaceId);
   await mkdir(taskWorkspacePath, { recursive: true });
@@ -125,19 +167,16 @@ try {
       return !info.isSymbolicLink();
     },
   });
-  const planning = await api(baseUrl, token, '/api/tasks/' + encodeURIComponent(task.id) + '/plan', {
-    method: 'POST',
-    body: { model },
-    timeoutMs: 8 * 60 * 1000,
-  });
-  if (planning.executionStarted !== false || planning.phase !== 'awaiting_approval') {
-    throw new Error('Planning endpoint violated the no-execution contract.');
-  }
-  const planSha256 = createHash('sha256').update(JSON.stringify(planning.plan)).digest('hex');
-  if (phase === 'execute' && event.comment.body.trim() !== '/approve-plan ' + planSha256) {
-    throw new Error('Approval does not match the current plan digest. Review the latest plan and approve its exact SHA-256.');
-  }
   if (phase === 'plan') {
+    const planning = await api(baseUrl, token, '/api/tasks/' + encodeURIComponent(task.id) + '/plan', {
+      method: 'POST',
+      body: { model },
+      timeoutMs: 8 * 60 * 1000,
+    });
+    if (planning.executionStarted !== false || planning.phase !== 'awaiting_approval') {
+      throw new Error('Planning endpoint violated the no-execution contract.');
+    }
+    const planSha256 = createHash('sha256').update(JSON.stringify(planning.plan)).digest('hex');
     await saveReport({
       status: 'awaiting_approval',
       phase,
@@ -152,11 +191,16 @@ try {
       generatedAt: new Date().toISOString(),
     });
   } else {
-  const completed = await api(baseUrl, token, '/api/tasks/' + encodeURIComponent(task.id) + '/agent-run', {
-    method: 'POST',
-    body: { model, confirmExecution: true, approvedPlan: JSON.stringify(planning.plan) },
-    timeoutMs: 24 * 60 * 1000,
-  });
+    const completed = await api(baseUrl, token, '/api/tasks/' + encodeURIComponent(task.id) + '/agent-run', {
+      method: 'POST',
+      body: {
+        model,
+        confirmExecution: true,
+        approvedPlan: JSON.stringify(approvedPlanSnapshot.plan),
+        approvedPlanSha256: approvedPlanSnapshot.planSha256,
+      },
+      timeoutMs: 24 * 60 * 1000,
+    });
   const result = completed.result ?? {};
   let workspaceArchive = null;
   try {
