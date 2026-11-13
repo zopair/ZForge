@@ -10,10 +10,10 @@ const host = process.env.ZFORGE_HOST ?? '127.0.0.1';
 const port = Number(process.env.ZFORGE_PORT ?? 8787);
 const dataDir = process.env.ZFORGE_DATA_DIR ?? './.zforge-data';
 const workspaceDir = process.env.ZFORGE_WORKSPACE_DIR ?? './.zforge-workspaces';
-const gateway = createTaskGateway({ dataDir, token });
-const runtime = new LocalExecutionRuntime({ rootDir: workspaceDir });
+const runtime = await new LocalExecutionRuntime({ rootDir: workspaceDir }).initialize();
+const gateway = createTaskGateway({ dataDir, token, runtime });
 
-await Promise.all([gateway.ready, runtime.initialize()]);
+await gateway.ready;
 gateway.server.listen(port, host, () => {
   process.stdout.write(`ZForge Task Gateway listening on http://${host}:${port}\n`);
 });
