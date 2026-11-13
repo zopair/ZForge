@@ -17,6 +17,7 @@ import { UniversalDiscoveryService } from '../core/discovery-service.js';
 import { GitHubDiscoveryClient } from '../adapters/github-discovery.js';
 import { LocalRepositoryMemoryStore, LocalPromptProvider } from '../adapters/local-repository-memory-store.js';
 import { LocalTaskHistoryMemoryStore, CompositeMemoryStore } from '../adapters/local-task-history-memory-store.js';
+import { EngineeringIssueLedger } from '../adapters/engineering-issue-ledger.js';
 
 const token = process.env.ZFORGE_GATEWAY_TOKEN;
 if (!token || token.length < 16) {
@@ -76,13 +77,14 @@ const discoveryClient = new GitHubDiscoveryClient({ token: process.env.GITHUB_TO
 const discoveryService = new UniversalDiscoveryService({ client: discoveryClient });
 const repositoryMemoryStore = new LocalRepositoryMemoryStore({ rootDir: repositoryRoot });
 const taskHistoryMemoryStore = new LocalTaskHistoryMemoryStore({ dataDir });
-const memoryStore = new CompositeMemoryStore({ stores: [repositoryMemoryStore, taskHistoryMemoryStore] });
+const engineeringIssueLedger = await new EngineeringIssueLedger({ dataDir }).initialize();
+const memoryStore = new CompositeMemoryStore({ stores: [repositoryMemoryStore, taskHistoryMemoryStore, engineeringIssueLedger] });
 const promptProvider = new LocalPromptProvider({ rootDir: repositoryRoot });
 const chiefAgent = new ChiefAgent({ modelAdapter, discoveryService, memoryStore, promptProvider, model });
 const agentRegistry = await new LocalAgentRegistry({ dataDir }).initialize();
 const agentFactory = new AgentFactory({ registry: agentRegistry });
 const multiAgentCoordinator = new MultiAgentCoordinator({ agentFactory, agentService, maxParallel: Number(process.env.ZFORGE_MAX_PARALLEL_AGENTS ?? 3), defaultModel: model });
-const gateway = createTaskGateway({ dataDir, token, runtime, agentService, chiefAgent, agentFactory, multiAgentCoordinator, androidBuildService, webBuildService, webBrowserVerificationService, voiceService, artifactStore, defaultModel: model, allowedOrigins });
+const gateway = createTaskGateway({ dataDir, token, runtime, agentService, chiefAgent, agentFactory, multiAgentCoordinator, androidBuildService, webBuildService, webBrowserVerificationService, voiceService, artifactStore, engineeringIssueLedger, defaultModel: model, allowedOrigins });
 
 await gateway.ready;
 gateway.server.listen(port, host, () => {
