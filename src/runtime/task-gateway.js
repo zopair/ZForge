@@ -135,6 +135,17 @@ export class TaskStore {
     return structuredClone(task);
   }
 
+  async appendEvent(id, type, details = {}) {
+    if (typeof type !== 'string' || !/^[a-z][a-z0-9._-]{1,79}$/.test(type)) throw new TypeError('event type is invalid');
+    const task = this.tasks.get(id);
+    if (!task) return null;
+    const event = { id: randomUUID(), type, at: this.clock(), details: structuredClone(details) };
+    task.events.push(event);
+    task.updatedAt = event.at;
+    await this.#persist();
+    return structuredClone(event);
+  }
+
   async #persist() {
     this.writeQueue = this.writeQueue.then(async () => {
       const temporary = `${this.filePath}.${randomUUID()}.tmp`;
