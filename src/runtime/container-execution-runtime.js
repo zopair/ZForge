@@ -47,7 +47,7 @@ export class ContainerExecutionRuntime {
   listFiles(input) { return this.hostRuntime.listFiles(input); }
   close() { return this.hostRuntime.close?.(); }
 
-  async execute({ workspaceId, command, args = [], cwd = '.', env = {}, timeoutMs } = {}) {
+  async execute({ workspaceId, command, args = [], cwd = '.', env = {}, timeoutMs, resourceLimits = null } = {}) {
     if (typeof command !== 'string' || !command.trim()) throw new TypeError('command is required');
     if (!Array.isArray(args) || args.some(value => typeof value !== 'string')) throw new TypeError('args must be an array of strings');
     if (typeof cwd !== 'string' || !cwd.trim() || posix.isAbsolute(cwd)) throw new TypeError('container cwd must be a relative path');
@@ -57,12 +57,16 @@ export class ContainerExecutionRuntime {
       throw new TypeError('env must be a string-valued environment object');
     }
     const workspacePath = await this.hostRuntime.getWorkspacePath({ workspaceId });
+    const cpuLimit = Number.isFinite(resourceLimits?.cpu) ? Math.min(this.cpuLimit, resourceLimits.cpu) : this.cpuLimit;
+    const globalMemoryMb = this.memoryLimit.toLowerCase().endsWith('g') ? Number.parseInt(this.memoryLimit, 10) * 1024 : Number.parseInt(this.memoryLimit, 10);
+    const memoryMb = Number.isFinite(resourceLimits?.memoryMb) ? Math.max(64, Math.min(globalMemoryMb, resourceLimits.memoryMb)) : globalMemoryMb;
+    const effectiveMemory = `${Math.floor(memoryMb)}m`;
     const argsForEngine = [
       'run', '--rm', '--init',
       '--workdir', normalizedCwd === '.' ? '/workspace' : posix.join('/workspace', normalizedCwd),
       '--volume', `${workspacePath}:/workspace:rw`,
-      '--cpus', String(this.cpuLimit),
-      '--memory', this.memoryLimit,
+      '--cpus', String(cpuLimit),
+      '--memory', effectiveMemory,
       '--pids-limit', String(this.pidsLimit),
       '--read-only',
       '--tmpfs', `/tmp:rw,nosuid,size=${this.tmpfsSize}`,
