@@ -128,6 +128,7 @@ test('execution runtime refuses a workspace cwd symlink that resolves outside it
 test('agent execution route requires explicit confirmation and persists verified completion', async () => {
   const root = await mkdtemp(join(tmpdir(), 'zforge-agent-gateway-'));
   const agentService = {
+    listModels: async () => ['qwen3:8b'],
     runTask: async ({ request, model, workspaceId }) => ({
       status: 'completed', completed: true, summary: `Executed: ${request}`, model, workspaceId, evidence: [{ id: 'verified-1', ok: true }],
     }),
@@ -137,6 +138,8 @@ test('agent execution route requires explicit confirmation and persists verified
   const base = `http://127.0.0.1:${gateway.server.address().port}`;
   const headers = { Authorization: 'Bearer test-secret-token', 'Content-Type': 'application/json' };
   try {
+    const models = await fetch(`${base}/api/models`, { headers });
+    assert.deepEqual((await models.json()).models, ['qwen3:8b']);
     const created = await fetch(`${base}/api/tasks`, { method: 'POST', headers, body: JSON.stringify({ request: 'Create a verified artifact', workspaceId: 'ws-agent-api' }) });
     const task = await created.json();
     const denied = await fetch(`${base}/api/tasks/${task.id}/agent-run`, { method: 'POST', headers, body: JSON.stringify({ model: 'qwen3:8b' }) });
