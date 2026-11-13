@@ -36,3 +36,16 @@ test('rejects malformed correlation identifiers', () => {
   assert.throws(() => createCloudConversationMarker('not-an-id'), /correlation id/i);
   assert.throws(() => extractCloudConversationReply([], 'not-an-id'), /correlation id/i);
 });
+
+test('browser correlation search uses the same colon-delimited issue title marker', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../assets/cloud-execution.js', import.meta.url), 'utf8');
+  assert.match(source, /ZForgeChat:/);
+  assert.doesNotMatch(source, /ZForgeChat-/);
+});
+
+test('browser polling stays within unauthenticated GitHub API rate limits', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../assets/cloud-execution.js', import.meta.url), 'utf8');
+  assert.match(source, /POLL_INTERVAL_MS = 60000/);
+});
