@@ -31,3 +31,19 @@ test('artifact store rejects path-like artifact names and unsupported kinds', as
     await assert.rejects(() => store.publishFromWorkspace({ runtime, workspaceId: 'ws', sourcePath: 'app.apk', filename: 'app.apk', kind: 'unknown' }), /kind/i);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('artifact store detects tampering before returning stored bytes', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zforge-artifact-tamper-'));
+  try {
+    const store = await new LocalArtifactStore({ rootDir: root }).initialize();
+    const artifact = await store.publishFromWorkspace({
+      runtime: { readBuffer: async () => Buffer.from('original') },
+      workspaceId: 'ws',
+      sourcePath: 'dist/file.bin',
+      filename: 'file.bin',
+      kind: 'other',
+    });
+    await writeFile(join(root, artifact.storageKey), Buffer.from('tampered'));
+    await assert.rejects(() => store.readArtifact(artifact.id), /integrity verification failed/i);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
