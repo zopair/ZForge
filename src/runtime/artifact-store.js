@@ -46,15 +46,17 @@ export class LocalArtifactStore {
     return this;
   }
 
-  async publishFromWorkspace({ runtime, workspaceId, sourcePath, filename, kind = 'other', artifactId = randomUUID() } = {}) {
+  async publishFromWorkspace({ runtime, workspaceId, sourcePath, filename, kind = 'other', artifactId = randomUUID(), maxBytes = this.maxArtifactBytes } = {}) {
     if (!runtime || typeof runtime.readBuffer !== 'function') throw new TypeError('runtime.readBuffer is required');
     if (!validId(artifactId)) throw new TypeError('artifact id is invalid');
     if (!validFilename(filename)) throw new TypeError('artifact filename must be a simple filename without path separators');
     if (!ARTIFACT_KINDS.has(kind)) throw new TypeError('artifact kind is unsupported');
+    if (!Number.isInteger(maxBytes) || maxBytes < 1) throw new RangeError('maxBytes must be positive');
+    const effectiveMaxBytes = Math.min(this.maxArtifactBytes, maxBytes);
     if (this.artifacts.has(artifactId)) throw new Error(`artifact already exists: ${artifactId}`);
-    const content = await runtime.readBuffer({ workspaceId, path: sourcePath, maxBytes: this.maxArtifactBytes });
+    const content = await runtime.readBuffer({ workspaceId, path: sourcePath, maxBytes: effectiveMaxBytes });
     if (!Buffer.isBuffer(content)) throw new TypeError('runtime.readBuffer must return a Buffer');
-    if (content.length > this.maxArtifactBytes) throw new RangeError('artifact exceeds configured size limit');
+    if (content.length > effectiveMaxBytes) throw new RangeError('artifact exceeds configured size limit');
     const directory = join(this.rootDir, artifactId);
     await mkdir(directory);
     const filePath = join(directory, filename);
