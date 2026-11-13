@@ -24,7 +24,7 @@ test('voice gateway authenticates and routes audio to local transcription and sy
     const denied = await fetch(base + '/api/voice/capabilities');
     assert.equal(denied.status, 401);
     const capabilities = await fetch(base + '/api/voice/capabilities', { headers });
-    assert.deepEqual((await capabilities.json()).capabilities, { transcription: true, synthesis: true, localOnly: true });
+    assert.deepEqual((await capabilities.json()).capabilities, { transcription: true, synthesis: true, localOnly: true, checks: { whisperExecutable: true, piperModule: true } });
     const transcribed = await fetch(base + '/api/voice/transcribe', { method: 'POST', headers: { ...headers, 'Content-Type': 'audio/webm' }, body: Buffer.from('fake audio') });
     assert.equal(transcribed.status, 200);
     assert.equal((await transcribed.json()).text, 'local words');
