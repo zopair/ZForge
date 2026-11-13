@@ -24,6 +24,30 @@ export class AgentWorkspaceManager {
     this.workspaces = new Map();
   }
 
+  restoreWorkspaces(records) {
+    if (!Array.isArray(records)) throw new TypeError('workspace records must be an array');
+    const restored = new Map();
+    for (const record of records) {
+      if (!record || typeof record !== 'object' || typeof record.id !== 'string' || !record.id.trim()
+        || typeof record.name !== 'string' || !record.name.trim()
+        || typeof record.agentId !== 'string' || !record.agentId.trim()
+        || typeof record.profile !== 'string' || !record.profile.trim()
+        || !WORKSPACE_STATES.has(record.status)
+        || !Array.isArray(record.experiments) || !Array.isArray(record.observations)) {
+        throw new Error('invalid workspace record in persistent state');
+      }
+      if (restored.has(record.id)) throw new Error('duplicate workspace record in persistent state');
+      for (const experiment of record.experiments) {
+        if (!experiment || typeof experiment.id !== 'string' || !EXPERIMENT_STATES.has(experiment.status)) {
+          throw new Error('invalid experiment record in persistent workspace state');
+        }
+      }
+      restored.set(record.id, clone(record));
+    }
+    this.workspaces = restored;
+    return this.listWorkspaces();
+  }
+
   createWorkspace({
     id,
     name,
