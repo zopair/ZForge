@@ -1,7 +1,7 @@
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { mkdir, readFile, writeFile, cp } from 'node:fs/promises';
-import { join } from 'node:path';
+import { mkdir, readFile, writeFile, cp, lstat } from 'node:fs/promises';
+import { join, relative, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { normalizeCloudTaskRequest } from '../src/core/cloud-task-contract.js';
 
