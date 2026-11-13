@@ -21,6 +21,7 @@ Chief Autonomous Engineer
    │    ├─ License & Dependency Inspection
    │    └─ Evidence Collector
    ├─ Tool Evaluation & Compatibility Composer
+   ├─ Local Model Adapter (Ollama loopback; model license checked separately)
    ├─ Version/Security Maintenance Monitor
    ├─ Prompt Assembly & Versioning
    ├─ Agent Architect / Specialist Factory
@@ -67,10 +68,10 @@ No paid subscriptions, paid APIs, paid usage, trial credits or required commerci
 
 ## Roadmap
 - F0 Governance, prompts, memory, static PWA shell — scaffolded.
-- F1 ZUOI domain/vendor catalogue, license gates, GitHub discovery adapter, toolchain composer, release review — initial implementation in progress.
-- F2 Full source/license/dependency/security inspection and reproducible benchmark harness.
-- F3 Chief Agent runtime, memory loader, planner, prompt builder and execution ledger.
-- F4 Agent factory and isolated agent test harness.
+- F1 ZUOI domain/vendor catalogue, license gates, bounded GitHub discovery, repository inspection, toolchain composer and release review — initial implementation.
+- F2 Local Ollama adapter, Chief Agent draft planner and Agent Architect manifest/activation gates — implemented; local model runtime integration pending.
+- F3 Persistent memory provider, task gateway, prompt builder, execution ledger and approval-gated task lifecycle.
+- F4 Agent factory runtime and isolated agent test harness.
 - F5 Secure execution workspaces, Git operations, test runners, artifact store and approval-gated PR flow.
 - F6 Web/PWA and Android build, preview, signing and delivery workers.
 - F7 Black Phantom live text/voice gateway with open-source local STT/TTS.
