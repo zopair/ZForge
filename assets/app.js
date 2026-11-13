@@ -342,6 +342,8 @@ connectButton.addEventListener("click",async()=>{
 webBuildButton.addEventListener("click",async()=>{
   if(!connected||!latestTaskId)return;
   webBuildButton.disabled=true;
+  webBuildReady=false;
+  webVerifyButton.disabled=true;
   const originalLabel=webBuildButton.textContent;
   webBuildButton.textContent="جارٍ اختبار وبناء تطبيق الويب...";
   executionStatus.textContent="جارٍ اختبار وبناء تطبيق الويب...";
