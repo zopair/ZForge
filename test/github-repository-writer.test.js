@@ -14,6 +14,7 @@ test('repository writer requires verified explicit approval and refuses main wri
   const writer=new GitHubRepositoryWriter({repository:'org/repo',token:'server-secret',defaultBranch:'main',approvalVerifier:async()=>false,fetchImpl:async()=>{throw new Error('network must not be called');}});
   await assert.rejects(()=>writer.putFile({branch:'zforge/task-123',path:'README.md',content:'x',message:'x',approval:{}}),/approval/i);
   await assert.rejects(()=>writer.putFile({branch:'main',path:'README.md',content:'x',message:'x',approval:{}}),/protected/i);
+  await assert.rejects(()=>writer.putFile({branch:'zforge/task-123',path:'docs/./unsafe.md',content:'x',message:'x',approval:{approved:true,branch:'zforge/task-123',allowedPaths:['docs/./unsafe.md']} }),/path/i);
 });
 test('repository writer commits approved UTF-8 file content to the authorized task branch',async()=>{
   const calls=[];
