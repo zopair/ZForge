@@ -1,0 +1,88 @@
+import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { resolve, extname, sep } from 'node:path';
+import { chromium, firefox, webkit } from 'playwright';
+
+const root = resolve('.');
+const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
+const server = createServer(async (request, response) => {
+  const parsed = new URL(request.url, 'http://127.0.0.1');
+  const pathname = decodeURIComponent(parsed.pathname);
+  const json = (payload, status = 200) => {
+    response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    response.end(JSON.stringify(payload));
+  };
+  if (pathname.startsWith('/api/')) {
+    if (request.method !== 'GET' && request.method !== 'HEAD') { for await (const _chunk of request) {} }
+    if (pathname === '/api/health') return json({ status: 'ok' });
+    if (pathname === '/api/models') return json({ models: ['qwen3:8b'] });
+    if (pathname === '/api/agents') return json({ agents: [] });
+    
+    if (pathname.endsWith('/events')) return json({ taskId: '12345678-1234-4234-8234-123456789012', status: 'succeeded', cursor: 3, events: [{ sequence: 2, type: 'agent.step.started', details: { step: 1 } }, { sequence: 3, type: 'agent.completed', details: { step: 1 } }] });
+    if (pathname === '/api/tasks' && request.method === 'POST') return json({ id: '12345678-1234-4234-8234-123456789012', status: 'queued' }, 201);
+    if (pathname.endsWith('/agent-run')) return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { completed: true, summary: 'Browser smoke task verified', steps: 2, evidence: [] } });
+    if (pathname.endsWith('/web-build')) return json({ id: '12345678-1234-4234-8234-123456789012', status: 'succeeded', result: { status: 'succeeded', manager: 'npm', artifacts: [{ id: 'artifact-web-1', filename: 'index.html', sizeBytes: 512 }] } });
+    if (pathname.endsWith('/android-build')) return json({ status: 'succeeded', result: { status: 'succeeded', artifacts: [] } });
+    return json({ error: 'not_found' }, 404);
+  }
+  try {
+    const relativePath = pathname === '/' ? '/index.html' : pathname;
+    const target = resolve(root, '.' + relativePath);
+    if (target !== root && !target.startsWith(root + sep)) throw new Error('path outside app root');
+    const content = await readFile(target);
+    response.writeHead(200, { 'Content-Type': mime[extname(target)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
+    response.end(content);
+  } catch {
+    response.writeHead(404);
+    response.end('not found');
+  }
+});
+await new Promise(resolveListen => server.listen(0, '127.0.0.1', resolveListen));
+const origin = 'http://127.0.0.1:' + server.address().port;
+const landing = await fetch(origin);
+const landingHtml = await landing.text();
+assert.equal(landing.status, 200, 'static app should return HTTP 200: ' + landingHtml.slice(0, 200));
+assert.ok(landingHtml.includes('<title>BLACK VANTA | ZForge</title>'), 'static app response should contain the BLACK VANTA title');
+
+try {
+  for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) {
+    const browser = await engine.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+      const pageErrors = [];
+      page.on('pageerror', error => pageErrors.push(error.message));
+      page.on('console', message => { if (message.type() === 'error') pageErrors.push(message.text()); });
+;
+      const navigation = await page.goto(origin, { waitUntil: 'networkidle' });
+      assert.equal(navigation?.status(), 200, name + ': app document should return HTTP 200');
+      assert.match(await page.title(), /BLACK VANTA/);
+      assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
+      await page.locator('#runtime-settings summary').click();
+      await page.locator('#runtime-url').fill(origin);
+      await page.locator('#runtime-token').fill('browser-test-token-123456');
+      await page.locator('#connect-runtime').click();
+      await page.getByText(/تم الاتصال بالمحرك/).waitFor();
+      await page.locator('#chat-input').fill('اختبر تطبيق الويب');
+      await page.locator('#send-button').click();
+      await page.getByText(/Browser smoke task verified/).waitFor();
+      await page.locator('#web-build-button').click();
+      await page.getByText(/اكتمل بناء تطبيق الويب/).waitFor();
+      assert.equal(await page.locator('.artifact-link').count(), 1);
+      const layout = await page.evaluate(() => ({
+        viewport: document.documentElement.clientWidth,
+        scroll: document.documentElement.scrollWidth,
+        composerVisible: !!document.querySelector('.composer')?.getBoundingClientRect().width,
+      }));
+      assert.ok(layout.composerVisible, name + ': composer should be visible');
+      assert.ok(layout.scroll <= layout.viewport + 1, name + ': mobile layout should not overflow horizontally');
+      assert.deepEqual(pageErrors, [], name + ': browser console and page errors should be empty');
+      await page.close();
+      process.stdout.write(name + ': BLACK VANTA connection, task execution, web build UI and mobile RTL layout passed\n');
+    } finally {
+      await browser.close();
+    }
+  }
+} finally {
+  await new Promise(resolveClose => server.close(resolveClose));
+}
