@@ -29,3 +29,5 @@ When BLACK VANTA submits a task without an explicitly selected specialist, the g
 - Selecting a specific specialist explicitly bypasses automatic DAG delegation and runs only that profile.
 
 The model-proposed plan is treated as untrusted structured output. Invalid or invented agent IDs are rejected and the gateway falls back to the normal single-agent route; no agent is activated or permission is widened by planning.
+
+The PWA also performs a final cursor drain after the task POST returns. This closes the race where the execution request completes between polling intervals and prevents the last specialist events from being omitted from the visible feed.
