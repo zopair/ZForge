@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildDiscoveryPlan, classifyLicense, evaluateRepositoryCandidate,
+  buildDiscoveryPlan, classifyLicense, createCandidateRecord, evaluateRepositoryCandidate,
   rankCandidates, composeToolchain, evaluateReleaseUpdate,
 } from '../src/core/discovery-engine.js';
 
@@ -42,6 +42,12 @@ test('unknown license or cost is quarantined rather than accepted', () => {
   assert.equal(unknown.eligible, false);
   const unknownCost = evaluateRepositoryCandidate(repo({ zeroCostVerified: null }));
   assert.equal(unknownCost.status, 'QUARANTINED');
+});
+
+test('raw discovery metadata cannot become eligible without explicit evidence', () => {
+  const candidate=createCandidateRecord({repository:{id:42,fullName:'org/discovered',license:{spdxId:'MIT'},archived:false},capabilities:['web-frontend']});
+  assert.equal(candidate.evaluation.status,'QUARANTINED');
+  assert.equal(candidate.evaluation.eligible,false);
 });
 
 test('non-open-source license, paid dependency, or archived project is rejected', () => {
