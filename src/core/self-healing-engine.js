@@ -149,10 +149,28 @@ export class SelfHealingEngineeringEngine {
         capabilities: Array.isArray(item.capabilities) ? item.capabilities : [],
         evaluation: item.evaluation ?? item.gateEvaluation,
       }));
+    const candidatesToEvaluate = results
+      .filter(item => {
+        const evaluation = item?.evaluation ?? item?.gateEvaluation;
+        return !(evaluation?.eligible === true && evaluation?.status === 'CANDIDATE');
+      })
+      .slice(0, 12)
+      .map(item => ({
+        fullName: item.fullName ?? item.repository?.fullName ?? null,
+        htmlUrl: item.htmlUrl ?? item.html_url ?? null,
+        description: item.description ?? null,
+        license: item.license ?? null,
+        defaultBranch: item.defaultBranch ?? item.default_branch ?? null,
+        archived: item.archived ?? null,
+        updatedAt: item.updatedAt ?? item.updated_at ?? null,
+        pushedAt: item.pushedAt ?? item.pushed_at ?? null,
+        topics: Array.isArray(item.topics) ? item.topics.slice(0, 20) : [],
+        discoveryOnly: true,
+      }));
 
     const completeDiscovery = discovery.complete === true
       && discovery.queryCatalogComplete !== false
-      && discovery.candidateEvaluationComplete === true;
+      && (results.length === 0 || discovery.candidateEvaluationComplete === true);
     const buildDecisions = capabilityGapDecisions.filter(item => item.action === 'BUILD_INTERNAL_TOOL');
     const unresolvedEvaluation = capabilityGapDecisions.some(item => item.action === 'EVALUATE_DISCOVERED_CANDIDATES');
     const reusable = capabilityGapDecisions.some(item => item.action === 'REUSE_VERIFIED_TOOL');
@@ -165,7 +183,7 @@ export class SelfHealingEngineeringEngine {
       nextActions = ['COMPARE_VERIFIED_ALTERNATIVES', 'TRY_COMPATIBLE_ALTERNATIVE', 'RUN_REGRESSION_TESTS'];
     } else if (unresolvedEvaluation) {
       status = 'CANDIDATES_REQUIRE_EVALUATION';
-      nextActions = ['EVALUATE_OPEN_SOURCE_CANDIDATES', 'CHECK_LICENSE_AND_DEPENDENCIES', 'RUN_COMPATIBILITY_TESTS'];
+      nextActions = ['INSPECT_PUBLIC_CANDIDATES_IN_ISOLATED_WORKSPACE', 'VERIFY_LICENSE_AND_NOTICES', 'INSPECT_DEPENDENCIES_AND_PAID_SERVICES', 'RUN_COMPATIBILITY_AND_REGRESSION_TESTS', 'BUILD_MINIMAL_TOOL_IF_ALL_CANDIDATES_ARE_UNSUITABLE'];
     } else if (completeDiscovery && buildDecisions.length === capabilities.length) {
       status = 'INTERNAL_TOOL_BUILD_REQUIRED';
       internalToolBuild = createToolBuildBrief({
@@ -195,6 +213,7 @@ export class SelfHealingEngineeringEngine {
       capabilities,
       keywords,
       alternatives,
+      candidatesToEvaluate,
       capabilityGapDecisions,
       internalToolBuild,
       memoryLessons: lessons.slice(0, 12),
