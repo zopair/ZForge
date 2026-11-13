@@ -123,6 +123,7 @@
       disconnectButton.disabled = false;
       authStatus.textContent = 'تم ربط @' + login + ' لهذه الجلسة فقط. الرمز محفوظ في ذاكرة الصفحة ولن يُخزّن.';
       settings?.classList.add('github-connected');
+      if (settings) settings.open = false;
     } catch (error) {
       githubToken = '';
       authStatus.textContent = 'تعذر الربط: ' + error.message;
