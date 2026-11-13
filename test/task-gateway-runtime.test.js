@@ -127,13 +127,15 @@ test('execution runtime refuses a workspace cwd symlink that resolves outside it
 
 test('agent execution route requires explicit confirmation and persists verified completion', async () => {
   const root = await mkdtemp(join(tmpdir(), 'zforge-agent-gateway-'));
+  let receivedPlan = null;
+  const chiefAgent = { planTask: async ({ request, keywords }) => ({ status: 'DRAFT_PLAN', discoveryStatus: 'COMPLETE', candidatesConsidered: keywords.length, proposedInternalBuilds: 0, plan: 'Plan for: ' + request }) };
   const agentService = {
     listModels: async () => ['qwen3:8b'],
-    runTask: async ({ request, model, workspaceId }) => ({
+    runTask: async ({ request, model, workspaceId, plan }) => { receivedPlan = plan; return ({
       status: 'completed', completed: true, summary: `Executed: ${request}`, model, workspaceId, evidence: [{ id: 'verified-1', ok: true }],
-    }),
+    }); },
   };
-  const gateway = createTaskGateway({ dataDir: root, token: 'test-secret-token', agentService });
+  const gateway = createTaskGateway({ dataDir: root, token: 'test-secret-token', agentService, chiefAgent });
   await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${gateway.server.address().port}`;
   const headers = { Authorization: 'Bearer test-secret-token', 'Content-Type': 'application/json' };
@@ -149,6 +151,8 @@ test('agent execution route requires explicit confirmation and persists verified
     const result = await executed.json();
     assert.equal(result.status, 'succeeded');
     assert.equal(result.result.completed, true);
+    assert.equal(receivedPlan, 'Plan for: Create a verified artifact');
+    assert.equal(result.result.planning.status, 'DRAFT_PLAN');
   } finally {
     await new Promise(resolve => gateway.server.close(resolve));
     await rm(root, { recursive: true, force: true });
