@@ -28,7 +28,7 @@ function normalizeHistory(history) {
   });
 }
 
-function isCapabilityQuestion(message) {
+export function isCapabilityQuestion(message) {
   return /(?:إمكانياتك|امكانياتك|قدراتك|ماذا تستطيع|ماذا يمكنك|ماذا تقدر|تقدر تعمل|تستطيع أن تفعل|what can you do|your capabilities|your features)/iu.test(message);
 }
 
