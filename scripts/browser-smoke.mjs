@@ -9,7 +9,8 @@ const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 const server = createServer(async (request, response) => {
   try {
     const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
-    const target = resolve(root, '.' + pathname);
+    const relativePath = pathname === '/' ? '/index.html' : pathname;
+    const target = resolve(root, '.' + relativePath);
     if (target !== root && !target.startsWith(root + sep)) throw new Error('path outside app root');
     const content = await readFile(target);
     response.writeHead(200, { 'Content-Type': mime[extname(target)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
