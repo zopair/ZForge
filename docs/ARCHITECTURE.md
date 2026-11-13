@@ -5,11 +5,11 @@ A zero-budget, open-source-only autonomous engineering platform that converts re
 
 ## Two distinct agents/surfaces
 - **Chief Autonomous Engineer:** internal engineering agent. Reads repository memory, searches tools, composes toolchains, plans and delegates work, operates agent workspaces, verifies changes, proposes repository updates, and maintains version/evidence records.
-- **Black Phantom:** human-facing PWA persona with text/voice interaction and a black/gold animated visual identity. It is a presentation/control surface, not the privileged runtime and never holds GitHub or signing credentials.
+- **BLACK VANTA:** human-facing PWA persona with text/voice interaction and a black/gold animated visual identity. It is a presentation/control surface, not the privileged runtime and never holds GitHub or signing credentials.
 
 ## Logical architecture
 ```
-Black Phantom PWA
+BLACK VANTA PWA
    │ authenticated task/event channel
 Task Gateway
    │
@@ -40,6 +40,10 @@ Prefer warnings, checkpoints, reversible changes and recovery paths over blanket
 
 This principle does not remove applicable license, privacy, provenance or credential obligations. It means those concerns are handled in context and proportionately, without turning routine research, network exploration, package installation, code execution or tool modification into prohibited activities.
 
+## Task Gateway and Local Execution Runtime
+
+See [Task Gateway and Local Execution Runtime](TASK_GATEWAY.md). The current local runtime runs explicit commands in persistent workspace directories, with bearer-authenticated task APIs, task-state persistence, timeouts and bounded output. It is not yet a sandbox and must run under a dedicated unprivileged OS account or disposable container.
+
 ## Agent Workspaces
 See [Agent Workspaces: Experimental Freedom](AGENT_WORKSPACES.md).
 
@@ -51,7 +55,7 @@ The initial `AgentWorkspaceManager` control plane supports:
 - Successful, failed and inconclusive outcomes, including metrics and artifacts.
 - Promotion of successful experiments to reusable destinations.
 
-The current manager is a metadata/control-plane implementation. It does not yet provision host processes, terminals, filesystems or browsers. A runtime adapter is the next implementation layer and should preserve the same runtime-neutral contract.
+The workspace manager remains the runtime-neutral control plane. PR #3 adds a self-hosted local process adapter and authenticated task gateway; see TASK_GATEWAY.md. Browser automation, container isolation, model-driven tool orchestration and live PWA event streaming remain separate integration layers.
 
 ## Chief Agent lifecycle
 1. Understand the desired outcome and relevant constraints.
@@ -87,10 +91,10 @@ No paid subscriptions, paid APIs, paid usage, trial credits or required commerci
 - F0 Governance, prompts, memory, static PWA shell — scaffolded.
 - F1 Universal Open-Source Discovery and repository inspection — initial implementation.
 - F2 Local model adapter, Chief Agent draft planner and Agent Architect — implemented; local model runtime integration pending.
-- F3 Persistent task gateway, execution ledger and artifact storage.
+- F3 Persistent task gateway, durable execution ledger and local host process runner — initial implementation.
 - F4 Agent factory runtime and specialist collaboration.
 - F5 Agent Workspace Manager control plane — initial implementation; host runtime adapters pending.
-- F6 Local/container execution, browser, build and QA runtimes.
+- F6 Container-isolated execution, browser, build and QA runtimes.
 - F7 Web/PWA and Android build, preview, signing and delivery workers.
-- F8 Black Phantom live text/voice gateway with open-source local STT/TTS.
+- F8 BLACK VANTA live text/voice gateway with open-source local STT/TTS.
 - F9 Outcome analytics, tool re-evaluation, experiment reuse and continuous improvement.
