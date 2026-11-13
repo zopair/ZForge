@@ -21,6 +21,8 @@ const securityNote=document.getElementById("security-note");
 const voiceEnabledInput=document.getElementById("voice-enabled");
 const voiceRecordButton=document.getElementById("voice-record-button");
 const voiceStatus=document.getElementById("voice-status");
+const voiceDiagnostics=document.getElementById("voice-diagnostics");
+const voiceDiagnosticsList=document.getElementById("voice-diagnostics-list");
 
 let runtimeBaseUrl="";
 let runtimeToken="";
@@ -121,6 +123,52 @@ async function streamTaskEvents(taskId,signal){
     try{await readEvents(undefined);}
     catch(error){executionStatus.textContent="تعذر استكمال سجل تقدم المهمة: "+error.message;}
   }
+}
+
+function renderVoiceDiagnostics(capabilities){
+  if(!voiceDiagnostics||!voiceDiagnosticsList)return;
+  const checks=capabilities?.checks??{};
+  const rows=[
+    ["whisperExecutable","Whisper.cpp executable","required"],
+    ["whisperModel","Whisper model","required"],
+    ["ffmpegExecutable","FFmpeg","required"],
+    ["piperInterpreter","Piper interpreter","piper"],
+    ["piperModule","Piper module","piper"],
+    ["piperModel","Piper voice model","piper"],
+    ["piperConfig","Piper model config","piper"],
+    ["kemetoneConfigured","KemeTone configuration","kemetone"],
+    ["kemetonePython","KemeTone Python","kemetone"],
+    ["kemetoneEspeak","espeak-ng","kemetone"],
+    ["kemetoneModel","KemeTone model bundle","kemetone"],
+    ["kemetoneModule","KemeTone dependencies","kemetone"]
+  ];
+  voiceDiagnosticsList.replaceChildren();
+  for(const [key,label,group] of rows){
+    if(!(key in checks))continue;
+    const configured=group==="piper"
+      ?Boolean(checks.piperModel||checks.piperConfig||checks.piperReady)
+      :group==="kemetone"?Boolean(checks.kemetoneConfigured):true;
+    const item=document.createElement("li");
+    const ready=checks[key]===true;
+    const optional=!configured&&group!=="required";
+    item.dataset.state=ready?"ready":optional?"optional":"missing";
+    item.textContent=label+": "+(ready?"جاهز":optional?"غير مهيأ (اختياري)":"غير جاهز");
+    voiceDiagnosticsList.append(item);
+  }
+  const issues=Array.isArray(capabilities?.issues)?capabilities.issues:[];
+  for(const issue of issues){
+    if(typeof issue!=="string"||!issue.trim())continue;
+    const item=document.createElement("li");
+    item.dataset.state="issue";
+    item.textContent="مطلوب: "+issue.slice(0,300);
+    voiceDiagnosticsList.append(item);
+  }
+  if(!voiceDiagnosticsList.children.length){
+    const item=document.createElement("li");
+    item.textContent="لم يقدم المحرك تفاصيل تشخيص إضافية.";
+    voiceDiagnosticsList.append(item);
+  }
+  voiceDiagnostics.hidden=false;
 }
 
 function appendVoicePlayer(blob){
@@ -334,8 +382,10 @@ connectButton.addEventListener("click",async()=>{
     try{
       voiceInventory=await api("/api/voice/capabilities");
       voiceCapabilities=voiceInventory.capabilities??{transcription:false,synthesis:false};
+      renderVoiceDiagnostics(voiceCapabilities);
     }catch{
       voiceCapabilities={transcription:false,synthesis:false};
+      renderVoiceDiagnostics({issues:["تعذر قراءة تقرير جاهزية الصوت من المحرك المحلي."]});
     }
     voiceEnabledInput.disabled=!(voiceCapabilities.transcription||voiceCapabilities.synthesis);
     voiceRecordButton.disabled=!(voiceCapabilities.transcription&&voiceEnabledInput.checked);
