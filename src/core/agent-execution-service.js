@@ -169,7 +169,7 @@ export class AgentExecutionService {
             const recovery = await this.selfHealingEngine.investigate({
               request,
               failure: {
-                command: typeof args.command === 'string' ? args.command : null,
+                command: typeof args.command === 'string' ? args.command : call.name,
                 exitCode: Number.isInteger(result?.exitCode) ? result.exitCode : null,
                 stdout: boundedRecoveryText(result?.stdout),
                 stderr: boundedRecoveryText(result?.stderr),
