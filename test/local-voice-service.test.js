@@ -18,11 +18,24 @@ test('local voice transcribes accepted audio using configured local whisper exec
     const model = join(root, 'whisper-model.bin');
     await writeFile(model, 'model');
     const whisper = await executable(root, 'fake-whisper', 'printf "local transcript from whisper"\n');
-    const service = new LocalVoiceService({ whisperCommand: whisper, whisperModelPath: model });
+    const ffmpeg = await executable(root, 'fake-ffmpeg', 'for arg in "$@"; do output="$arg"; done\nprintf "RIFF0000WAVEdata" > "$output"\n');
+    const service = new LocalVoiceService({ whisperCommand: whisper, whisperModelPath: model, ffmpegCommand: ffmpeg });
     const result = await service.transcribe({ audio: Buffer.from('fake-webm-audio'), contentType: 'audio/webm;codecs=opus' });
     assert.equal(result.text, 'local transcript from whisper');
     assert.equal(result.engine, 'whisper.cpp');
     assert.equal(result.local, true);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('local voice accepts WAV directly without requiring FFmpeg', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zforge-voice-wav-'));
+  try {
+    const model = join(root, 'whisper-model.bin');
+    await writeFile(model, 'model');
+    const whisper = await executable(root, 'fake-whisper', 'printf "wav transcript"\\n');
+    const service = new LocalVoiceService({ whisperCommand: whisper, whisperModelPath: model, ffmpegCommand: join(root, 'ffmpeg-not-installed') });
+    const result = await service.transcribe({ audio: Buffer.from('RIFF0000WAVEdata'), contentType: 'audio/wav' });
+    assert.equal(result.text, 'wav transcript');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
