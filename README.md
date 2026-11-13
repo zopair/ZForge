@@ -24,7 +24,8 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - [Web Build Worker](docs/WEB_BUILD_WORKER.md)
 - [Generated Web App Browser Verification](docs/WEB_BROWSER_VERIFICATION.md)
 - [Browser QA](docs/BROWSER_QA.md)
-- [Live Agent Progress](docs/LIVE_AGENT_PROGRESS.md)
+- [Live Agent Progress and Specialist Delegation](docs/LIVE_AGENT_PROGRESS.md)
+- [Chief Agent Specialist Delegation](docs/CHIEF_AGENT_ORCHESTRATION.md)
 - [Local Voice Runtime](docs/LOCAL_VOICE.md)
 - [Tool evaluation protocol](docs/TOOL_EVALUATION.md)
 - [Agent operating system](docs/AGENT_OPERATING_SYSTEM.md)
@@ -38,21 +39,23 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - Local-only Ollama model adapter: src/adapters/ollama-model-adapter.js
 - Local repository memory and canonical prompt providers: src/adapters/local-repository-memory-store.js
 - Approval-gated GitHub task branch/file and draft-PR writer: src/adapters/github-repository-writer.js
-- Chief Agent draft planner: src/core/chief-agent.js
+- Chief Agent draft planner and validated active-specialist DAG proposals: src/core/chief-agent.js
+- Bounded parallel specialist orchestration with dependency-aware scheduling: src/core/multi-agent-coordinator.js
 - Authenticated task gateway, durable task ledger and cursor-based progress events: src/runtime/task-gateway.js
 - Local-only whisper.cpp and Piper speech adapters: src/runtime/local-voice-service.js
 - Self-hosted local workspace process runner: src/runtime/local-execution-runtime.js
 - Runtime API and deployment guide: docs/TASK_GATEWAY.md
 - Agent manifest and activation gates: src/core/agent-architect.js
 - Local-only Ollama model adapter: src/adapters/ollama-model-adapter.js
-- Chief Agent draft planner: src/core/chief-agent.js
+- Chief Agent draft planner with validated active-specialist DAG proposals: src/core/chief-agent.js
+- Bounded multi-agent DAG coordinator with dependency-aware execution and progress callbacks: src/core/multi-agent-coordinator.js
 - Agent manifest and activation gates: src/core/agent-architect.js
 - Chief Agent: prompts/CHIEF_AGENT.md
 - Agent Architect: prompts/AGENT_ARCHITECT.md
 - Tool registry and engineering memory: memory/
 
 ## Current implementation status
-The repository now includes a BLACK VANTA PWA that can connect to an authenticated self-hosted Task Gateway, discover local Ollama models, submit tasks and display execution results. The gateway persists task state, invokes Chief Agent planning with bounded discovery and engineering memory, then runs a local model tool loop (`run_command`, `read_file`, `write_file`, `list_files`, `finish_task`) in a workspace. Completion requires successful tool evidence. The host process runner is not a container/OS sandbox and runs with the service account's permissions; deploy it as an unprivileged user or choose the optional Podman/Docker backend. The container backend applies a read-only root filesystem, workspace-only writable mount, CPU/RAM/PID limits and reduced capabilities. Binary artifacts can be published with SHA-256 verification and downloaded through the authenticated gateway. Agent proposals, test evidence, independent reviews and explicit activation are now handled by the Agent Factory; BLACK VANTA can select active specialist agents. Bounded multi-agent DAG scheduling is implemented with dependency-aware parallel execution and per-agent profiles. A self-hosted Android debug worker now runs Gradle tests, assembles APK/AAB outputs, and stores verified artifacts; release signing remains pending. The runtime also persists bounded agent progress events and streams them into BLACK VANTA; optional local whisper.cpp transcription and Piper speech synthesis are available when host binaries and models are configured. Still pending: persistent distributed scheduling/recovery, SBOM/provenance generation, Android release signing and iOS build workers, independent verification workers and production-grade deployment automation. GitHub Pages remains static hosting; GitHub Actions are ephemeral and quota-limited.
+The repository now includes a BLACK VANTA PWA that can connect to an authenticated self-hosted Task Gateway, discover local Ollama models, submit tasks and display execution results. Chief Agent can propose a validated specialist DAG using only independently ACTIVE Agent Factory profiles; the gateway executes delegated tasks concurrently where dependencies allow and streams their lifecycle into the same live progress feed. Explicit specialist selection continues to run only that profile. The gateway persists task state, invokes Chief Agent planning with bounded discovery and engineering memory, then runs a local model tool loop (`run_command`, `read_file`, `write_file`, `list_files`, `finish_task`) in a workspace. Completion requires successful tool evidence. The host process runner is not a container/OS sandbox and runs with the service account's permissions; deploy it as an unprivileged user or choose the optional Podman/Docker backend. The container backend applies a read-only root filesystem, workspace-only writable mount, CPU/RAM/PID limits and reduced capabilities. Binary artifacts can be published with SHA-256 verification and downloaded through the authenticated gateway. Agent proposals, test evidence, independent reviews and explicit activation are now handled by the Agent Factory; BLACK VANTA can select active specialist agents. Bounded multi-agent DAG scheduling is implemented with dependency-aware parallel execution and per-agent profiles. A self-hosted Android debug worker now runs Gradle tests, assembles APK/AAB outputs, and stores verified artifacts; release signing remains pending. The runtime also persists bounded agent progress events and streams them into BLACK VANTA; optional local whisper.cpp transcription and Piper speech synthesis are available when host binaries and models are configured. Still pending: persistent distributed scheduling/recovery, SBOM/provenance generation, Android release signing and iOS build workers, independent verification workers and production-grade deployment automation. GitHub Pages remains static hosting; GitHub Actions are ephemeral and quota-limited.
 
 ## Tests
 Run `npm test` with Node.js 20 or newer. CI uses Node.js 24.

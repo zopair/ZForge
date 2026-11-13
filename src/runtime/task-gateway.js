@@ -378,25 +378,53 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
           const keywords = Array.isArray(body.keywords)
             ? body.keywords.slice(0, 12).map(String)
             : [...new Set(task.request.match(/[\\p{L}\\p{N}._+-]{3,}/gu) ?? [])].slice(0, 12);
+          const availableAgents = agentFactory && typeof agentFactory.listAgents === 'function'
+            ? await agentFactory.listAgents()
+            : [];
           const planning = chiefAgent
-            ? await chiefAgent.planTask({ request: task.request, capabilities, keywords })
+            ? await chiefAgent.planTask({ request: task.request, capabilities, keywords, availableAgents })
             : null;
-          const execution = await agentService.runTask({
-            request: task.request,
-            model,
-            workspaceId: task.workspaceId,
-            plan: planning?.plan ?? (typeof body.approvedPlan === 'string' ? body.approvedPlan : null),
-            allowedTools: executionProfile?.allowedTools ?? null,
-            resourceLimits: executionProfile?.resourceLimits ?? null,
-            onProgress: event => store.appendEvent(task.id, event.type, event.details),
-          });
+          let execution;
+          if (!body.agentId && multiAgentCoordinator && Array.isArray(planning?.orchestrationTasks) && planning.orchestrationTasks.length >= 2) {
+            const delegatedTasks = planning.orchestrationTasks.map((item, index) => ({
+              ...item,
+              workspaceId: item.workspaceId ?? `zforge-${task.id.slice(-8)}-${index + 1}`,
+            }));
+            const orchestration = await multiAgentCoordinator.executePlan({
+              workspaceId: task.workspaceId ?? task.id,
+              tasks: delegatedTasks,
+              onProgress: event => store.appendEvent(task.id, event.type, event.details),
+            });
+            execution = {
+              completed: orchestration.status === 'completed',
+              status: orchestration.status,
+              summary: `Specialist orchestration: ${orchestration.summary.succeeded} succeeded, ${orchestration.summary.failed} failed, ${orchestration.summary.skipped} skipped.`,
+              steps: orchestration.summary.total,
+              evidence: orchestration.tasks.flatMap(item => item.evidence ?? []),
+              workspaceId: task.workspaceId,
+              orchestration,
+            };
+          } else {
+            execution = await agentService.runTask({
+              request: task.request,
+              model,
+              workspaceId: task.workspaceId,
+              plan: planning?.plan ?? (typeof body.approvedPlan === 'string' ? body.approvedPlan : null),
+              allowedTools: executionProfile?.allowedTools ?? null,
+              resourceLimits: executionProfile?.resourceLimits ?? null,
+              onProgress: event => store.appendEvent(task.id, event.type, event.details),
+            });
+          }
           const result = { ...execution, agentProfile: executionProfile ? { agentId: executionProfile.agentId, name: executionProfile.name, version: executionProfile.version } : null, planning: planning ? {
             status: planning.status,
             discoveryStatus: planning.discoveryStatus,
             candidatesConsidered: planning.candidatesConsidered,
             proposedInternalBuilds: planning.proposedInternalBuilds,
+            orchestrationStatus: planning.orchestrationStatus ?? 'NOT_PROPOSED',
+            orchestrationTaskCount: planning.orchestrationTasks?.length ?? 0,
+            orchestrationPlanError: planning.orchestrationPlanError ?? null,
           } : null };
-          const status = result.completed === true ? 'succeeded' : 'inconclusive';
+          const status = result.completed === true ? 'succeeded' : result.status === 'failed' ? 'failed' : 'inconclusive';
           const completed = await store.transition(task.id, status, {
             result,
             error: result.completed === true ? null : 'agent did not provide verified completion evidence',
