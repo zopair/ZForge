@@ -1,0 +1,157 @@
+import { spawn } from 'node:child_process';
+import { mkdtemp, writeFile, readFile, lstat, stat, realpath, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { resolve, join, sep } from 'node:path';
+import { randomUUID } from 'node:crypto';
+
+const AUDIO_TYPES = new Map([
+  ['audio/webm', 'webm'],
+  ['audio/ogg', 'ogg'],
+  ['audio/wav', 'wav'],
+  ['audio/x-wav', 'wav'],
+  ['audio/mp4', 'm4a'],
+  ['audio/mpeg', 'mp3'],
+]);
+const MAX_TEXT_LENGTH = 8000;
+
+function runLocalProcess({ command, args, input = null, cwd, timeoutMs, maxOutputBytes }) {
+  return new Promise((resolveResult, reject) => {
+    let stdout = Buffer.alloc(0);
+    let stderr = Buffer.alloc(0);
+    let outputBytes = 0;
+    let settled = false;
+    const child = spawn(command, args, {
+      cwd,
+      shell: false,
+      windowsHide: true,
+      env: { PATH: process.env.PATH ?? '', HOME: cwd, TMPDIR: cwd, LANG: 'C.UTF-8' },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    const finish = (error, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (error) reject(error);
+      else resolveResult(value);
+    };
+    const collect = (target, chunk) => {
+      outputBytes += chunk.length;
+      if (outputBytes > maxOutputBytes) {
+        child.kill('SIGKILL');
+        finish(new Error('local voice process exceeded its output limit'));
+        return target;
+      }
+      return Buffer.concat([target, chunk]);
+    };
+    child.stdout.on('data', chunk => { stdout = collect(stdout, chunk); });
+    child.stderr.on('data', chunk => { stderr = collect(stderr, chunk); });
+    child.stdin.on('error', () => {});
+    child.once('error', error => finish(new Error('could not start local voice executable: ' + error.message)));
+    child.once('close', (code, signal) => {
+      if (code !== 0) return finish(new Error('local voice executable failed (' + (signal ?? code) + '): ' + stderr.toString('utf8').slice(0, 1200)));
+      finish(null, { stdout: stdout.toString('utf8'), stderr: stderr.toString('utf8') });
+    });
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      finish(new Error('local voice process timed out'));
+    }, timeoutMs);
+    if (input) child.stdin.end(input);
+    else child.stdin.end();
+  });
+}
+
+async function assertModelFile(path, label) {
+  if (!path) throw new Error(label + ' is not configured');
+  const info = await stat(path);
+  if (!info.isFile()) throw new Error(label + ' must point to a regular local model file');
+  return resolve(path);
+}
+
+export class LocalVoiceService {
+  constructor({
+    whisperCommand = 'whisper-cli',
+    whisperModelPath = null,
+    piperCommand = 'piper',
+    piperModelPath = null,
+    timeoutMs = 120000,
+    maxAudioBytes = 25 * 1024 * 1024,
+    maxSynthesizedBytes = 50 * 1024 * 1024,
+    maxOutputBytes = 2 * 1024 * 1024,
+  } = {}) {
+    for (const [name, value] of Object.entries({ timeoutMs, maxAudioBytes, maxSynthesizedBytes, maxOutputBytes })) {
+      if (!Number.isInteger(value) || value < 1) throw new RangeError(name + ' must be a positive integer');
+    }
+    if (typeof whisperCommand !== 'string' || !whisperCommand.trim() || typeof piperCommand !== 'string' || !piperCommand.trim()) throw new TypeError('local voice executable names must be non-empty strings');
+    this.whisperCommand = whisperCommand;
+    this.whisperModelPath = whisperModelPath ? resolve(whisperModelPath) : null;
+    this.piperCommand = piperCommand;
+    this.piperModelPath = piperModelPath ? resolve(piperModelPath) : null;
+    this.timeoutMs = timeoutMs;
+    this.maxAudioBytes = maxAudioBytes;
+    this.maxSynthesizedBytes = maxSynthesizedBytes;
+    this.maxOutputBytes = maxOutputBytes;
+  }
+
+  capabilities() {
+    return {
+      transcription: Boolean(this.whisperModelPath),
+      synthesis: Boolean(this.piperModelPath),
+      localOnly: true,
+      engines: { transcription: this.whisperModelPath ? 'whisper.cpp' : null, synthesis: this.piperModelPath ? 'Piper' : null },
+    };
+  }
+
+  async transcribe({ audio, contentType } = {}) {
+    if (!this.whisperModelPath) throw new Error('local whisper.cpp transcription is not configured');
+    if (!Buffer.isBuffer(audio) || audio.length === 0) throw new TypeError('audio payload must be a non-empty Buffer');
+    if (audio.length > this.maxAudioBytes) throw new RangeError('audio payload exceeds the configured size limit');
+    const mediaType = typeof contentType === 'string' ? contentType.split(';', 1)[0].trim().toLowerCase() : '';
+    const extension = AUDIO_TYPES.get(mediaType);
+    if (!extension) throw new TypeError('unsupported audio content type');
+    const model = await assertModelFile(this.whisperModelPath, 'whisper.cpp model');
+    const directory = await mkdtemp(join(tmpdir(), 'zforge-whisper-'));
+    const inputPath = join(directory, 'input-' + randomUUID() + '.' + extension);
+    try {
+      await writeFile(inputPath, audio, { flag: 'wx', mode: 0o600 });
+      const result = await runLocalProcess({
+        command: this.whisperCommand,
+        args: ['-m', model, '-f', inputPath, '-nt', '-np'],
+        cwd: directory,
+        timeoutMs: this.timeoutMs,
+        maxOutputBytes: this.maxOutputBytes,
+      });
+      const text = result.stdout.trim();
+      if (!text) throw new Error('whisper.cpp returned an empty transcript');
+      return { text, engine: 'whisper.cpp', local: true };
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }
+
+  async synthesize({ text } = {}) {
+    if (!this.piperModelPath) throw new Error('local Piper speech synthesis is not configured');
+    if (typeof text !== 'string' || !text.trim() || text.length > MAX_TEXT_LENGTH) throw new TypeError('synthesis text must contain 1..8000 characters');
+    const model = await assertModelFile(this.piperModelPath, 'Piper voice model');
+    const directory = await mkdtemp(join(tmpdir(), 'zforge-piper-'));
+    const outputPath = join(directory, 'speech.wav');
+    try {
+      await runLocalProcess({
+        command: this.piperCommand,
+        args: ['--model', model, '--output_file', outputPath],
+        input: Buffer.from(text.trim(), 'utf8'),
+        cwd: directory,
+        timeoutMs: this.timeoutMs,
+        maxOutputBytes: this.maxOutputBytes,
+      });
+      const info = await lstat(outputPath);
+      if (info.isSymbolicLink() || !info.isFile() || info.size < 12 || info.size > this.maxSynthesizedBytes) throw new Error('Piper did not produce a valid WAV file within the configured size limit');
+      const actual = await realpath(outputPath);
+      if (!actual.startsWith(directory + sep)) throw new Error('Piper output escaped its temporary directory');
+      const audio = await readFile(actual);
+      if (audio.subarray(0, 4).toString() !== 'RIFF' || audio.subarray(8, 12).toString() !== 'WAVE') throw new Error('Piper output is not a valid WAV file');
+      return { audio, contentType: 'audio/wav', engine: 'Piper', local: true };
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }
+}
