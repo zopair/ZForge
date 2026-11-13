@@ -44,7 +44,7 @@ test('local voice synthesizes a WAV file through configured local Piper executab
   try {
     const model = join(root, 'voice.onnx');
     await writeFile(model, 'model');
-    const piper = await executable(root, 'fake-piper', 'while [ "$#" -gt 0 ]; do if [ "$1" = "-f" ]; then shift; output="$1"; fi; shift; done\nprintf "RIFF0000WAVEdata" > "$output"\n');
+    const piper = await executable(root, 'fake-piper', 'if [ "$1" = "-c" ]; then exit 0; fi\nwhile [ "$#" -gt 0 ]; do if [ "$1" = "-f" ]; then shift; output="$1"; fi; shift; done\nprintf "RIFF0000WAVEdata" > "$output"\n');
     const service = new LocalVoiceService({ piperCommand: piper, piperModelPath: model });
     const result = await service.synthesize({ text: 'مرحبا بالعالم' });
     assert.equal(result.contentType, 'audio/wav');
@@ -74,7 +74,7 @@ test('local voice refuses blank synthesis text and rejects missing WAV output', 
   try {
     const model = join(root, 'voice.onnx');
     await writeFile(model, 'model');
-    const piper = await executable(root, 'fake-piper', 'while [ "$#" -gt 0 ]; do if [ "$1" = "-f" ]; then shift; output="$1"; fi; shift; done\nprintf "not-wave" > "$output"\n');
+    const piper = await executable(root, 'fake-piper', 'if [ "$1" = "-c" ]; then exit 0; fi\nwhile [ "$#" -gt 0 ]; do if [ "$1" = "-f" ]; then shift; output="$1"; fi; shift; done\nprintf "not-wave" > "$output"\n');
     const service = new LocalVoiceService({ piperCommand: piper, piperModelPath: model });
     await assert.rejects(() => service.synthesize({ text: '   ' }), /text/i);
     await assert.rejects(() => service.synthesize({ text: 'test' }), /valid WAV/i);
@@ -180,7 +180,7 @@ test('automatic voice selection uses Piper for mixed Latin text and refuses unsu
     const piperModel = join(root, 'voice.onnx');
     await writeFile(piperModel, 'model');
     await writeFile(piperModel + '.json', '{}');
-    const piper = await executable(root, 'fake-piper', 'while [ "$#" -gt 0 ]; do if [ "$1" = "-f" ]; then shift; output="$1"; fi; shift; done\\nprintf "RIFF0000WAVEdata" > "$output"\\n');
+    const piper = await executable(root, 'fake-piper', 'if [ "$1" = "-c" ]; then exit 0; fi\nwhile [ "$#" -gt 0 ]; do if [ "$1" = "-f" ]; then shift; output="$1"; fi; shift; done\nprintf "RIFF0000WAVEdata" > "$output"\n');
     const service = new LocalVoiceService({
       kemetonePythonCommand: kemetonePython,
       kemetoneModelDir: modelDir,
