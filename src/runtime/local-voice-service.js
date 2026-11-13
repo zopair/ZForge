@@ -72,7 +72,7 @@ export class LocalVoiceService {
     whisperCommand = 'whisper-cli',
     whisperModelPath = null,
     ffmpegCommand = 'ffmpeg',
-    piperCommand = 'piper',
+    piperCommand = 'python3',
     piperModelPath = null,
     timeoutMs = 120000,
     maxAudioBytes = 25 * 1024 * 1024,
@@ -159,8 +159,7 @@ export class LocalVoiceService {
     try {
       await runLocalProcess({
         command: this.piperCommand,
-        args: ['--model', model, '--output_file', outputPath],
-        input: Buffer.from(text.trim(), 'utf8'),
+        args: ['-m', 'piper', '-m', model, '-f', outputPath, '--', text.trim()],
         cwd: directory,
         timeoutMs: this.timeoutMs,
         maxOutputBytes: this.maxOutputBytes,
