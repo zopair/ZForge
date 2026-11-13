@@ -45,10 +45,16 @@ export class AgentExecutionService {
     return this.modelAdapter.listModels();
   }
 
-  async runTask({ request, model, workspaceId, plan = null } = {}) {
+  async runTask({ request, model, workspaceId, plan = null, allowedTools = null, resourceLimits = null } = {}) {
     if (typeof request !== 'string' || !request.trim()) throw new TypeError('task request is required');
     if (typeof model !== 'string' || !model.trim()) throw new TypeError('a local model name is required');
     if (typeof workspaceId !== 'string' || !workspaceId.trim()) throw new TypeError('workspaceId is required');
+    if (allowedTools !== null && (!Array.isArray(allowedTools) || allowedTools.some(name => typeof name !== 'string' || (!EXECUTION_TOOLS.some(tool => tool.function.name === name) && name !== 'finish_task')))) throw new TypeError('allowedTools contains an unknown execution tool');
+    if (resourceLimits !== null && (!resourceLimits || typeof resourceLimits !== 'object' || Array.isArray(resourceLimits))) throw new TypeError('resourceLimits must be an object');
+    const allowedToolSet = allowedTools === null ? null : new Set(allowedTools);
+    const availableTools = EXECUTION_TOOLS.filter(tool => !allowedToolSet || allowedToolSet.has(tool.function.name) || tool.function.name === 'finish_task');
+    const maxTaskTimeoutMs = Number.isFinite(resourceLimits?.timeoutSeconds) ? resourceLimits.timeoutSeconds * 1000 : null;
+    const maxTaskStorageBytes = Number.isFinite(resourceLimits?.storageMb) ? resourceLimits.storageMb * 1024 * 1024 : null;
     await this.runtime.createWorkspace({ id: workspaceId });
     let experimentId = null;
     if (this.workspaceManager) {
@@ -70,7 +76,7 @@ export class AgentExecutionService {
     for (let step = 1; step <= this.maxSteps; step += 1) {
       let response;
       try {
-        response = await this.modelAdapter.chat({ model, messages, temperature: 0.1, tools: EXECUTION_TOOLS });
+        response = await this.modelAdapter.chat({ model, messages, temperature: 0.1, tools: availableTools });
       } catch (error) {
         finishExperiment('failed', [`Model execution failed: ${error.message}`], { step });
         throw error;
@@ -90,18 +96,21 @@ export class AgentExecutionService {
         const callId = call.id ?? rawCalls[index]?.id ?? randomUUID();
         let result;
         try {
+          if (allowedToolSet && !allowedToolSet.has(call.name) && call.name !== 'finish_task') throw new Error(`tool is not granted to this agent: ${call.name}`);
           const args = parseArguments(call.arguments ?? {});
           switch (call.name) {
             case 'run_command': {
-              const execution = await this.runtime.execute({ workspaceId, command: args.command, args: args.args ?? [], cwd: args.cwd ?? '.', timeoutMs: args.timeoutMs });
+              const requestedTimeout = args.timeoutMs ?? maxTaskTimeoutMs ?? undefined;
+              const timeoutMs = maxTaskTimeoutMs && requestedTimeout ? Math.min(requestedTimeout, maxTaskTimeoutMs) : requestedTimeout;
+              const execution = await this.runtime.execute({ workspaceId, command: args.command, args: args.args ?? [], cwd: args.cwd ?? '.', timeoutMs, resourceLimits });
               result = { ok: execution.exitCode === 0, ...execution };
               break;
             }
             case 'read_file':
-              result = { ok: true, ...await this.runtime.readFile({ workspaceId, path: args.path, maxBytes: args.maxBytes }) };
+              result = { ok: true, ...await this.runtime.readFile({ workspaceId, path: args.path, maxBytes: maxTaskStorageBytes ? Math.min(args.maxBytes ?? maxTaskStorageBytes, maxTaskStorageBytes) : args.maxBytes }) };
               break;
             case 'write_file':
-              result = { ok: true, ...await this.runtime.writeFile({ workspaceId, path: args.path, content: args.content, maxBytes: args.maxBytes }) };
+              result = { ok: true, ...await this.runtime.writeFile({ workspaceId, path: args.path, content: args.content, maxBytes: maxTaskStorageBytes ? Math.min(args.maxBytes ?? maxTaskStorageBytes, maxTaskStorageBytes) : args.maxBytes }) };
               break;
             case 'list_files':
               result = { ok: true, files: await this.runtime.listFiles({ workspaceId, path: args.path ?? '.', maxEntries: args.maxEntries }) };
@@ -114,6 +123,7 @@ export class AgentExecutionService {
                 sourcePath: args.sourcePath,
                 filename: args.filename,
                 kind: args.kind,
+                maxBytes: maxTaskStorageBytes ?? undefined,
               });
               result = { ok: true, artifact };
               break;
