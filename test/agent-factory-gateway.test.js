@@ -64,6 +64,10 @@ test('gateway exposes agent proposal, test, review, activation and scoped execut
     assert.equal(executionOptions.allowedTools.includes('run_command'), true);
     assert.equal(executionOptions.allowedTools.includes('write_file'), false);
     assert.equal(executionOptions.resourceLimits.timeoutSeconds, 120);
+    const deactivated = await fetch(`${base}/api/agents/api-builder/deactivate`, { method: 'POST', headers, body: JSON.stringify({ approved: true, approverId: 'operator', reason: 'Regression rollback' }) });
+    assert.equal((await deactivated.json()).status, 'RETIRED');
+    const profileAfterRollback = await fetch(`${base}/api/agents/api-builder/profile`, { headers });
+    assert.equal(profileAfterRollback.status, 409);
   } finally {
     await new Promise(resolve => gateway.server.close(resolve));
     await rm(root, { recursive: true, force: true });
