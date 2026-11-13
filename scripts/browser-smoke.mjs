@@ -48,7 +48,7 @@ const origin = 'http://127.0.0.1:' + server.address().port;
 const landing = await fetch(origin);
 const landingHtml = await landing.text();
 assert.equal(landing.status, 200, 'static app should return HTTP 200: ' + landingHtml.slice(0, 200));
-assert.ok(landingHtml.includes('<title>BLACK VANTA | ZForge</title>'), 'static app response should contain the BLACK VANTA title');
+assert.ok(landingHtml.includes('<title>ZForge | BLACK VANTA</title>'), 'static app response should use ZForge identity with BLACK VANTA theme');
 
 try {
   for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) {
@@ -64,6 +64,37 @@ try {
       assert.equal(navigation?.status(), 200, name + ': app document should return HTTP 200');
       assert.match(await page.title(), /BLACK VANTA/);
       assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
+      const visualContract = await page.evaluate(() => {
+        const style = selector => getComputedStyle(document.querySelector(selector));
+        const panel = document.querySelector('.chat-panel');
+        const panelRect = panel.getBoundingClientRect();
+        const send = style('#send-button');
+        const arrow = style('#send-button svg');
+        return {
+          pageBackground: style('body').backgroundColor,
+          documentBackground: style('html').backgroundColor,
+          panelVisible: panelRect.width > 0 && panelRect.height > 0 && panelRect.top >= 0 && panelRect.bottom <= innerHeight,
+          composerInFirstViewport: (() => { const rect = document.querySelector('.composer').getBoundingClientRect(); return rect.width > 0 && rect.top >= 0 && rect.bottom <= innerHeight; })(),
+          messageTextColor: style('.message-content p').color,
+          inputTextColor: style('#chat-input').color,
+          panelAnimation: style('.chat-panel').animationName,
+          composerBorder: style('.composer').borderTopWidth,
+          sendShape: send.borderRadius,
+          sendBackground: send.backgroundColor,
+          arrowColor: arrow.stroke,
+        };
+      });
+      assert.equal(visualContract.pageBackground, 'rgb(0, 0, 0)', name + ': BLACK VANTA body must be true black');
+      assert.equal(visualContract.documentBackground, 'rgb(0, 0, 0)', name + ': document canvas must be true black');
+      assert.equal(visualContract.panelVisible, true, name + ': complete chat window must fit in the first mobile viewport');
+      assert.equal(visualContract.composerInFirstViewport, true, name + ': composer and send button must fit in the first mobile viewport');
+      assert.equal(visualContract.messageTextColor, 'rgb(255, 255, 255)', name + ': conversation text must be white');
+      assert.equal(visualContract.inputTextColor, 'rgb(255, 255, 255)', name + ': composer text must be white');
+      assert.equal(visualContract.panelAnimation, 'vanta-border-flow', name + ': chat frame must have animated gold glow');
+      assert.notEqual(visualContract.composerBorder, '0px', name + ': composer must have a visible frame');
+      assert.equal(visualContract.sendShape, '50%', name + ': send control must be circular');
+      assert.equal(visualContract.sendBackground, 'rgb(217, 173, 85)', name + ': send control must be gold');
+      assert.equal(visualContract.arrowColor, 'rgb(255, 255, 255)', name + ': send arrow must be white');
       await page.locator('#runtime-settings > summary').click();
       await page.locator('#runtime-url').fill(origin);
       await page.locator('#runtime-token').fill('browser-test-token-123456');

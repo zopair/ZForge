@@ -9,7 +9,7 @@ const manifest = await readFile(new URL('../manifest.webmanifest', import.meta.u
 
 test('BLACK VANTA exposes an active Arabic RTL chat composer and runtime connection form', () => {
   assert.match(html, /<html lang="ar" dir="rtl">/);
-  assert.match(html, /BLACK <span>VANTA<\/span>/);
+  assert.match(html, /<h1 id="assistant-title">ZFORGE<\/h1>/);
   assert.match(html, /id="chat-input"/);
   assert.match(html, /id="send-button"/);
   assert.match(html, /id="runtime-url"/);
@@ -21,18 +21,20 @@ test('BLACK VANTA exposes an active Arabic RTL chat composer and runtime connect
   assert.doesNotMatch(html.match(/<input[^>]*id="chat-input"[^>]*>/)?.[0] ?? '', /\bdisabled\b/);
 });
 
-test('send control is a gold circular button with a black upward arrow', () => {
+test('send control is a gold circular button with a white upward arrow', () => {
   assert.match(html, /aria-label="إرسال الرسالة"/);
   assert.match(html, /class="send-arrow"/);
   assert.match(css, /\.send-button\s*\{[^}]*border-radius:\s*50%/s);
-  assert.match(css, /\.send-button\s*\{[^}]*background:\s*linear-gradient/s);
-  assert.match(css, /\.send-arrow\s*\{[^}]*stroke:\s*#050505/s);
+  assert.match(css, /\.send-button\s*\{[^}]*background:\s*#d9ad55/s);
+  assert.match(css, /\.send-arrow\s*\{[^}]*stroke:\s*#ffffff/s);
 });
 
 test('chat panel has a moving gold border, white message text and reduced-motion support', () => {
-  assert.match(css, /@keyframes\s+border-glow/);
+  assert.match(css, /@keyframes\s+vanta-border-flow/);
   assert.match(css, /\.chat-panel[^}]*conic-gradient/s);
-  assert.match(css, /\.message-content p\s*\{[^}]*color:\s*#fff/s);
+  assert.match(css, /\.message-content p,.message-content \.muted\s*\{[^}]*color:\s*#ffffff/s);
+  assert.match(css, /body\s*\{[^}]*background:\s*#000000!important/s);
+  assert.match(css, /\.composer\s*\{[^}]*border:\s*1px solid #d9ad55/s);
   assert.match(css, /prefers-reduced-motion/);
 });
 
