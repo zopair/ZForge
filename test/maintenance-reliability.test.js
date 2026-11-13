@@ -7,7 +7,7 @@ const cloudWorkflow = await readFile(new URL('../.github/workflows/cloud-executi
 const conversationWorker = await readFile(new URL('../scripts/run-cloud-conversation.mjs', import.meta.url), 'utf8');
 
 test('GitHub Pages deploys every push to main', () => {
-  assert.match(workflow, /branches:\s*\[main,/);
+  assert.match(workflow, /branches:\s*\[main\]/);
 });
 
 test('capability questions do not require the local model inventory', () => {
