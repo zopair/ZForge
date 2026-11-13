@@ -57,6 +57,7 @@ const webBuildService = new WebBuildService({ runtime, artifactStore, path: proc
 const voiceService = new LocalVoiceService({
   whisperCommand: process.env.ZFORGE_WHISPER_BIN ?? 'whisper-cli',
   whisperModelPath: process.env.ZFORGE_WHISPER_MODEL ?? null,
+  ffmpegCommand: process.env.ZFORGE_FFMPEG_BIN ?? 'ffmpeg',
   piperCommand: process.env.ZFORGE_PIPER_BIN ?? 'piper',
   piperModelPath: process.env.ZFORGE_PIPER_MODEL ?? null,
   timeoutMs: Number(process.env.ZFORGE_VOICE_TIMEOUT_MS ?? 120000),
