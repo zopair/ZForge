@@ -83,7 +83,7 @@ async function directoryAvailable(path) {
 async function readValidWav(outputPath, directory, maxBytes, engine) {
   const info = await lstat(outputPath);
   if (info.isSymbolicLink() || !info.isFile() || info.size < 12 || info.size > maxBytes) {
-    throw new Error(engine + ' did not produce a WAV file within the configured size limit');
+    throw new Error(engine + ' did not produce a valid WAV file within the configured size limit');
   }
   const actual = await realpath(outputPath);
   if (!actual.startsWith(directory + sep)) throw new Error(engine + ' output escaped its temporary directory');
