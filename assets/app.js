@@ -146,7 +146,7 @@ async function synthesizeLocalSpeech(text){
   const response=await fetch(runtimeBaseUrl+"/api/voice/synthesize",{
     method:"POST",
     headers:{Authorization:"Bearer "+runtimeToken,"Content-Type":"application/json"},
-    body:JSON.stringify({text:String(text).slice(0,8000)})
+    body:JSON.stringify({text:String(text).slice(0,8000),engine:"auto"})
   });
   if(!response.ok){
     const error=await response.json().catch(()=>({}));
