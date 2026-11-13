@@ -149,7 +149,7 @@ test('local voice can synthesize Egyptian Cairene Arabic with optional KemeTone 
     await writeFile(join(modelDir, 'kemetone.pth'), 'weights');
     await writeFile(join(modelDir, 'voices', 'kemetone.pt'), 'voice embedding');
     await writeFile(join(modelDir, 'example.py'), '# local example');
-    const python = await executable(root, 'kemetone-python', 'if [ "$1" = "-c" ]; then exit 0; fi\ntext="$3"\noutput="$4"\nif [ \${#text} -gt 500 ]; then echo KEMETONE_CONTEXT_LIMIT >&2; exit 2; fi\nprintf "RIFF0000WAVEfmt " > "$output"\ndd if=/dev/zero bs=28 count=1 >> "$output" 2>/dev/null\n');
+    const python = await executable(root, 'kemetone-python', 'if [ "$1" = "-c" ]; then exit 0; fi\ntext="$3"\noutput="$4"\nif [ "$(printf %s "$text" | wc -c)" -gt 500 ]; then echo KEMETONE_CONTEXT_LIMIT >&2; exit 2; fi\nprintf "RIFF0000WAVEfmt " > "$output"\ndd if=/dev/zero bs=28 count=1 >> "$output" 2>/dev/null\n');
     const espeak = await executable(root, 'espeak-ng', 'exit 0\n');
     const service = new LocalVoiceService({
       kemetonePythonCommand: python,
@@ -181,7 +181,7 @@ test('automatic voice selection uses Piper for mixed Latin text and refuses unsu
       await mkdir(join(target, '..'), { recursive: true });
       await writeFile(target, content);
     }
-    const kemetonePython = await executable(root, 'kemetone-python', 'if [ "$1" = "-c" ]; then exit 0; fi\ntext="$3"\noutput="$4"\nif [ \${#text} -gt 500 ]; then echo KEMETONE_CONTEXT_LIMIT >&2; exit 2; fi\nprintf "RIFF0000WAVEfmt " > "$output"\ndd if=/dev/zero bs=28 count=1 >> "$output" 2>/dev/null\n');
+    const kemetonePython = await executable(root, 'kemetone-python', 'if [ "$1" = "-c" ]; then exit 0; fi\ntext="$3"\noutput="$4"\nif [ "$(printf %s "$text" | wc -c)" -gt 500 ]; then echo KEMETONE_CONTEXT_LIMIT >&2; exit 2; fi\nprintf "RIFF0000WAVEfmt " > "$output"\ndd if=/dev/zero bs=28 count=1 >> "$output" 2>/dev/null\n');
     const espeak = await executable(root, 'espeak-ng', 'exit 0\n');
     const piperModel = join(root, 'voice.onnx');
     await writeFile(piperModel, 'model');
