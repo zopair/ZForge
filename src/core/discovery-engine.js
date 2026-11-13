@@ -20,7 +20,7 @@ const VENDORS = Object.freeze([
   { id:'google', orgs:['google','GoogleCloudPlatform','android','flutter','firebase','tensorflow','googlefonts'] },
   { id:'anthropic', orgs:['anthropics'] },
   { id:'microsoft', orgs:['microsoft','Azure','dotnet','microsoftgraph'] },
-  { id:'apple', orgs:['apple','swiftlang','apple','foundationdb'] },
+  { id:'apple', orgs:['apple','swiftlang','foundationdb'] },
   { id:'meta', orgs:['facebook','pytorch','meta-llama'] },
   { id:'xai', orgs:['xai-org','twitter'] },
   { id:'github', orgs:['github','cli','octokit','actions'] },
