@@ -71,24 +71,28 @@ export class LocalVoiceService {
   constructor({
     whisperCommand = 'whisper-cli',
     whisperModelPath = null,
+    ffmpegCommand = 'ffmpeg',
     piperCommand = 'piper',
     piperModelPath = null,
     timeoutMs = 120000,
     maxAudioBytes = 25 * 1024 * 1024,
     maxSynthesizedBytes = 50 * 1024 * 1024,
+    maxConvertedAudioBytes = 50 * 1024 * 1024,
     maxOutputBytes = 2 * 1024 * 1024,
   } = {}) {
-    for (const [name, value] of Object.entries({ timeoutMs, maxAudioBytes, maxSynthesizedBytes, maxOutputBytes })) {
+    for (const [name, value] of Object.entries({ timeoutMs, maxAudioBytes, maxSynthesizedBytes, maxConvertedAudioBytes, maxOutputBytes })) {
       if (!Number.isInteger(value) || value < 1) throw new RangeError(name + ' must be a positive integer');
     }
-    if (typeof whisperCommand !== 'string' || !whisperCommand.trim() || typeof piperCommand !== 'string' || !piperCommand.trim()) throw new TypeError('local voice executable names must be non-empty strings');
+    if (typeof whisperCommand !== 'string' || !whisperCommand.trim() || typeof ffmpegCommand !== 'string' || !ffmpegCommand.trim() || typeof piperCommand !== 'string' || !piperCommand.trim()) throw new TypeError('local voice executable names must be non-empty strings');
     this.whisperCommand = whisperCommand;
     this.whisperModelPath = whisperModelPath ? resolve(whisperModelPath) : null;
+    this.ffmpegCommand = ffmpegCommand;
     this.piperCommand = piperCommand;
     this.piperModelPath = piperModelPath ? resolve(piperModelPath) : null;
     this.timeoutMs = timeoutMs;
     this.maxAudioBytes = maxAudioBytes;
     this.maxSynthesizedBytes = maxSynthesizedBytes;
+    this.maxConvertedAudioBytes = maxConvertedAudioBytes;
     this.maxOutputBytes = maxOutputBytes;
   }
 
@@ -113,9 +117,27 @@ export class LocalVoiceService {
     const inputPath = join(directory, 'input-' + randomUUID() + '.' + extension);
     try {
       await writeFile(inputPath, audio, { flag: 'wx', mode: 0o600 });
+      let whisperInputPath = inputPath;
+      if (extension !== 'wav') {
+        const convertedPath = join(directory, 'normalized.wav');
+        await runLocalProcess({
+          command: this.ffmpegCommand,
+          args: ['-hide_banner', '-loglevel', 'error', '-y', '-i', inputPath, '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', convertedPath],
+          cwd: directory,
+          timeoutMs: this.timeoutMs,
+          maxOutputBytes: this.maxOutputBytes,
+        });
+        const convertedInfo = await lstat(convertedPath);
+        if (convertedInfo.isSymbolicLink() || !convertedInfo.isFile() || convertedInfo.size < 44 || convertedInfo.size > this.maxConvertedAudioBytes) throw new Error('FFmpeg did not produce a valid WAV file within the configured size limit');
+        const convertedRealPath = await realpath(convertedPath);
+        if (!convertedRealPath.startsWith(directory + sep)) throw new Error('FFmpeg output escaped its temporary directory');
+        const header = await readFile(convertedRealPath);
+        if (header.subarray(0, 4).toString() !== 'RIFF' || header.subarray(8, 12).toString() !== 'WAVE') throw new Error('FFmpeg output is not a valid WAV file');
+        whisperInputPath = convertedRealPath;
+      }
       const result = await runLocalProcess({
         command: this.whisperCommand,
-        args: ['-m', model, '-f', inputPath, '-nt', '-np'],
+        args: ['-m', model, '-f', whisperInputPath, '-nt', '-np'],
         cwd: directory,
         timeoutMs: this.timeoutMs,
         maxOutputBytes: this.maxOutputBytes,
