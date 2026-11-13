@@ -17,6 +17,7 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - [Architecture](docs/ARCHITECTURE.md)
 - [Universal Open-Source Discovery Engine](docs/UNIVERSAL_DISCOVERY_ENGINE.md)
 - [Secure Execution Runtime Contract](docs/EXECUTION_RUNTIME_CONTRACT.md)
+- [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
 - [Black Phantom UI](docs/BLACK_PHANTOM_UI.md)
 - [Tool evaluation protocol](docs/TOOL_EVALUATION.md)
 - [Agent operating system](docs/AGENT_OPERATING_SYSTEM.md)
@@ -27,12 +28,15 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 - Read-only GitHub search adapter with official rate-limit stop: src/adapters/github-discovery.js
 - Repository metadata/license/manifest inspector: src/adapters/github-repository-inspector.js
 - Official release metadata adapter and review-only update monitor: src/adapters/github-release-monitor.js and src/core/release-monitor.js
+- Local-only Ollama model adapter: src/adapters/ollama-model-adapter.js
+- Chief Agent draft planner: src/core/chief-agent.js
+- Agent manifest and activation gates: src/core/agent-architect.js
 - Chief Agent: prompts/CHIEF_AGENT.md
 - Agent Architect: prompts/AGENT_ARCHITECT.md
 - Tool registry and engineering memory: memory/
 
 ## Current implementation status
-The repository contains a static PWA shell and initial discovery/evaluation modules. The GitHub adapter is read-only. No model runtime, live Chief Agent, backend task gateway, isolated code execution worker, GitHub write credential, voice runtime, Android build worker, or autonomous repository mutation is connected yet. Black Phantom is currently specified, not fully integrated. GitHub Pages serves static files only; Actions are ephemeral and quota-limited.
+The repository contains a static Black Phantom PWA shell, initial discovery/evaluation modules, a loopback-only Ollama adapter, a draft-only Chief Agent planner, and Agent Architect validation gates. The local model adapter has not yet been tested against an installed model. The GitHub discovery/release/inspection adapters are read-only. No backend task gateway, persistent memory provider, isolated code execution worker, GitHub write credential, voice runtime, Android build worker, or autonomous repository mutation is connected yet. GitHub Pages serves static files only; Actions are ephemeral and quota-limited.
 
 ## Tests
 Run `npm test` with Node.js 20 or newer. CI uses Node.js 24.
