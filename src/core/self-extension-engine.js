@@ -18,7 +18,7 @@ export function assessCapabilityGap({ capability, discovery } = {}) {
   const results = Array.isArray(discovery.results) ? discovery.results : [];
   const eligible = results.find((item) => {
     const evaluation = item?.evaluation ?? item?.gateEvaluation;
-    return evaluation?.eligible === true && evaluation?.status === 'CANDIDATE';
+    return evaluation?.eligible === true && evaluation?.status === 'CANDIDATE' && (item.capabilities ?? []).includes(capability);
   });
 
   if (eligible) {
@@ -31,8 +31,7 @@ export function assessCapabilityGap({ capability, discovery } = {}) {
     };
   }
 
-  const complete = discovery.status === 'COMPLETE'
-    || (discovery.status === 'BATCH_COMPLETE' && discovery.queryCatalogComplete === true);
+  const complete = discovery.complete === true || discovery.status === 'COMPLETE';
 
   if (!complete || discovery.queryCatalogComplete === false) {
     return {
