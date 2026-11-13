@@ -2,7 +2,7 @@ import { readFile, lstat } from 'node:fs/promises';
 import { Buffer } from 'node:buffer';
 import { resolve, join } from 'node:path';
 
-const MEMORY_FILES=['TOOL_REGISTRY.md','ISSUES.md','SOLUTIONS.md','FAILED_APPROACHES.md','WORKAROUNDS.md','AGENT_LEARNINGS.md','RESOURCE_LIMITS.md','COMPATIBILITY_MATRIX.md','VERSION_REGISTRY.md','DISCOVERY_RUNS.md','REJECTED_CANDIDATES.md'];
+const MEMORY_FILES=['TOOL_REGISTRY.md','ISSUES.md','SOLUTIONS.md','FAILED_APPROACHES.md','WORKAROUNDS.md','AGENT_LEARNINGS.md','RESOURCE_LIMITS.md','COMPATIBILITY_MATRIX.md','VERSION_REGISTRY.md','DISCOVERY_RUNS.md','REJECTED_CANDIDATES.md','MODEL_REGISTRY.md'];
 export class LocalRepositoryMemoryStore{
   constructor({rootDir,maxFileBytes=32000,maxTotalBytes=120000}={}){
     if(typeof rootDir!=='string'||!rootDir.trim())throw new TypeError('rootDir is required');
@@ -39,11 +39,13 @@ export class LocalPromptProvider{
     if(!Number.isInteger(maxFileBytes)||maxFileBytes<1)throw new RangeError('maxFileBytes must be positive');
     this.rootDir=resolve(rootDir);this.maxFileBytes=maxFileBytes;
   }
-  async getChiefAgentPrompt(){
-    const path=join(this.rootDir,'prompts','CHIEF_AGENT.md');
+  async getChiefAgentPrompt(){return this.readPrompt('CHIEF_AGENT.md');}
+  async getAgentArchitectPrompt(){return this.readPrompt('AGENT_ARCHITECT.md');}
+  async readPrompt(name){
+    if(!['CHIEF_AGENT.md','AGENT_ARCHITECT.md'].includes(name))throw new TypeError('prompt name is not allowlisted');
+    const path=join(this.rootDir,'prompts',name);
     const info=await lstat(path);
     if(info.isSymbolicLink()||!info.isFile())throw new Error('canonical prompt must be a regular file, not a symbolic link');
-    if(info.size>this.maxFileBytes)throw new RangeError('canonical Chief Agent prompt exceeds configured size limit');
+    if(info.size>this.maxFileBytes)throw new RangeError('canonical agent prompt exceeds configured size limit');
     return readFile(path,'utf8');
-  }
-}
+  }}
