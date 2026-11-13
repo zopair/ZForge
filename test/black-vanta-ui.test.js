@@ -39,6 +39,8 @@ test('BLACK VANTA connects to the authenticated task and model APIs without pers
   assert.match(js, /api\("\/api\/tasks"/);
   assert.match(js, /agent-run/);
   assert.match(js, /confirmExecution:true/);
+  assert.match(js, /api\\/artifacts\\//);
+  assert.match(js, /URL.createObjectURL/);
   assert.doesNotMatch(js, /localStorage|sessionStorage/);
   assert.match(html, /رمز الاتصال يبقى في ذاكرة الجلسة/);
 });
