@@ -47,7 +47,7 @@
     statusNode.textContent = 'بانتظار إرسال الطلب على GitHub...';
     try {
       while (Date.now() < deadline && !issue) {
-        const query = encodeURIComponent('repo:zopair/ZForge is:issue in:title ZForgeChat:' + correlationId);
+        const query = encodeURIComponent('repo:zopair/ZForge is:issue in:title \"ZForgeChat:' + correlationId + '\");
         const search = await githubJson('https://api.github.com/search/issues?q=' + query + '&per_page=1');
         issue = search.items?.find(item => item.pull_request == null) ?? null;
         if (!issue) await wait(POLL_INTERVAL_MS);
