@@ -339,7 +339,7 @@ connectButton.addEventListener("click",async()=>{
     }
     voiceEnabledInput.disabled=!(voiceCapabilities.transcription||voiceCapabilities.synthesis);
     voiceRecordButton.disabled=!(voiceCapabilities.transcription&&voiceEnabledInput.checked);
-    const voiceEngines=[voiceCapabilities.transcription?"whisper.cpp":null,voiceCapabilities.synthesis?(voiceInventory.capabilities.engines?.synthesis||"TTS محلي"):null].filter(Boolean);
+    const voiceEngines=[voiceCapabilities.transcription?"whisper.cpp":null,voiceCapabilities.synthesis?(voiceInventory.capabilities?.engines?.synthesis||"TTS محلي"):null].filter(Boolean);
     const missingVoiceEngines=[
       ...(!voiceCapabilities.transcription?["Whisper.cpp + FFmpeg"]:[]),
       ...(!voiceCapabilities.synthesis?["Piper + نموذج الصوت"]:[])
