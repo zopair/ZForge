@@ -4,7 +4,7 @@ import { mkdir, readFile, writeFile, cp, lstat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { normalizeCloudTaskRequest, getCloudTaskPhase } from '../src/core/cloud-task-contract.js';
-import { decodeApprovedPlanSnapshot } from '../src/core/approved-plan-snapshot.js';
+import { extractApprovedPlanSnapshot } from '../src/core/approved-plan-snapshot.js';
 
 const outputDir = process.env.ZFORGE_CLOUD_OUTPUT_DIR ?? join(tmpdir(), 'zforge-cloud-output');
 const resultPath = join(outputDir, 'cloud-task-result.json');
@@ -77,17 +77,7 @@ try {
     const digest = approvalCommand.startsWith(approvalPrefix) ? approvalCommand.slice(approvalPrefix.length) : '';
     if (!/^[a-f0-9]{64}$/.test(digest)) throw new Error('Approval command is malformed.');
     const comments = await githubApi(repository, githubToken, '/issues/' + event.issue.number + '/comments?per_page=100');
-    const snapshotComment = [...comments].reverse().find(comment =>
-      comment?.user?.login === 'github-actions[bot]'
-      && typeof comment.body === 'string'
-      && comment.body.includes('ZFORGE_PLAN_SNAPSHOT_V1:')
-    );
-    const markerPrefix = '<!-- ZFORGE_PLAN_SNAPSHOT_V1:';
-    const markerStart = typeof snapshotComment?.body === 'string' ? snapshotComment.body.indexOf(markerPrefix) : -1;
-    const encodedStart = markerStart < 0 ? -1 : markerStart + markerPrefix.length;
-    const markerEnd = encodedStart < 0 ? -1 : snapshotComment.body.indexOf(' -->', encodedStart);
-    if (markerStart < 0 || markerEnd < 0) throw new Error('The original immutable plan snapshot was not found.');
-    approvedPlanSnapshot = decodeApprovedPlanSnapshot(snapshotComment.body.slice(encodedStart, markerEnd), { expectedDigest: digest });
+    approvedPlanSnapshot = extractApprovedPlanSnapshot(comments, { expectedDigest: digest });
     const claimMarker = '<!-- ZFORGE_EXECUTION_CLAIM_V1:' + digest + ' -->';
     const alreadyClaimed = comments.some(comment => comment?.user?.login === 'github-actions[bot]' && comment.body?.includes(claimMarker));
     if (alreadyClaimed) throw new Error('This exact plan has already been claimed for execution; create a new plan to run it again.');
