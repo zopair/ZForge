@@ -24,6 +24,8 @@ test('discovery plan covers the requested engineering domains and major vendor e
   const vendors = plan.vendorSeeds.map(item => item.id);
   for (const id of ['google','anthropic','microsoft','apple','meta','xai','github']) assert.ok(vendors.includes(id));
   assert.ok(plan.queries.some(query => query.includes('arabic-rtl')));
+  assert.ok(plan.vendorQueries.some(query => query.includes('org:anthropics')));
+  assert.ok(plan.vendorQueries.some(query => query.includes('org:google')));
 });
 
 test('license classifier distinguishes approved open source, non-open source, and unknown', () => {
@@ -72,6 +74,14 @@ test('toolchain composition accepts a complete compatible open-source stack', ()
   const result = composeToolchain([frontend, backend]);
   assert.equal(result.compatible, true);
   assert.deepEqual(result.unresolvedRequirements, []);
+});
+
+test('toolchain composition detects incompatible package pins', () => {
+  const first = repo({ fullName:'a/one', packagePins:{ react:'18.2.0' } });
+  const second = repo({ fullName:'b/two', packagePins:{ react:'19.0.0' } });
+  const result = composeToolchain([first,second]);
+  assert.equal(result.compatible,false);
+  assert.ok(result.conflicts.some(item=>item.conflict==='PACKAGE_VERSION_CONFLICT:react'));
 });
 
 test('release monitor recommends review and never silently approves automatic upgrades', () => {
