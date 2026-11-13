@@ -7,7 +7,7 @@ test('discovery service enforces a bounded query budget and returns a continuati
   const seen=[];
   const client={token:null,searchRepositories:async query=>{seen.push(query);return{results:[{id:seen.length,fullName:`org/tool-${seen.length}`}]};}};
   const service=new UniversalDiscoveryService({client,maxQueriesPerRun:3,maxResultsPerQuery:5});
-  const first=await service.discover({capabilities:['android']});
+  const first=await service.discover({capabilities:['android'],includeVendorSeeds:false});
   assert.equal(seen.length,3);
   assert.equal(first.status,'BATCH_COMPLETE');
   assert.equal(first.nextOffset,3);
@@ -18,7 +18,7 @@ test('discovery service reuses unexpired cache without making duplicate API call
   let calls=0;
   const client={searchRepositories:async()=>{calls++;return{results:[{id:1,fullName:'org/cached'}]};}};
   const service=new UniversalDiscoveryService({client,cache:new Map(),maxQueriesPerRun:1,ttlMs:60000});
-  const first=await service.discover({keywords:['unique-capability']});
+  const first=await service.discover({keywords:['unique-capability'],includeVendorSeeds:false});
   const second=await service.discover({keywords:['unique-capability']});
   assert.equal(calls,1);
   assert.equal(first.searchedQueries.length,1);
@@ -29,8 +29,19 @@ test('discovery service pauses on rate limits and does not retry or bypass',asyn
   let calls=0;
   const client={searchRepositories:async()=>{calls++;throw new GitHubDiscoveryError('rate limit',{status:403,resetAt:null});}};
   const service=new UniversalDiscoveryService({client,maxQueriesPerRun:5});
-  const result=await service.discover({keywords:['test']});
+  const result=await service.discover({keywords:['test'],includeVendorSeeds:false});
   assert.equal(calls,1);
   assert.equal(result.status,'PAUSED_RATE_LIMIT');
   assert.ok(result.rateLimit);
+});
+
+test('discovery service enumerates vendor organizations in bounded batches',async()=>{
+  const scanned=[];
+  const client={searchRepositories:async()=>({results:[]}),listOrganizationRepositories:async org=>{scanned.push(org);return{results:[{id:org,fullName:`${org}/repo`}]};}};
+  const service=new UniversalDiscoveryService({client,maxQueriesPerRun:1,maxVendorOrgsPerRun:2});
+  const result=await service.discover({capabilities:['android'],queryOffset:0,vendorOffset:0});
+  assert.equal(scanned.length,2);
+  assert.equal(result.vendorOrganizationsScanned.length,2);
+  assert.equal(result.nextVendorOffset,2);
+  assert.ok(result.remainingVendorOrganizations>0);
 });
