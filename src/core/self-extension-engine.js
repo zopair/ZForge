@@ -44,6 +44,17 @@ export function assessCapabilityGap({ capability, discovery } = {}) {
     };
   }
 
+  if (results.length > 0 && discovery.candidateEvaluationComplete !== true) {
+    return {
+      action: 'EVALUATE_DISCOVERED_CANDIDATES',
+      capability: capability.trim(),
+      selectedTool: null,
+      requiresApproval: false,
+      reason: 'DISCOVERED_CANDIDATES_NOT_FULLY_EVALUATED',
+      candidatesToReview: results.length,
+    };
+  }
+
   return {
     action: 'BUILD_INTERNAL_TOOL',
     capability: capability.trim(),
