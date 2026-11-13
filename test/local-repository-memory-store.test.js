@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LocalRepositoryMemoryStore, LocalPromptProvider } from '../src/adapters/local-repository-memory-store.js';
@@ -28,4 +28,16 @@ test('local prompt provider reads the canonical Chief Agent instructions',async(
 });
 test('memory store rejects unsafe file size configuration',()=>{
   assert.throws(()=>new LocalRepositoryMemoryStore({rootDir:'/tmp',maxFileBytes:0}),/maxFileBytes/);
+});
+
+test('local memory store refuses symlinked memory files',async()=>{
+  const root=await mkdtemp(join(tmpdir(),'zforge-memory-link-'));
+  const outside=join(root,'outside.md');
+  try{
+    await mkdir(join(root,'memory'),{recursive:true});
+    await writeFile(outside,'do not load');
+    await symlink(outside,join(root,'memory','TOOL_REGISTRY.md'));
+    const store=new LocalRepositoryMemoryStore({rootDir:root});
+    await assert.rejects(()=>store.loadRelevant({request:'test'}),/regular file|symbolic link/i);
+  }finally{await rm(root,{recursive:true,force:true});}
 });
