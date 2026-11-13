@@ -9,6 +9,7 @@
 - `LocalTaskHistoryMemoryStore`: feeds recent task outcomes back into Chief Agent planning context.
 - `ContainerExecutionRuntime`: optional Podman/Docker backend with a read-only container root, workspace-only writable mount, CPU/RAM/PID limits and configurable bridge/none networking.
 - `LocalArtifactStore`: durable binary artifacts with SHA-256 integrity verification and authenticated downloads.
+- `AgentFactory` + `LocalAgentRegistry`: durable agent proposals, required test evidence, independent reviews, explicit activation approval and per-agent execution profiles.
 - `server.js`: environment-configured process entry point.
 
 ## Start
@@ -45,6 +46,12 @@ All endpoints except health require `Authorization: Bearer <token>`.
 |---|---|---|
 | GET | `/api/health` | Liveness response; contains no secret |
 | GET | `/api/models` | List installed Ollama models |
+| GET | `/api/agents` | List agent proposals and active agents |
+| POST | `/api/agents` | Propose a manifest; starts in `PROPOSED` |
+| POST | `/api/agents/:id/tests` | Record one required test result and evidence |
+| POST | `/api/agents/:id/reviews` | Record independent license/security/permission review |
+| POST | `/api/agents/:id/activate` | Activate only after all gates and a separate approver |
+| GET | `/api/agents/:id/profile` | Read an active agent's effective tool/resource profile |
 | GET | `/api/artifacts` | List stored build artifacts |
 | GET | `/api/artifacts/:id` | Read artifact metadata |
 | GET | `/api/artifacts/:id/download` | Download artifact bytes (bearer token required) |
@@ -73,9 +80,9 @@ Commands are launched with `shell:false`; pass executable and arguments separate
 
 This is a local host process runner, not a container sandbox. A process inherits the operating-system identity and filesystem/network reach of the ZForge service account. Run it under a dedicated unprivileged account or inside a disposable container/VM with only the intended workspace mounted. Do not run it as root or expose it directly to untrusted networks.
 
-The `agent-run` endpoint invokes Chief Agent planning (repository memory + durable task-history memory + bounded GitHub discovery + canonical prompt), then passes the plan to the local Ollama tool loop. The workspace manager records tool observations and succeeded/failed/inconclusive experiment outcomes in the current runtime process; the task ledger preserves the durable task and evidence history across restarts. Available tools are `run_command`, `read_file`, `write_file`, `list_files`, `publish_artifact` and evidence-backed `finish_task`. Build outputs such as APK/AAB, web bundles and reports can be stored with SHA-256 checksums; BLACK VANTA displays authenticated download links. A task is marked succeeded only when the model cites successful tool-result IDs. Otherwise it remains inconclusive. The BLACK VANTA PWA can connect to this API, discover installed models, submit tasks and display the result.
+The `agent-run` endpoint invokes Chief Agent planning (repository memory + durable task-history memory + bounded GitHub discovery + canonical prompt), then passes the plan to the local Ollama tool loop. If an `agentId` is supplied, it must already be ACTIVE; the Agent Factory applies its effective tool allowlist and resource ceilings. Agent activation requires all five manifest tests, license/security/permission reviews by an independent reviewer, and explicit approval from a third identity distinct from author and reviewer. Agent proposals and approvals persist in `agents.json`. The workspace manager records tool observations and succeeded/failed/inconclusive experiment outcomes in the current runtime process; the task ledger preserves the durable task and evidence history across restarts. Available tools are `run_command`, `read_file`, `write_file`, `list_files`, `publish_artifact` and evidence-backed `finish_task`. Build outputs such as APK/AAB, web bundles and reports can be stored with SHA-256 checksums; BLACK VANTA displays authenticated download links. A task is marked succeeded only when the model cites successful tool-result IDs. Otherwise it remains inconclusive. The BLACK VANTA PWA can connect to this API, discover installed models, submit tasks and display the result.
 
-The local backend is not an isolated sandbox. The optional container backend uses Podman or Docker with a read-only image filesystem, only the task workspace mounted writable, dropped Linux capabilities, no-new-privileges, CPU/RAM/PID limits and selectable bridge/none networking. Prefer rootless Podman. A container is not a substitute for host patching or a dedicated service account. Live streaming/SSE, a multi-agent scheduler, autonomous Agent Architect activation, voice, Android/iOS build/signing and full release automation remain pending.
+The local backend is not an isolated sandbox. The optional container backend uses Podman or Docker with a read-only image filesystem, only the task workspace mounted writable, dropped Linux capabilities, no-new-privileges, CPU/RAM/PID limits and selectable bridge/none networking. Per-agent CPU and memory ceilings are applied within the global container limits; `storageMb` currently limits individual file/artifact operations, not aggregate workspace disk usage. Prefer rootless Podman. A container is not a substitute for host patching or a dedicated service account. Live streaming/SSE, a multi-agent scheduler, autonomous Agent Architect activation, voice, Android/iOS build/signing and full release automation remain pending.
 
 ## Data and recovery
 
