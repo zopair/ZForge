@@ -20,7 +20,7 @@ const server = createServer(async (request, response) => {
     if (pathname === '/api/health') return json({ status: 'ok' });
     if (pathname === '/api/models') return json({ models: ['qwen3:8b'] });
     if (pathname === '/api/agents') return json({ agents: [] });
-    if (pathname === '/api/voice/capabilities') return json({ capabilities: { transcription: true, synthesis: true, localOnly: true } });
+    if (pathname === '/api/voice/capabilities') return json({ capabilities: { transcription: true, synthesis: true, localOnly: true, engines: { transcription: 'whisper.cpp', synthesis: 'Piper', kemetone: false, piper: true }, checks: { whisperExecutable: true, whisperModel: true, ffmpegExecutable: true, piperInterpreter: true, piperModule: true, piperModel: true, piperConfig: true, piperReady: true, kemetoneConfigured: true, kemetonePython: true, kemetoneEspeak: false, kemetoneModel: true, kemetoneModule: false, kemetoneReady: false }, issues: ['espeak-ng is required by KemeTone', 'KemeTone Python dependencies are not installed in the configured interpreter'] } });
     if (pathname === '/api/voice/transcribe') return json({ text: 'recognized local speech', engine: 'whisper.cpp', local: true });
     if (pathname === '/api/voice/synthesize') { response.writeHead(200, { 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' }); return response.end(Buffer.from('RIFF0000WAVEdata')); }
     if (pathname.endsWith('/events')) { progressPolls += 1; if (progressPolls === 1) return json({ taskId: '12345678-1234-4234-8234-123456789012', status: 'running', cursor: 1, events: [] }); return json({ taskId: '12345678-1234-4234-8234-123456789012', status: 'succeeded', cursor: 4, events: [{ sequence: 2, type: 'agent.task.started', details: { taskId: 'research', agentId: 'researcher' } }, { sequence: 3, type: 'agent.step.started', details: { step: 1 } }, { sequence: 4, type: 'agent.task.completed', details: { taskId: 'research', agentId: 'researcher' } }] }); }
@@ -64,12 +64,17 @@ try {
       assert.equal(navigation?.status(), 200, name + ': app document should return HTTP 200');
       assert.match(await page.title(), /BLACK VANTA/);
       assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
-      await page.locator('#runtime-settings summary').click();
+      await page.locator('#runtime-settings > summary').click();
       await page.locator('#runtime-url').fill(origin);
       await page.locator('#runtime-token').fill('browser-test-token-123456');
       await page.locator('#connect-runtime').click();
       await page.getByText(/تم الاتصال بالمحرك/).waitFor();
       await page.locator('#voice-enabled').check();
+      await page.locator('#voice-diagnostics summary').click();
+      const voiceDiagnostics = await page.locator('#voice-diagnostics').innerText();
+      assert.match(voiceDiagnostics, /KemeTone/);
+      assert.match(voiceDiagnostics, /espeak-ng is required by KemeTone/);
+      assert.match(voiceDiagnostics, /Piper.*جاهز/);
       await page.locator('#chat-input').fill('اختبر تطبيق الويب');
       await page.locator('#send-button').click();
       await page.getByText(/Browser smoke task verified/).waitFor();
