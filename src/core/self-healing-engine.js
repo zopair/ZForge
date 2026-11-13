@@ -111,6 +111,7 @@ export class SelfHealingEngineeringEngine {
         capabilities,
         keywords,
         alternatives: [],
+        candidatesToEvaluate: [],
         internalToolBuild: null,
         memoryLessons: [],
         nextActions: ['COMPARE_WITH_PREVIOUS_ATTEMPT', 'CHANGE_APPROACH_OR_INPUT'],
