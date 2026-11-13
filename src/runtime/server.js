@@ -13,10 +13,11 @@ const port = Number(process.env.ZFORGE_PORT ?? 8787);
 const dataDir = process.env.ZFORGE_DATA_DIR ?? './.zforge-data';
 const workspaceDir = process.env.ZFORGE_WORKSPACE_DIR ?? './.zforge-workspaces';
 const model = process.env.ZFORGE_MODEL ?? 'qwen3:8b';
+const allowedOrigins = (process.env.ZFORGE_ALLOWED_ORIGINS ?? 'https://zopair.github.io').split(',').map(value => value.trim()).filter(Boolean);
 const runtime = await new LocalExecutionRuntime({ rootDir: workspaceDir }).initialize();
 const modelAdapter = new OllamaModelAdapter({ baseUrl: process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434' });
 const agentService = new AgentExecutionService({ modelAdapter, runtime, maxSteps: Number(process.env.ZFORGE_AGENT_MAX_STEPS ?? 16) });
-const gateway = createTaskGateway({ dataDir, token, runtime, agentService, defaultModel: model });
+const gateway = createTaskGateway({ dataDir, token, runtime, agentService, defaultModel: model, allowedOrigins });
 
 await gateway.ready;
 gateway.server.listen(port, host, () => {
