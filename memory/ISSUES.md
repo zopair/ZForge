@@ -4,7 +4,9 @@ Record observed failures, not guesses.
 
 Template: ID/date; task/environment; exact error; expected behavior; reproduction; severity; root cause (confirmed/probable/unknown); evidence; tool/version; status; linked solution and regression test.
 
-No runtime issues recorded. Current repository is a static foundation scaffold.
+Runtime findings are recorded by the authenticated Engineering Issue Ledger at `ZFORGE_DATA_DIR/engineering-issues.json`. This Markdown file remains the human-readable, version-controlled incident history; do not claim that live runtime issues are empty unless the runtime ledger has been queried.
+
+See [Unified Engineering Issue Ledger](../docs/ENGINEERING_ISSUE_LEDGER.md) for the record schema, lifecycle, API, evidence gates, and resource limits.
 
 
 ## ZF-001 — CI toolchain fixture gate failure (2026-11-13)
