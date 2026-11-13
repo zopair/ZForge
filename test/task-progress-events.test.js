@@ -50,3 +50,32 @@ test('authenticated task events endpoint supports cursor polling without exposin
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('agent-run streams persisted progress events while execution is active', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zforge-agent-events-api-'));
+  const agentService = {
+    runTask: async ({ onProgress }) => {
+      await onProgress({ type: 'agent.step.started', details: { step: 1 } });
+      await onProgress({ type: 'agent.tool.started', details: { step: 1, toolName: 'read_file' } });
+      return { completed: true, status: 'completed', summary: 'done', steps: 1, evidence: [] };
+    },
+  };
+  const gateway = createTaskGateway({ dataDir: root, token: 'progress-test-token-123', agentService });
+  await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
+  const base = 'http://127.0.0.1:' + gateway.server.address().port;
+  const headers = { Authorization: 'Bearer progress-test-token-123', 'Content-Type': 'application/json' };
+  try {
+    const created = await fetch(base + '/api/tasks', { method: 'POST', headers, body: JSON.stringify({ request: 'stream agent work' }) });
+    const task = await created.json();
+    const run = await fetch(base + '/api/tasks/' + task.id + '/agent-run', { method: 'POST', headers, body: JSON.stringify({ confirmExecution: true }) });
+    assert.equal(run.status, 200);
+    const events = await fetch(base + '/api/tasks/' + task.id + '/events?after=1', { headers });
+    const payload = await events.json();
+    assert.ok(payload.events.some(event => event.type === 'agent.step.started'));
+    assert.ok(payload.events.some(event => event.type === 'agent.tool.started'));
+    assert.equal(payload.status, 'succeeded');
+  } finally {
+    await new Promise(resolve => gateway.server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
