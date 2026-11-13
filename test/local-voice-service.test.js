@@ -86,9 +86,9 @@ test('local voice readiness checks executables, model files and Piper sidecar co
   try {
     const whisperModel = join(root, 'ggml-small.bin');
     const piperModel = join(root, 'ar_JO-kareem-medium.onnx');
-    const whisper = await executable(root, 'whisper-cli', 'exit 0\\n');
-    const ffmpeg = await executable(root, 'ffmpeg', 'exit 0\\n');
-    const python = await executable(root, 'python-voice', 'if [ "$1" = "-c" ]; then exit 0; fi\\nexit 0\\n');
+    const whisper = await executable(root, 'whisper-cli', 'exit 0\n');
+    const ffmpeg = await executable(root, 'ffmpeg', 'exit 0\n');
+    const python = await executable(root, 'python-voice', 'if [ "$1" = "-c" ]; then exit 0; fi\nexit 0\n');
     await writeFile(whisperModel, 'whisper model');
     await writeFile(piperModel, 'piper model');
     await writeFile(piperModel + '.json', '{}');
@@ -114,8 +114,8 @@ test('local voice readiness marks missing FFmpeg and Piper config as unavailable
   try {
     const whisperModel = join(root, 'ggml-small.bin');
     const piperModel = join(root, 'voice.onnx');
-    const whisper = await executable(root, 'whisper-cli', 'exit 0\\n');
-    const python = await executable(root, 'python-voice', 'if [ "$1" = "-c" ]; then exit 0; fi\\nexit 0\\n');
+    const whisper = await executable(root, 'whisper-cli', 'exit 0\n');
+    const python = await executable(root, 'python-voice', 'if [ "$1" = "-c" ]; then exit 0; fi\nexit 0\n');
     await writeFile(whisperModel, 'whisper model');
     await writeFile(piperModel, 'piper model');
     const service = new LocalVoiceService({
