@@ -29,3 +29,43 @@
   margin: 8px 4px 0;
   text-align: center;
 }
+
+.cloud-handoff-message .cloud-task-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  margin: 8px 0;
+  padding: 9px 16px;
+  border: 1px solid #d9ad55;
+  border-radius: 999px;
+  background: transparent;
+  color: #f5f5f5;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cloud-handoff-message .cloud-task-copy:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+.cloud-handoff-message .cloud-task-fallback {
+  display: block;
+  width: 100%;
+  min-height: 150px;
+  margin: 8px 0;
+  padding: 10px;
+  border: 1px solid #d9ad55;
+  border-radius: 10px;
+  background: #080808;
+  color: #fff;
+  direction: auto;
+  font: inherit;
+  resize: vertical;
+}
+.cloud-handoff-message .cloud-task-fallback[hidden] {
+  display: none;
+}
+.cloud-handoff-message .cloud-copy-status {
+  overflow-wrap: anywhere;
+}

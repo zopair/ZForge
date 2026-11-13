@@ -57,21 +57,42 @@ try {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, permissions: name === 'chromium' ? ['microphone'] : [] });
       const page = await context.newPage();
       const pageErrors = [];
+      await page.addInitScript(() => {
+        window.__copiedTask = null;
+        window.__clipboardFail = false;
+        Object.defineProperty(navigator, 'clipboard', {
+          configurable: true,
+          value: {
+            writeText: async text => {
+              if (window.__clipboardFail) throw new Error('simulated clipboard denial');
+              window.__copiedTask = text;
+            }
+          }
+        });
+      });
       page.on('pageerror', error => pageErrors.push(error.message));
       page.on('console', message => { if (message.type() === 'error') pageErrors.push(message.text()); });
-;
       const navigation = await page.goto(origin, { waitUntil: 'networkidle' });
       assert.equal(navigation?.status(), 200, name + ': app document should return HTTP 200');
       assert.match(await page.title(), /BLACK VANTA/);
-      await page.locator('#chat-input').fill('Build a sample PWA');
+      const cloudPrompt = 'Build a sample PWA with a detailed implementation and verification report. '.repeat(45);
+      await page.locator('#chat-input').fill(cloudPrompt);
       await page.locator('#send-button').click();
       const cloudHandoff = page.locator('.cloud-task-link');
       await cloudHandoff.waitFor({ timeout: 5000 });
       const cloudHandoffUrl = new URL(await cloudHandoff.getAttribute('href'));
       assert.equal(cloudHandoffUrl.origin, 'https://github.com', name + ': cloud handoff should use GitHub issue creation');
       assert.equal(cloudHandoffUrl.pathname, '/zopair/ZForge/issues/new', name + ': cloud handoff should target the ZForge repository');
-      assert.match(cloudHandoffUrl.searchParams.get('title') ?? '', /^\[ZForge Cloud Task\]/, name + ': cloud task issue title should carry the execution prefix');
-      assert.equal(cloudHandoffUrl.searchParams.get('body'), 'Build a sample PWA', name + ': cloud task body should preserve the user request');
+      assert.equal(cloudHandoffUrl.searchParams.get('title'), '[ZForge Cloud Task]', name + ': cloud task issue title should carry the execution prefix');
+      assert.equal(cloudHandoffUrl.searchParams.has('body'), false, name + ': task content must never be embedded in the issue URL');
+      assert.ok(cloudHandoff.href.length < 200, name + ': issue URL should remain short for long prompts');
+      await page.locator('.cloud-task-copy').click();
+      await page.waitForFunction(expected => window.__copiedTask === expected, cloudPrompt);
+      assert.equal(await page.locator('.cloud-copy-status').innerText(), 'تم نسخ نص المهمة بالكامل. افتح GitHub والصقه في خانة وصف الطلب.');
+      await page.evaluate(() => { window.__clipboardFail = true; });
+      await page.locator('.cloud-task-copy').click();
+      await page.locator('.cloud-task-fallback').waitFor({ state: 'visible' });
+      assert.equal(await page.locator('.cloud-task-fallback').inputValue(), cloudPrompt, name + ': manual-copy fallback should preserve the full task');
       assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
       const visualContract = await page.evaluate(() => {
         const style = selector => getComputedStyle(document.querySelector(selector));

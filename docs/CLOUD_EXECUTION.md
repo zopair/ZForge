@@ -7,8 +7,8 @@ BLACK VANTA is a client-only PWA. The phone does not install Node.js, Termux, Ol
 ## Request lifecycle
 
 1. The user writes a task in BLACK VANTA.
-2. If no self-hosted gateway is connected, the PWA creates a prefilled GitHub issue URL titled `[ZForge Cloud Task] ...`.
-3. The user reviews and submits that issue while signed in to GitHub. The issue body is public; secrets and private data must not be included.
+2. If no self-hosted gateway is connected, the PWA preserves the full task in the chat handoff card and creates a short GitHub issue URL containing only the fixed title prefix.
+3. The user copies the task text with the explicit copy button (or selects it from the visible fallback text area), opens the short issue URL, pastes the task into the issue body, reviews and submits it while signed in to GitHub. The issue body is public; secrets and private data must not be included.
 4. The `ZForge Cloud Execution` workflow accepts only issues authored by the repository owner account `zopair` with the exact title prefix.
 5. A fresh Ubuntu runner checks out the repository, runs `npm test`, installs Ollama and downloads the Apache-2.0 Qwen2.5 1.5B model.
 6. The worker builds an isolated Docker image containing Node.js 24, JDK 21, Android SDK 35, Python and native build tools. It starts the existing ZForge Task Gateway on loopback, creates a random per-run gateway token, creates a task, and seeds its workspace with a source snapshot of the repository (without Git metadata, dependencies, caches or symlinks). Model-selected commands execute inside the container with only the task workspace mounted writable, a read-only root filesystem, dropped Linux capabilities, no-new-privileges, CPU/RAM/PID limits and bridge networking.
@@ -28,9 +28,9 @@ BLACK VANTA is a client-only PWA. The phone does not install Node.js, Termux, Ol
 
 ## BLACK VANTA handoff
 
-The PWA remains usable as a static GitHub Pages app. When its optional self-hosted Runtime is offline, `assets/cloud-execution.js` intercepts the chat submission and presents a direct, prefilled GitHub issue link. This avoids embedding a GitHub credential in public browser JavaScript.
+The PWA remains usable as a static GitHub Pages app. When its optional self-hosted Runtime is offline, `assets/cloud-execution.js` intercepts the chat submission, keeps the full request in the handoff card, and offers clipboard copy with a visible manual-copy fallback. The GitHub issue URL contains only a fixed, short title; task content is never encoded into the URL, so long prompts do not exceed URL limits.
 
-The handoff intentionally requires the user to review and submit the issue on GitHub. GitHub Pages cannot securely hold a write credential or invoke authenticated Actions APIs by itself. This first implementation does not pretend that a static page is a persistent backend.
+The handoff still requires the user to paste, review and submit the issue on GitHub. GitHub Pages cannot securely hold a write credential or invoke authenticated Actions APIs by itself. This fixes URL-length failures; it does not yet provide direct POST submission or in-page task polling/results.
 
 ## Current boundaries
 
