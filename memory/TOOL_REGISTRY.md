@@ -22,7 +22,7 @@ Canonical index of category-specific evaluations. Popularity is discovery-only a
 | Official GitHub release metadata | src/adapters/github-release-monitor.js | Implemented; read-only | test/github-release-monitor.test.js |
 | Release update review | src/core/release-monitor.js | Implemented; review-only, no auto-upgrade | test/discovery-engine.test.js |
 | Chief Agent / Agent Architect policies | prompts/ | Updated; runtime not connected | docs/ARCHITECTURE.md |
-| Black Phantom UI | docs/BLACK_PHANTOM_UI.md | Specification only; PWA implementation pending | docs/BLACK_PHANTOM_UI.md |
+| Black Phantom UI | index.html, assets/app.css, assets/app.js | Static Arabic RTL visual shell implemented; voice/chat runtime not connected | docs/BLACK_PHANTOM_UI.md |
 
 ## Third-party registry
 No third-party tools have been benchmarked and approved in this update. Do not invent winners or assign VERIFIED status without reproducible evidence.
