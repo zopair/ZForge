@@ -120,3 +120,31 @@ test('completed discovery exposes unverified repositories for inspection instead
   assert.equal(result.candidatesToEvaluate[0].discoveryOnly, true);
   assert.ok(result.nextActions.includes('VERIFY_LICENSE_AND_NOTICES'));
 });
+
+
+test('self-healing discovery advances through bounded query batches and merges candidate evidence', async () => {
+  const offsets = [];
+  const engine = new SelfHealingEngineeringEngine({
+    maxDiscoveryBatches: 3,
+    discoveryService: {
+      discover: async input => {
+        offsets.push(input.queryOffset);
+        if (input.queryOffset === 0) return {
+          status: 'BATCH_COMPLETE', complete: false, nextOffset: 8, nextQueryPage: 1,
+          results: [{ id: 1, fullName: 'example/first-candidate' }],
+        };
+        return {
+          status: 'COMPLETE', complete: true, nextOffset: 16, nextQueryPage: 1,
+          results: [{ id: 2, fullName: 'example/second-candidate' }],
+        };
+      },
+    },
+  });
+  const result = await engine.investigate({
+    request: 'Build a local web frontend',
+    failure: { stderr: 'Cannot find module vite' },
+  });
+  assert.deepEqual(offsets, [0, 8]);
+  assert.equal(result.discovery.batchesRun, 2);
+  assert.equal(result.candidatesToEvaluate.length, 2);
+});
