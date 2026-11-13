@@ -267,6 +267,7 @@ export class SelfHealingEngineeringEngine {
         queryCatalogComplete: discovery.queryCatalogComplete === true,
         candidateEvaluationComplete: discovery.candidateEvaluationComplete === true,
         candidateCount: results.length,
+        batchesRun: discovery.batchesRun ?? 1,
         remainingQueries: discovery.remainingQueries ?? null,
         rateLimit: discovery.rateLimit ?? null,
         error: discovery.error ?? null,
