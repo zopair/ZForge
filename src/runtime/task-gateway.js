@@ -184,7 +184,7 @@ export class TaskStore {
   }
 }
 
-export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, agentFactory = null, multiAgentCoordinator = null, androidBuildService = null, webBuildService = null, webBrowserVerificationService = null, voiceService = null, artifactStore = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
+export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, agentFactory = null, multiAgentCoordinator = null, androidBuildService = null, webBuildService = null, webBrowserVerificationService = null, voiceService = null, artifactStore = null, engineeringIssueLedger = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
   if (typeof token !== 'string' || token.length < 16) throw new TypeError('a gateway bearer token of at least 16 characters is required');
   if (!Number.isInteger(maxBodyBytes) || maxBodyBytes < 1024) throw new RangeError('maxBodyBytes must be at least 1024');
   if (!Array.isArray(allowedOrigins) || allowedOrigins.some(origin => typeof origin !== 'string' || !isValidOrigin(origin))) throw new TypeError('allowedOrigins must be an array of exact HTTP(S) origins');
@@ -250,6 +250,38 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
           categories: [...repositoryCategories].sort(),
           projectTypes: [...repositoryProjectTypes].sort(), items,
         });
+      }
+      if (url.pathname === '/api/engineering-issues' && request.method === 'GET') {
+        if (!engineeringIssueLedger) return send(response, 503, { error: 'engineering_issue_ledger_unavailable' });
+        const rawLimit = url.searchParams.get('limit');
+        const limit = rawLimit === null ? 100 : Number(rawLimit);
+        if (!Number.isInteger(limit) || limit < 1 || limit > 500) return send(response, 400, { error: 'limit_must_be_1_to_500' });
+        try {
+          const issues = await engineeringIssueLedger.list({
+            status: url.searchParams.get('status') ?? undefined,
+            domain: url.searchParams.get('domain') ?? undefined,
+            limit,
+          });
+          return send(response, 200, { total: issues.length, issues });
+        } catch (error) { return send(response, 400, { error: error.message }); }
+      }
+      if (url.pathname === '/api/engineering-issues' && request.method === 'POST') {
+        if (!engineeringIssueLedger) return send(response, 503, { error: 'engineering_issue_ledger_unavailable' });
+        try { return send(response, 201, await engineeringIssueLedger.create(await readJson(request, maxBodyBytes))); }
+        catch (error) { return send(response, 400, { error: error.message }); }
+      }
+      const engineeringIssueMatch = url.pathname.match(/^\/api\/engineering-issues\/(ZFI-[A-Za-z0-9-]{8,40})$/);
+      if (engineeringIssueMatch && request.method === 'GET') {
+        if (!engineeringIssueLedger) return send(response, 503, { error: 'engineering_issue_ledger_unavailable' });
+        const issue = engineeringIssueLedger.get(engineeringIssueMatch[1]);
+        return issue ? send(response, 200, issue) : send(response, 404, { error: 'engineering_issue_not_found' });
+      }
+      if (engineeringIssueMatch && request.method === 'PATCH') {
+        if (!engineeringIssueLedger) return send(response, 503, { error: 'engineering_issue_ledger_unavailable' });
+        try {
+          const issue = await engineeringIssueLedger.update(engineeringIssueMatch[1], await readJson(request, maxBodyBytes));
+          return issue ? send(response, 200, issue) : send(response, 404, { error: 'engineering_issue_not_found' });
+        } catch (error) { return send(response, 400, { error: error.message }); }
       }
       if (request.method === 'GET' && url.pathname === '/api/agents') {
         if (!agentFactory) return send(response, 503, { error: 'agent_factory_unavailable' });
