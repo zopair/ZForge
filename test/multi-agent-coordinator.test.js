@@ -115,3 +115,35 @@ test('coordinator forwards live specialist events with agent and task identity',
   assert.ok(events.some(event => event.type === 'agent.step.started' && event.details.taskId === 'research' && event.details.agentId === 'researcher'));
   assert.ok(events.some(event => event.type === 'agent.task.completed' && event.details.taskId === 'research'));
 });
+
+test('coordinator selects a specialist model by role and records the selected route', async () => {
+  let model;
+  const events = [];
+  const coordinator = new MultiAgentCoordinator({
+    agentFactory: { getExecutionProfile: async () => ({ allowedTools: ['read_file'], resourceLimits: {} }) },
+    modelRouter: { resolve: ({ role }) => ({ model: role === 'coding' ? 'coder-local' : 'general-local', role, fallback: false, reason: null }) },
+    agentService: { runTask: async input => { model = input.model; return { completed: true, summary: 'verified' }; } },
+  });
+  const result = await coordinator.executePlan({
+    workspaceId: 'hive-routing',
+    tasks: [{ id: 'implement', agentId: 'builder', modelRole: 'coding', request: 'Implement the module' }],
+    onProgress: async event => events.push(event),
+  });
+  assert.equal(result.status, 'completed');
+  assert.equal(model, 'coder-local');
+  assert.equal(result.tasks[0].model, 'coder-local');
+  assert.ok(events.some(event => event.type === 'agent.model.selected' && event.details.model === 'coder-local'));
+});
+
+test('coordinator validates specialist model roles before execution', async () => {
+  let called = false;
+  const coordinator = new MultiAgentCoordinator({
+    agentFactory: { getExecutionProfile: async () => ({ allowedTools: [], resourceLimits: {} }) },
+    agentService: { runTask: async () => { called = true; return { completed: true }; } },
+  });
+  await assert.rejects(() => coordinator.executePlan({
+    workspaceId: 'invalid-role',
+    tasks: [{ id: 'bad', agentId: 'builder', modelRole: 'Bad Role', request: 'Do work' }],
+  }), /modelRole is invalid/i);
+  assert.equal(called, false);
+});
