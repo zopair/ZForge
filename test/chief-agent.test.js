@@ -168,6 +168,10 @@ test('Chief Agent preserves validated reviewer and QA assignments in implementat
   const agent = new ChiefAgent({
     modelAdapter: { chat: async () => ({ content: '<ORCHESTRATION_PLAN>' + JSON.stringify({
       tasks: [{
+        id: 'research',
+        agentId: 'builder',
+        request: 'Research the requested feature',
+      }, {
         id: 'implement',
         agentId: 'builder',
         modelRole: 'coding',
@@ -184,5 +188,5 @@ test('Chief Agent preserves validated reviewer and QA assignments in implementat
     request: 'Implement with independent review and tests',
     availableAgents: ['builder', 'reviewer', 'qa'].map(id => ({ id, status: 'ACTIVE' })),
   });
-  assert.deepEqual(result.orchestrationTasks[0].review, { reviewerAgentId: 'reviewer', qaAgentId: 'qa', maxIterations: 2 });
+  assert.deepEqual(result.orchestrationTasks[1].review, { reviewerAgentId: 'reviewer', qaAgentId: 'qa', maxIterations: 2 });
 });
