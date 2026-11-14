@@ -36,7 +36,7 @@ jobs:
           if (!source.includes('__ZFORGE_BUILD_SHA__')) throw new Error('service worker build placeholder is missing');
           const cacheName = 'zforge-black-vanta-' + sha;
           await writeFile(path, source.replaceAll('__ZFORGE_BUILD_SHA__', sha));
-          await writeFile('deployment-meta.json', JSON.stringify({ commit: sha, cacheName }, null, 2) + '\\n');
+          await writeFile('deployment-meta.json', JSON.stringify({ commit: sha, cacheName }, null, 2) + '\n');
           NODE
       - name: Configure Pages
         uses: actions/configure-pages@v5
