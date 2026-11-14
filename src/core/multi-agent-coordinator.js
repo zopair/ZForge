@@ -9,6 +9,7 @@ function validatePlan({ workspaceId, tasks } = {}) {
     ids.add(task.id);
     if (typeof task.agentId !== 'string' || !task.agentId.trim()) throw new TypeError(`agentId is required for task ${task.id}`);
     if (typeof task.request !== 'string' || !task.request.trim()) throw new TypeError(`request is required for task ${task.id}`);
+    if (task.modelRole !== undefined && (typeof task.modelRole !== 'string' || !/^[a-z][a-z0-9_-]{0,39}$/.test(task.modelRole))) throw new TypeError(`modelRole is invalid for task ${task.id}`);
     if (task.dependsOn !== undefined && (!Array.isArray(task.dependsOn) || task.dependsOn.some(id => typeof id !== 'string'))) throw new TypeError(`dependsOn must be an array for task ${task.id}`);
   }
   for (const task of tasks) {
@@ -32,12 +33,14 @@ function validatePlan({ workspaceId, tasks } = {}) {
 }
 
 export class MultiAgentCoordinator {
-  constructor({ agentFactory, agentService, maxParallel = 3, defaultModel = 'qwen3:8b' } = {}) {
+  constructor({ agentFactory, agentService, modelRouter = null, maxParallel = 3, defaultModel = 'qwen3:8b' } = {}) {
     if (!agentFactory || typeof agentFactory.getExecutionProfile !== 'function') throw new TypeError('agentFactory.getExecutionProfile is required');
     if (!agentService || typeof agentService.runTask !== 'function') throw new TypeError('agentService.runTask is required');
+    if (modelRouter !== null && typeof modelRouter.resolve !== 'function') throw new TypeError('modelRouter.resolve is required');
     if (!Number.isInteger(maxParallel) || maxParallel < 1 || maxParallel > 16) throw new RangeError('maxParallel must be between 1 and 16');
     this.agentFactory = agentFactory;
     this.agentService = agentService;
+    this.modelRouter = modelRouter;
     this.maxParallel = maxParallel;
     if (typeof defaultModel !== 'string' || !defaultModel.trim()) throw new TypeError('defaultModel is required');
     this.defaultModel = defaultModel;
@@ -73,9 +76,13 @@ export class MultiAgentCoordinator {
             const result = results.get(id);
             return `Dependency ${id}: ${result.summary ?? result.reason ?? result.status}`;
           }).join('\n');
+          const route = this.modelRouter
+            ? this.modelRouter.resolve({ role: task.modelRole ?? 'general', preferredModel: task.model ?? null })
+            : { model: task.model ?? this.defaultModel, fallback: false, reason: null, role: task.modelRole ?? 'general' };
+          await emitProgress('agent.model.selected', { taskId: task.id, agentId: task.agentId, role: route.role, model: route.model, fallback: route.fallback, reason: route.reason });
           const execution = await this.agentService.runTask({
             request: task.request,
-            model: task.model ?? this.defaultModel,
+            model: route.model,
             workspaceId: task.workspaceId ?? `${workspaceId}-${task.id}`,
             plan: [task.plan, dependencyContext].filter(Boolean).join('\n\n') || null,
             allowedTools: profile.allowedTools,
@@ -84,10 +91,10 @@ export class MultiAgentCoordinator {
           });
           if (execution?.completed !== true) {
             await emitProgress('agent.task.failed', { taskId: task.id, agentId: task.agentId, reason: 'completion_not_verified' });
-            return { id: task.id, agentId: task.agentId, status: 'failed', summary: execution?.summary ?? execution?.message ?? 'Agent did not verify task completion.', execution };
+            return { id: task.id, agentId: task.agentId, model: route.model, status: 'failed', summary: execution?.summary ?? execution?.message ?? 'Agent did not verify task completion.', execution };
           }
-          await emitProgress('agent.task.completed', { taskId: task.id, agentId: task.agentId, evidenceCount: execution.evidence?.length ?? 0 });
-          return { id: task.id, agentId: task.agentId, status: 'succeeded', summary: execution.summary ?? 'Completed with verified evidence.', evidence: execution.evidence ?? [], workspaceId: execution.workspaceId };
+          await emitProgress('agent.task.completed', { taskId: task.id, agentId: task.agentId, model: route.model, evidenceCount: execution.evidence?.length ?? 0 });
+          return { id: task.id, agentId: task.agentId, model: route.model, status: 'succeeded', summary: execution.summary ?? 'Completed with verified evidence.', evidence: execution.evidence ?? [], workspaceId: execution.workspaceId };
         } catch (error) {
           await emitProgress('agent.task.failed', { taskId: task.id, agentId: task.agentId, reason: 'execution_failed' });
           return { id: task.id, agentId: task.agentId, status: 'failed', reason: error.message };
