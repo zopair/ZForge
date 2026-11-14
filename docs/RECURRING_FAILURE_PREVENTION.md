@@ -129,7 +129,7 @@ Never collapse these states into a single word such as “done” or “green”
 - [Latest PR #35 quality gate](https://github.com/zopair/ZForge/actions/runs/43541902259)
 - [Cloud run with model planning timeout](https://github.com/zopair/ZForge/actions/runs/43559369006)
 - [Adjacent successful cloud run](https://github.com/zopair/ZForge/actions/runs/43559877256)
-- [Browser smoke failure playbook](BROWSER_SMOKE_FAILURE_PLAYBOOK.md)
+- [Browser smoke failure playbook in PR #35](https://github.com/zopair/ZForge/blob/fix/black-vanta-direct-cloud-chat/docs/BROWSER_SMOKE_FAILURE_PLAYBOOK.md) — not yet part of main.
 - [Engineering issue ledger](ENGINEERING_ISSUE_LEDGER.md)
 - [GitHub Actions secure use](https://docs.github.com/en/actions/reference/security/secure-use)
 - [Playwright CI guidance](https://playwright.dev/docs/ci)
