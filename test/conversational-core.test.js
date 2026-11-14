@@ -129,5 +129,5 @@ test('reports model request timeouts as timed_out without starting execution', a
   assert.equal(result.mode, 'conversation');
   assert.equal(result.diagnosticCode, 'model_timeout');
   assert.equal(result.executionStarted, false);
-  assert.match(result.reply, /انتهت مهلة النموذج/);
+  assert.match(result.reply, /انتهت مهلة استجابة النموذج/);
 });
