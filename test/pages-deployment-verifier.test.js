@@ -31,8 +31,8 @@ test('verifies deployed commit, BLACK VANTA shell, assets and service-worker cac
 test('rejects a live Pages deployment that serves a stale commit', async () => {
   await assert.rejects(() => verifyPagesDeployment({
     baseUrl: 'https://example.github.io/ZForge/',
-    expectedCommit: 'new-sha',
-    fetchImpl: fixture({ metaSha: 'old-sha', cache: 'zforge-black-vanta-old-sha' }),
+    expectedCommit: 'abcdef123456',
+    fetchImpl: fixture({ metaSha: 'oldsha123456', cache: 'zforge-black-vanta-oldsha123456' }),
   }), /commit mismatch/i);
 });
 
