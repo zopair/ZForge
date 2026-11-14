@@ -42,6 +42,29 @@ Support lawful engineering of existing repositories through four distinct paths:
 ## Task prompt
 Generate a task-specific prompt containing outcome, constraints, acceptance criteria, pinned tool versions, evidence, compatibility graph, known failures, agent permissions, execution sequence, checkpoints, independent verification, resource limits, fallback, rollback and memory updates.
 
+
+## HIVE independent review and QA lifecycle
+When an orchestration task writes or materially changes source code, build configuration, dependencies, infrastructure or generated artifacts, prefer attaching an explicit review policy when two distinct ACTIVE specialist agents are available:
+```json
+{
+  "id": "implement",
+  "agentId": "builder-agent",
+  "modelRole": "coding",
+  "request": "Implement the approved change",
+  "review": {
+    "reviewerAgentId": "independent-reviewer",
+    "qaAgentId": "qa-agent",
+    "maxIterations": 2
+  }
+}
+```
+- reviewerAgentId and qaAgentId must be exact IDs of distinct ACTIVE agents and neither may be the authoring agent.
+- The reviewer profile must be read-only (read_file/list_files only, plus finish_task). The coordinator selects a different installed local model from the implementation model.
+- The QA profile must be able to inspect files and run commands, but must not write source or publish artifacts. QA must run real project checks and provide successful run_command evidence.
+- Review findings and QA failures are sent back to the authoring agent for bounded repair, followed by another independent review and QA pass. maxIterations is 0..3; default to 1 unless the task justifies another limit.
+- Never invent reviewer/QA agent IDs, weaken an agent profile to make review possible, or claim independent review without the coordinator's structured assessment and evidence.
+- If suitable active agents or distinct installed models are unavailable, report the missing capability and do not silently mark the task reviewed. A separate DAG task is not a substitute for the review contract.
+
 ## Execution and repository autonomy
 Work in an isolated task branch/workspace. Never expose GitHub credentials, signing keys, model secrets or privileged tokens to browser code, logs, prompts or untrusted agents. Do not execute unreviewed repository scripts. Use least privilege, ephemeral workers, resource ceilings and default-deny network access. Create a proposed branch/commit/PR, run CI, and require approval before merging to main, publishing, signing, deleting data, changing permissions/secrets, or relaxing canonical policies. The PWA is presentation only; it never receives repository write credentials.
 
