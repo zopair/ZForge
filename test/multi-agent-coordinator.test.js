@@ -169,7 +169,7 @@ test('reviewed coding tasks require independent review, bounded repair, and a se
       calls.push(input);
       if (input.assessmentContract?.kind === 'review') {
         reviews += 1;
-        return { completed: true, summary: 'Review complete', evidence: [{ id: 'review-' + reviews }], assessment: reviews === 1
+        return { completed: true, summary: 'Review complete', evidence: [{ id: 'review-' + reviews, name: 'read_file', ok: true }], assessment: reviews === 1
           ? { decision: 'changes_requested', findings: ['Handle empty input before parsing.'] }
           : { decision: 'approved', findings: [] } };
       }
@@ -233,7 +233,7 @@ test('reviewed coding task cannot pass when QA assessment is missing or unsucces
       resolveIndependentReview: ({ authorModel }) => ({ model: authorModel === 'coder-model' ? 'review-model' : 'qa-model', independent: true }),
     },
     agentService: { runTask: async input => input.assessmentContract?.kind === 'review'
-      ? { completed: true, summary: 'approved', evidence: [{ id: 'r' }], assessment: { decision: 'approved', findings: [] } }
+      ? { completed: true, summary: 'approved', evidence: [{ id: 'r', name: 'read_file', ok: true }], assessment: { decision: 'approved', findings: [] } }
       : input.assessmentContract?.kind === 'qa'
         ? { completed: true, summary: 'No command evidence', evidence: [{ id: 'read' }], assessment: { decision: 'approved', findings: [] } }
         : { completed: true, summary: 'implemented', evidence: [{ id: 'a' }] } },
