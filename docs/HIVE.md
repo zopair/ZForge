@@ -13,6 +13,11 @@ HIVE separates specialist responsibilities from model vendors and model names. T
 - Chief Agent orchestration plans may attach a validated `modelRole` to each task.
 - Coordinator progress includes `agent.model.selected`; task results retain the selected model.
 - `resolveIndependentReview` selects a different installed model from the author model, or reports that independent review is unavailable. It never pretends that a same-model pass is independent.
+- A task can opt into a complete review lifecycle with `review: { reviewerAgentId, qaAgentId, maxIterations }`.
+- The reviewer must be an independently activated, read-only agent. Its model must differ from the implementation model, and its assessment must cite successful source-inspection evidence.
+- Material findings are returned to the implementation agent for bounded repair (0–3 repair iterations); each repair is reviewed again.
+- A separate QA agent then runs real project checks. QA is not accepted without a structured approval and successful `run_command` evidence. QA findings also enter the bounded repair/re-review loop.
+- Review and QA outcomes, iteration count and evidence are included in the aggregate task result and progress events.
 - Model routing initializes lazily on the first delegated task so the gateway can still start when the local model runtime is temporarily offline.
 
 ## Zero-budget runtime
@@ -30,7 +35,23 @@ ZFORGE_MODEL_ROUTES='{"architecture":"qwen3:8b","research":"gemma3:4b","coding":
 
 Only exact names returned by the local runtime are eligible. If a configured role model is absent, that task uses the default model and records the fallback. Explicit model overrides that are not installed fail closed.
 
-A task may specify `modelRole` in its orchestration plan. The role is a routing hint, not an agent permission or a model capability guarantee.
+A task may specify `modelRole` in its orchestration plan. The role is a routing hint, not an agent permission or a model capability guarantee. To require independent review and QA, include the IDs of two distinct ACTIVE agents in `review`:
+
+```json
+{
+  "id": "implement-feature",
+  "agentId": "builder-agent",
+  "modelRole": "coding",
+  "request": "Implement the feature",
+  "review": {
+    "reviewerAgentId": "review-agent",
+    "qaAgentId": "qa-agent",
+    "maxIterations": 2
+  }
+}
+```
+
+The review agent must have only `read_file` and/or `list_files` workspace access (plus `finish_task`). The QA agent must have `read_file` and `run_command`, and must not have source-write or artifact-publish permissions. The implementation agent retains only its own activated profile permissions. The coordinator fails closed when these profile requirements or evidence contracts are not met.
 
 ## Resource-aware operating rule
 
@@ -38,9 +59,8 @@ Multiple specialist tasks may execute concurrently, but the local hardware is sh
 
 ## Deliberate next increments
 
-1. Add an explicit reviewer stage to the task lifecycle, using a distinct installed model and a structured review contract.
-2. Capture reviewer findings as evidence and require fixes/re-review for material findings.
-3. Add reproducible per-model benchmarks for planning, code repair, tool selection, Arabic quality, latency and memory.
-4. Add measured model selection using workload capability and host resource profiles, while retaining deterministic fallback and operator visibility.
+1. Add reproducible per-model benchmarks for planning, code repair, tool selection, Arabic quality, latency and memory.
+2. Add measured model selection using workload capability and host resource profiles, while retaining deterministic fallback and operator visibility.
+3. Add a repair-diff summary and a durable review ledger for comparing findings across iterations.
 
-Independent review selection is available as a core primitive; the automatic review stage is not yet wired into task completion. Do not label a task independently reviewed until that stage produces review evidence.
+A task is marked reviewed only when the independent review and QA contracts both complete with their required evidence.
