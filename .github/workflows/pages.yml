@@ -19,6 +19,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+      - name: Set up Node.js for deployment verification
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Stamp immutable deployment revision
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+          const sha = process.env.GITHUB_SHA;
+          if (!/^[a-f0-9]{40}$/i.test(sha ?? '')) throw new Error('GITHUB_SHA is invalid');
+          const path = 'sw.js';
+          const source = await readFile(path, 'utf8');
+          if (!source.includes('__ZFORGE_BUILD_SHA__')) throw new Error('service worker build placeholder is missing');
+          const cacheName = 'zforge-black-vanta-' + sha;
+          await writeFile(path, source.replaceAll('__ZFORGE_BUILD_SHA__', sha));
+          await writeFile('deployment-meta.json', JSON.stringify({ commit: sha, cacheName }, null, 2) + '\n');
+          NODE
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static site
@@ -28,3 +47,8 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify live GitHub Pages deployment
+        env:
+          GITHUB_PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: node scripts/pages-live-smoke.mjs
