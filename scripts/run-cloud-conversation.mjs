@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { getCloudTaskPhase, normalizeCloudTaskRequest } from '../src/core/cloud-task-contract.js';
 import { isCapabilityQuestion } from '../src/core/conversational-core.js';
+import { createCloudConversationReport } from '../src/core/cloud-conversation-report.js';
 
 const outputDir = process.env.ZFORGE_CLOUD_OUTPUT_DIR ?? join(tmpdir(), 'zforge-cloud-output');
 const resultPath = join(outputDir, 'cloud-task-result.json');
@@ -75,6 +76,7 @@ try {
     ZFORGE_ARTIFACT_DIR: join(outputDir, 'artifacts'),
     ZFORGE_REPO_ROOT: process.cwd(),
     ZFORGE_MODEL: model,
+    ZFORGE_MODEL_REQUEST_TIMEOUT_MS: process.env.ZFORGE_MODEL_REQUEST_TIMEOUT_MS ?? '240000',
     ZFORGE_EXECUTION_BACKEND: 'local',
     ZFORGE_AGENT_MAX_STEPS: '12',
     ZFORGE_MAX_PARALLEL_AGENTS: '1',
@@ -101,24 +103,9 @@ try {
     method: 'POST',
     body: { message: request, model },
   });
-  const report = {
-    status: result.mode === 'plan' ? 'awaiting_approval' : 'completed',
-    phase: 'conversation',
-    taskId: result.taskId ?? null,
-    model,
-    reply: String(result.reply ?? '').slice(0, 9000),
-    summary: result.mode === 'plan' ? 'تم إعداد خطة تنتظر موافقتك. لم يبدأ التنفيذ.' : 'أجاب BLACK VANTA عن الرسالة دون بدء تنفيذ.',
-    plan: result.planning ?? null,
-    planSha256: result.planning ? createHash('sha256').update(JSON.stringify(result.planning)).digest('hex') : null,
-    executionStarted: result.executionStarted === true,
-    diagnosticCode: result.diagnosticCode ?? null,
-    generatedAt: new Date().toISOString(),
-  };
-  if (report.status === 'awaiting_approval' && (!report.plan || !report.taskId || result.executionStarted !== false)) {
-    throw new Error('The conversational planning response violated the approval-only contract.');
-  }
+  const report = createCloudConversationReport(result, { model, generatedAt: new Date().toISOString() });
   await saveReport(report);
-  if (report.diagnosticCode || !report.reply) process.exitCode = 1;
+  if (['planning_failed', 'timed_out', 'failed'].includes(report.status)) process.exitCode = 1;
 } catch (error) {
   await saveReport({
     status: 'failed',
