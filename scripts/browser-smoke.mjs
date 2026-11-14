@@ -56,12 +56,15 @@ try {
   for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) {
     const browser = await engine.launch({ headless: true, args: name === 'chromium' ? ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] : [] });
     try {
-      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, permissions: name === 'chromium' ? ['microphone'] : [] });
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, permissions: name === 'chromium' ? ['microphone'] : [], serviceWorkers: 'block' });
       const page = await context.newPage();
       const pageErrors = [];
+      const githubNetwork = [];
       page.on('pageerror', error => pageErrors.push(error.message));
       page.on('console', message => { if (message.type() === 'error') pageErrors.push(message.text()); });
-;
+      page.on('request', request => { if (new URL(request.url()).hostname === 'api.github.com') githubNetwork.push({ event: 'request', method: request.method(), url: request.url() }); });
+      page.on('requestfailed', request => { if (new URL(request.url()).hostname === 'api.github.com') githubNetwork.push({ event: 'requestfailed', method: request.method(), url: request.url(), error: request.failure()?.errorText ?? 'unknown' }); });
+      page.on('response', response => { if (new URL(response.url()).hostname === 'api.github.com') githubNetwork.push({ event: 'response', status: response.status(), url: response.url() }); });
       const navigation = await page.goto(origin, { waitUntil: 'networkidle' });
       assert.equal(navigation?.status(), 200, name + ': app document should return HTTP 200');
       assert.match(await page.title(), /BLACK VANTA/);
@@ -79,9 +82,10 @@ try {
         headers: githubCorsHeaders,
         json: payload,
       });
-      await page.route('https://api.github.com/**', async route => {
+      await context.route('**/*', async route => {
         const request = route.request();
         const url = new URL(request.url());
+        if (url.hostname !== 'api.github.com') return route.continue();
         if (request.method() === 'OPTIONS') {
           githubPreflightCount += 1;
           return route.fulfill({ status: 204, headers: githubCorsHeaders });
@@ -99,7 +103,7 @@ try {
           const correlation = createdCloudIssue?.title?.match(/\[ZForgeChat:([a-f0-9-]{36})\]/i)?.[1];
           return fulfillGithub(route, correlation ? [{ body: '<!-- ZFORGE_CONVERSATION_RESULT_V1:' + correlation + ' -->\\nDirect cloud chat reply verified.' }] : []);
         }
-        return fulfillGithub(route, { message: 'unexpected GitHub API request', method: request.method(), path: url.pathname }, 404);
+        return fulfillGithub(route, { message: 'unexpected GitHub API request blocked by fail-closed browser fixture', method: request.method(), path: url.pathname }, 599);
       });
       await page.locator('#github-settings > summary').click();
       await page.locator('#github-token').fill('github_pat_browser_test_token');
@@ -109,7 +113,8 @@ try {
         return message.includes('تم ربط @zopair') || message.includes('تعذر الربط:');
       }, null, { timeout: 5000 });
       const githubAuthMessage = await page.locator('#github-auth-status').textContent();
-      assert.match(githubAuthMessage, /تم ربط @zopair/, name + ': GitHub auth must succeed; actual status: ' + githubAuthMessage);
+      assert.match(githubAuthMessage, /تم ربط @zopair/, name + ': GitHub auth must succeed; actual status: ' + githubAuthMessage + '; network: ' + JSON.stringify(githubNetwork));
+      assert.ok(githubNetwork.some(item => item.event === 'response' && item.status === 200), name + ': GitHub auth requests must be intercepted by the local fixture; network: ' + JSON.stringify(githubNetwork));
       assert.equal(await page.locator('#github-settings').evaluate(element => element.open), false, name + ': GitHub settings should collapse after successful connection to restore the chat viewport');
       if (name === 'webkit') assert.ok(githubPreflightCount > 0, 'webkit: GitHub mock must exercise and support CORS OPTIONS preflight');
       await page.locator('#chat-input').fill('Build a sample PWA');
