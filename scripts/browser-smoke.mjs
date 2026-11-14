@@ -66,6 +66,7 @@ try {
       assert.equal(navigation?.status(), 200, name + ': app document should return HTTP 200');
       assert.match(await page.title(), /BLACK VANTA/);
       let createdCloudIssue = null;
+      let createdCloudIssueCount = 0;
       await page.route('https://api.github.com/**', async route => {
         const request = route.request();
         const url = new URL(request.url());
@@ -75,6 +76,7 @@ try {
         }
         if (url.pathname === '/repos/zopair/ZForge/issues' && request.method() === 'POST') {
           createdCloudIssue = request.postDataJSON();
+          createdCloudIssueCount += 1;
           return route.fulfill({ status: 201, json: { number: 314, title: createdCloudIssue.title } });
         }
         if (url.pathname === '/repos/zopair/ZForge/issues/314/comments') {
@@ -142,6 +144,7 @@ try {
       await page.locator('#chat-input').fill('اختبر تطبيق الويب');
       await page.locator('#send-button').click();
       await page.locator('.plan-approve-button').waitFor({ timeout: 10000 });
+      assert.equal(createdCloudIssueCount, 1, name + ': an active Runtime must route the message to the conversational API instead of creating a second cloud issue');
       assert.ok((await page.locator('#conversation').innerText()).includes('تم إعداد خطة اختبارية ولم يبدأ التنفيذ.'), name + ': engineering requests should produce a plan before execution');
       assert.ok((await page.locator('#conversation').innerText()).includes('بصمة الخطة SHA-256'), name + ': plan approval must display its immutable fingerprint');
       await page.locator('.plan-approve-button').click();
