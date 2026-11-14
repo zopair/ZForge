@@ -41,6 +41,7 @@ export class MultiAgentCoordinator {
     this.agentFactory = agentFactory;
     this.agentService = agentService;
     this.modelRouter = modelRouter;
+    this.modelRouterInitialization = null;
     this.maxParallel = maxParallel;
     if (typeof defaultModel !== 'string' || !defaultModel.trim()) throw new TypeError('defaultModel is required');
     this.defaultModel = defaultModel;
@@ -76,6 +77,10 @@ export class MultiAgentCoordinator {
             const result = results.get(id);
             return `Dependency ${id}: ${result.summary ?? result.reason ?? result.status}`;
           }).join('\n');
+          if (this.modelRouter && !this.modelRouter.initialized) {
+            this.modelRouterInitialization ??= this.modelRouter.initialize();
+            await this.modelRouterInitialization;
+          }
           const route = this.modelRouter
             ? this.modelRouter.resolve({ role: task.modelRole ?? 'general', preferredModel: task.model ?? null })
             : { model: task.model ?? this.defaultModel, fallback: false, reason: null, role: task.modelRole ?? 'general' };
