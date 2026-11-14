@@ -106,7 +106,7 @@ export class MultiAgentCoordinator {
         assessmentContract: { kind: 'review' },
         onProgress: onProgress ? event => onProgress({ type: event.type, details: { ...event.details, taskId: task.id, agentId: task.review.reviewerAgentId, stage: 'review' } }) : null,
       });
-      if (review?.completed !== true || !review.assessment) {
+      if (review?.completed !== true || !review.assessment || !review.evidence?.some(item => item?.name === 'read_file' && item.ok === true)) {
         return { status: 'failed', reason: 'independent_review_not_verified', implementation, review, reviewIterations: iteration };
       }
       await emitProgress(review.assessment.decision === 'approved' ? 'agent.review.approved' : 'agent.review.changes_requested', {
@@ -135,7 +135,7 @@ export class MultiAgentCoordinator {
         assessmentContract: { kind: 'qa' },
         onProgress: onProgress ? event => onProgress({ type: event.type, details: { ...event.details, taskId: task.id, agentId: task.review.qaAgentId, stage: 'qa' } }) : null,
       });
-      if (qa?.completed === true && qa.assessment?.decision === 'approved') {
+      if (qa?.completed === true && qa.assessment?.decision === 'approved' && qa.evidence?.some(item => item?.name === 'run_command' && item.ok === true)) {
         await emitProgress('agent.qa.completed', { taskId: task.id, qaAgentId: task.review.qaAgentId, iteration, evidenceCount: qa.evidence?.length ?? 0 });
         return {
           status: 'succeeded',
