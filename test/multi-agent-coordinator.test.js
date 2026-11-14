@@ -121,7 +121,7 @@ test('coordinator selects a specialist model by role and records the selected ro
   const events = [];
   const coordinator = new MultiAgentCoordinator({
     agentFactory: { getExecutionProfile: async () => ({ allowedTools: ['read_file'], resourceLimits: {} }) },
-    modelRouter: { resolve: ({ role }) => ({ model: role === 'coding' ? 'coder-local' : 'general-local', role, fallback: false, reason: null }) },
+    modelRouter: { initialized: true, resolve: ({ role }) => ({ model: role === 'coding' ? 'coder-local' : 'general-local', role, fallback: false, reason: null }) },
     agentService: { runTask: async input => { model = input.model; return { completed: true, summary: 'verified' }; } },
   });
   const result = await coordinator.executePlan({
