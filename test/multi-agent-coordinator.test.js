@@ -240,7 +240,7 @@ test('reviewed coding task cannot pass when QA assessment is missing or unsucces
   });
   const result = await coordinator.executePlan({
     workspaceId: 'qa-fails-closed',
-    tasks: [{ id: 'implementation', agentId: 'builder', request: 'Implement', review: { reviewerAgentId: 'reviewer', qaAgentId: 'qa' } }],
+    tasks: [{ id: 'implementation', agentId: 'builder', modelRole: 'coding', request: 'Implement', review: { reviewerAgentId: 'reviewer', qaAgentId: 'qa' } }],
   });
   assert.equal(result.status, 'failed');
   assert.match(result.tasks[0].reason, /QA|quality|command/i);
