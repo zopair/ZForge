@@ -15,6 +15,7 @@ ZForge is a zero-budget, open-source-only autonomous engineering platform. Its i
 
 ## Architecture
 - [Architecture](docs/ARCHITECTURE.md)
+- [ZFORGE HIVE — Local Multi-Model Orchestration](docs/HIVE.md)
 - [Phone-only Cloud Execution Fabric](docs/CLOUD_EXECUTION.md)
 - [Universal Open-Source Discovery Engine](docs/UNIVERSAL_DISCOVERY_ENGINE.md)
 - [Secure Execution Runtime Contract](docs/EXECUTION_RUNTIME_CONTRACT.md)
