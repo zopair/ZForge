@@ -220,7 +220,7 @@ export class MultiAgentCoordinator {
           const verified = task.review ? execution?.status === 'succeeded' : execution?.completed === true;
           if (!verified) {
             await emitProgress('agent.task.failed', { taskId: task.id, agentId: task.agentId, reason: execution?.reason ?? 'completion_not_verified' });
-            return { id: task.id, agentId: task.agentId, model: route.model, status: 'failed', summary: execution?.reason ?? execution?.summary ?? execution?.message ?? 'Agent did not verify task completion.', execution };
+            return { id: task.id, agentId: task.agentId, model: route.model, status: 'failed', reason: execution?.reason ?? 'completion_not_verified', summary: execution?.reason ?? execution?.summary ?? execution?.message ?? 'Agent did not verify task completion.', execution };
           }
           const summary = task.review ? execution.summary : execution.summary ?? 'Completed with verified evidence.';
           const evidence = task.review ? execution.evidence : execution.evidence ?? [];
