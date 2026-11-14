@@ -25,6 +25,9 @@ function extractOrchestrationPlan(content, activeAgents) {
     if (typeof item.request !== 'string' || !item.request.trim() || item.request.length > 2000) {
       return { tasks: null, error: 'orchestration task request must contain 1..2000 characters' };
     }
+    if (item.modelRole !== undefined && (typeof item.modelRole !== 'string' || !/^[a-z][a-z0-9_-]{0,39}$/.test(item.modelRole))) {
+      return { tasks: null, error: 'orchestration task modelRole is invalid' };
+    }
     if (item.dependsOn !== undefined && (!Array.isArray(item.dependsOn) || item.dependsOn.length > 8 || item.dependsOn.some(id => typeof id !== 'string'))) {
       return { tasks: null, error: 'orchestration task dependencies are invalid' };
     }
@@ -36,6 +39,7 @@ function extractOrchestrationPlan(content, activeAgents) {
       id: item.id,
       agentId: item.agentId,
       request: item.request.trim(),
+      ...(typeof item.modelRole === 'string' ? { modelRole: item.modelRole } : {}),
       dependsOn: [...(item.dependsOn ?? [])],
       ...(typeof item.plan === 'string' && item.plan.trim() ? { plan: item.plan.trim() } : {}),
     });
