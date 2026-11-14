@@ -116,7 +116,8 @@ try {
       assert.match(githubAuthMessage, /تم ربط @zopair/, name + ': GitHub auth must succeed; actual status: ' + githubAuthMessage + '; network: ' + JSON.stringify(githubNetwork));
       assert.ok(githubNetwork.some(item => item.event === 'response' && item.status === 200), name + ': GitHub auth requests must be intercepted by the local fixture; network: ' + JSON.stringify(githubNetwork));
       assert.equal(await page.locator('#github-settings').evaluate(element => element.open), false, name + ': GitHub settings should collapse after successful connection to restore the chat viewport');
-      if (name === 'webkit') assert.ok(githubPreflightCount > 0, 'webkit: GitHub mock must exercise and support CORS OPTIONS preflight');
+      assert.match(githubCorsHeaders['access-control-allow-headers'], /Authorization/, name + ': fixture CORS policy must explicitly permit authenticated requests');
+      assert.ok(githubNetwork.every(item => item.event !== 'response' || item.status === 200 || item.status === 201), name + ': all GitHub responses must come from the fail-closed local fixture; network: ' + JSON.stringify(githubNetwork));
       await page.locator('#chat-input').fill('Build a sample PWA');
       await page.locator('#send-button').click();
       await page.getByText('Direct cloud chat reply verified.').waitFor({ timeout: 5000 });
