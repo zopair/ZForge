@@ -10,7 +10,7 @@ export const EXECUTION_TOOLS = [
   { type: 'function', function: { name: 'write_file', description: 'Write a UTF-8 file within the assigned workspace.', parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' }, maxBytes: { type: 'integer' } }, required: ['path', 'content'] } } },
   { type: 'function', function: { name: 'list_files', description: 'List files and directories in the assigned workspace.', parameters: { type: 'object', properties: { path: { type: 'string' }, maxEntries: { type: 'integer' } } } } },
   { type: 'function', function: { name: 'publish_artifact', description: 'Publish a file produced in this workspace to the durable artifact store and return its checksum.', parameters: { type: 'object', properties: { sourcePath: { type: 'string' }, filename: { type: 'string' }, kind: { type: 'string', enum: ['web', 'apk', 'aab', 'aar', 'jar', 'zip', 'report', 'image', 'video', 'other'] } }, required: ['sourcePath', 'filename', 'kind'] } } },
-  { type: 'function', function: { name: 'finish_task', description: 'Finish only after the task is genuinely complete. Cite successful tool-result IDs as evidence.', parameters: { type: 'object', properties: { summary: { type: 'string' }, evidenceIds: { type: 'array', items: { type: 'string' } } }, required: ['summary', 'evidenceIds'] } } },
+  { type: 'function', function: { name: 'finish_task', description: 'Finish only after the task is genuinely complete. Cite successful tool-result IDs as evidence.', parameters: { type: 'object', properties: { summary: { type: 'string' }, evidenceIds: { type: 'array', items: { type: 'string' } }, assessment: { type: 'object', properties: { decision: { type: 'string', enum: ['approved', 'changes_requested'] }, findings: { type: 'array', items: { type: 'string' } } }, required: ['decision', 'findings'] } }, required: ['summary', 'evidenceIds'] } } },
 ];
 
 function parseArguments(value) {
@@ -52,12 +52,13 @@ export class AgentExecutionService {
     return this.modelAdapter.listModels();
   }
 
-  async runTask({ request, model, workspaceId, plan = null, allowedTools = null, resourceLimits = null, onProgress = null } = {}) {
+  async runTask({ request, model, workspaceId, plan = null, allowedTools = null, resourceLimits = null, assessmentContract = null, onProgress = null } = {}) {
     if (typeof request !== 'string' || !request.trim()) throw new TypeError('task request is required');
     if (typeof model !== 'string' || !model.trim()) throw new TypeError('a local model name is required');
     if (typeof workspaceId !== 'string' || !workspaceId.trim()) throw new TypeError('workspaceId is required');
     if (allowedTools !== null && (!Array.isArray(allowedTools) || allowedTools.some(name => typeof name !== 'string' || (!EXECUTION_TOOLS.some(tool => tool.function.name === name) && name !== 'finish_task')))) throw new TypeError('allowedTools contains an unknown execution tool');
     if (resourceLimits !== null && (!resourceLimits || typeof resourceLimits !== 'object' || Array.isArray(resourceLimits))) throw new TypeError('resourceLimits must be an object');
+    if (assessmentContract !== null && (!assessmentContract || !['review', 'qa'].includes(assessmentContract.kind))) throw new TypeError('assessmentContract.kind must be review or qa');
     if (onProgress !== null && typeof onProgress !== 'function') throw new TypeError('onProgress must be a function');
     const allowedToolSet = allowedTools === null ? null : new Set(allowedTools);
     const availableTools = EXECUTION_TOOLS.filter(tool => !allowedToolSet || allowedToolSet.has(tool.function.name) || tool.function.name === 'finish_task');
@@ -77,7 +78,7 @@ export class AgentExecutionService {
     };
     const messages = [
       { role: 'system', content: this.systemPrompt },
-      { role: 'user', content: `Task: ${request.trim()}\nWorkspace: ${workspaceId}${plan ? `\nApproved implementation plan:\n${plan}` : ''}` },
+      { role: 'user', content: `Task: ${request.trim()}\nWorkspace: ${workspaceId}${plan ? `\nApproved implementation plan:\n${plan}` : ''}${assessmentContract ? `\nASSESSMENT CONTRACT (${assessmentContract.kind}): finish_task must include assessment.decision (approved or changes_requested) and assessment.findings (array of concise, evidence-based findings). Do not approve without the required evidence.` : ''}` },
     ];
     const evidence = new Map();
     const trace = [];
@@ -152,7 +153,21 @@ export class AgentExecutionService {
                 result = { ok: false, error: 'completion requires a summary and IDs of successful tool results from this task' };
                 break;
               }
-              const completed = { status: 'completed', completed: true, workspaceId, summary: args.summary.trim(), steps: step, evidence: validEvidence, trace };
+              let assessment = null;
+              if (assessmentContract) {
+                const candidate = args.assessment;
+                if (!candidate || !['approved', 'changes_requested'].includes(candidate.decision) || !Array.isArray(candidate.findings) || candidate.findings.length > 20 || candidate.findings.some(item => typeof item !== 'string' || !item.trim() || item.length > 1000)) {
+                  result = { ok: false, error: 'assessment contract requires a valid decision and up to 20 concise findings' };
+                  break;
+                }
+                const requiredEvidenceTool = assessmentContract.kind === 'review' ? 'read_file' : 'run_command';
+                if (!validEvidence.some(item => item.name === requiredEvidenceTool)) {
+                  result = { ok: false, error: `assessment requires successful ${requiredEvidenceTool} evidence` };
+                  break;
+                }
+                assessment = { decision: candidate.decision, findings: candidate.findings.map(item => item.trim()) };
+              }
+              const completed = { status: 'completed', completed: true, workspaceId, summary: args.summary.trim(), steps: step, evidence: validEvidence, trace, ...(assessment ? { assessment } : {}) };
               trace.push({ id: callId, name: call.name, ok: true });
               await finishExperiment('succeeded', [args.summary.trim()], { steps: step, evidenceCount: validEvidence.length });
               await emitProgress('agent.completed', { step, evidenceCount: validEvidence.length });

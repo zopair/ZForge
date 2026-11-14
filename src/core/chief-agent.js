@@ -25,17 +25,39 @@ function extractOrchestrationPlan(content, activeAgents) {
     if (typeof item.request !== 'string' || !item.request.trim() || item.request.length > 2000) {
       return { tasks: null, error: 'orchestration task request must contain 1..2000 characters' };
     }
+    if (item.modelRole !== undefined && (typeof item.modelRole !== 'string' || !/^[a-z][a-z0-9_-]{0,39}$/.test(item.modelRole))) {
+      return { tasks: null, error: 'orchestration task modelRole is invalid' };
+    }
     if (item.dependsOn !== undefined && (!Array.isArray(item.dependsOn) || item.dependsOn.length > 8 || item.dependsOn.some(id => typeof id !== 'string'))) {
       return { tasks: null, error: 'orchestration task dependencies are invalid' };
     }
     if (item.plan !== undefined && (typeof item.plan !== 'string' || item.plan.length > 4000)) {
       return { tasks: null, error: 'orchestration task plan is invalid' };
     }
+    let review = null;
+    if (item.review !== undefined) {
+      const policy = item.review;
+      if (!policy || typeof policy !== 'object' || Array.isArray(policy) ||
+          typeof policy.reviewerAgentId !== 'string' || !activeIds.has(policy.reviewerAgentId) ||
+          typeof policy.qaAgentId !== 'string' || !activeIds.has(policy.qaAgentId) ||
+          policy.reviewerAgentId === item.agentId || policy.qaAgentId === item.agentId ||
+          policy.reviewerAgentId === policy.qaAgentId ||
+          (policy.maxIterations !== undefined && (!Number.isInteger(policy.maxIterations) || policy.maxIterations < 0 || policy.maxIterations > 3))) {
+        return { tasks: null, error: 'review policy requires distinct active reviewer and QA agents and maxIterations between 0 and 3' };
+      }
+      review = {
+        reviewerAgentId: policy.reviewerAgentId,
+        qaAgentId: policy.qaAgentId,
+        ...(policy.maxIterations !== undefined ? { maxIterations: policy.maxIterations } : {}),
+      };
+    }
     ids.add(item.id);
     tasks.push({
       id: item.id,
       agentId: item.agentId,
       request: item.request.trim(),
+      ...(typeof item.modelRole === 'string' ? { modelRole: item.modelRole } : {}),
+      ...(review ? { review } : {}),
       dependsOn: [...(item.dependsOn ?? [])],
       ...(typeof item.plan === 'string' && item.plan.trim() ? { plan: item.plan.trim() } : {}),
     });

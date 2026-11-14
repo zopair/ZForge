@@ -139,3 +139,54 @@ test('Chief Agent rejects orchestration plans that invent agents or contain cycl
   assert.equal(cycle.orchestrationTasks, null);
   assert.match(cycle.orchestrationPlanError, /cycle/i);
 });
+
+test('Chief Agent preserves valid model roles in specialist orchestration tasks', async () => {
+  const agent = new ChiefAgent({
+    modelAdapter: { chat: async () => ({ content: '<ORCHESTRATION_PLAN>' + JSON.stringify({
+      tasks: [
+        { id: 'research', agentId: 'researcher', modelRole: 'research', request: 'Research options' },
+        { id: 'review', agentId: 'reviewer', modelRole: 'review', request: 'Challenge the findings', dependsOn: ['research'] },
+      ],
+    }) + '</ORCHESTRATION_PLAN>' }) },
+    discoveryService: { discover: async () => ({ status: 'COMPLETE', results: [] }) },
+    memoryStore: { loadRelevant: async () => ({}) },
+    promptProvider: { getChiefAgentPrompt: async () => 'Canonical instructions' },
+    model: 'local-model',
+  });
+  const result = await agent.planTask({
+    request: 'Research and independently review a solution',
+    availableAgents: [
+      { id: 'researcher', status: 'ACTIVE' },
+      { id: 'reviewer', status: 'ACTIVE' },
+    ],
+  });
+  assert.equal(result.orchestrationTasks[0].modelRole, 'research');
+  assert.equal(result.orchestrationTasks[1].modelRole, 'review');
+});
+
+test('Chief Agent preserves validated reviewer and QA assignments in implementation plans', async () => {
+  const agent = new ChiefAgent({
+    modelAdapter: { chat: async () => ({ content: '<ORCHESTRATION_PLAN>' + JSON.stringify({
+      tasks: [{
+        id: 'research',
+        agentId: 'builder',
+        request: 'Research the requested feature',
+      }, {
+        id: 'implement',
+        agentId: 'builder',
+        modelRole: 'coding',
+        request: 'Implement the requested feature',
+        review: { reviewerAgentId: 'reviewer', qaAgentId: 'qa', maxIterations: 2 },
+      }],
+    }) + '</ORCHESTRATION_PLAN>' }) },
+    discoveryService: { discover: async () => ({ status: 'COMPLETE', results: [] }) },
+    memoryStore: { loadRelevant: async () => ({}) },
+    promptProvider: { getChiefAgentPrompt: async () => 'Canonical instructions' },
+    model: 'local-model',
+  });
+  const result = await agent.planTask({
+    request: 'Implement with independent review and tests',
+    availableAgents: ['builder', 'reviewer', 'qa'].map(id => ({ id, status: 'ACTIVE' })),
+  });
+  assert.deepEqual(result.orchestrationTasks[1].review, { reviewerAgentId: 'reviewer', qaAgentId: 'qa', maxIterations: 2 });
+});

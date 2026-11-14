@@ -13,6 +13,7 @@ import { ConversationalCore } from '../core/conversational-core.js';
 import { SelfHealingEngineeringEngine } from '../core/self-healing-engine.js';
 import { AgentFactory } from '../core/agent-factory.js';
 import { MultiAgentCoordinator } from '../core/multi-agent-coordinator.js';
+import { LocalModelRouter } from '../core/model-router.js';
 import { LocalAgentRegistry } from './local-agent-registry.js';
 import { PersistentAgentWorkspaceManager } from './persistent-agent-workspace-manager.js';
 import { UniversalDiscoveryService } from '../core/discovery-service.js';
@@ -90,7 +91,9 @@ const chiefAgent = new ChiefAgent({ modelAdapter, discoveryService, memoryStore,
 
 const agentRegistry = await new LocalAgentRegistry({ dataDir }).initialize();
 const agentFactory = new AgentFactory({ registry: agentRegistry });
-const multiAgentCoordinator = new MultiAgentCoordinator({ agentFactory, agentService, maxParallel: Number(process.env.ZFORGE_MAX_PARALLEL_AGENTS ?? 3), defaultModel: model });
+const modelRoutes = JSON.parse(process.env.ZFORGE_MODEL_ROUTES ?? '{}');
+const modelRouter = new LocalModelRouter({ modelAdapter, defaultModel: model, routes: modelRoutes });
+const multiAgentCoordinator = new MultiAgentCoordinator({ agentFactory, agentService, modelRouter, maxParallel: Number(process.env.ZFORGE_MAX_PARALLEL_AGENTS ?? 3), defaultModel: model });
 const conversationalCore = new ConversationalCore({
   modelAdapter,
   chiefAgent,

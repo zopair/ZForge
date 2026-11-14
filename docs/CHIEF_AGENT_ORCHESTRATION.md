@@ -43,3 +43,28 @@ The model must use exact active agent IDs. Names and mission descriptions are un
 ## Live visibility
 
 The coordinator forwards specialist start, step, tool, completion, failure and skipped events to the parent task's durable event ledger. BLACK VANTA polls the authenticated cursor endpoint and renders the activity feed while the agent-run request is still executing. Events contain progress metadata, not raw tool arguments, command output, files or credentials.
+
+## HIVE review and QA policy
+
+Implementation tasks can request the coordinator's evidence-backed review lifecycle directly:
+
+```json
+{
+  "id": "build",
+  "agentId": "builder",
+  "modelRole": "coding",
+  "request": "Build and test the selected integration",
+  "dependsOn": ["research"],
+  "review": {
+    "reviewerAgentId": "independent-reviewer",
+    "qaAgentId": "qa-agent",
+    "maxIterations": 2
+  }
+}
+```
+
+The reviewer and QA IDs must refer to two distinct ACTIVE agents, both different from the author. The reviewer receives read-only workspace permissions and a model distinct from the implementation model. Its structured decision requires successful read_file evidence. Review findings return to the author for bounded repair and re-review.
+
+The QA agent receives read/execute permissions only, runs the actual project checks, and must provide a structured approval backed by successful run_command evidence. QA failures also return to the author for repair and another review/QA cycle. maxIterations is bounded from 0 to 3 (default 1).
+
+The coordinator fails closed if agent profiles are too permissive, a distinct reviewer model is unavailable, an assessment is malformed, or required evidence is absent. It never grants permissions or activates agents to satisfy a review policy.
