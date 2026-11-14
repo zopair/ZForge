@@ -115,3 +115,19 @@ test('returns a visible planning diagnostic instead of allowing a Chief Agent fa
   assert.equal(result.executionStarted, false);
   assert.match(result.reply, /local model returned an empty plan/);
 });
+
+test('reports model request timeouts as timed_out without starting execution', async () => {
+  const timeout = Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' });
+  const core = new ConversationalCore({
+    modelAdapter: { chat: async () => { throw timeout; } },
+    chiefAgent: { planTask: async () => { throw new Error('planning must not run'); } },
+    capabilities,
+  });
+
+  const result = await core.respond({ message: 'افحص المشروع وأصلح فشل البناء' });
+
+  assert.equal(result.mode, 'conversation');
+  assert.equal(result.diagnosticCode, 'model_timeout');
+  assert.equal(result.executionStarted, false);
+  assert.match(result.reply, /انتهت مهلة استجابة النموذج/);
+});

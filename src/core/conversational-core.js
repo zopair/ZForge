@@ -17,6 +17,20 @@ const DEFAULT_CAPABILITIES = [
   { id: 'safe-cleanup', label: 'تنظيف المستودع الآمن', status: 'planned', description: 'قدرة مخطط لها ولم يتم تفعيل محركها بعد.' },
 ];
 
+function isModelTimeout(error) {
+  return error?.code === 'MODEL_TIMEOUT' || error?.name === 'TimeoutError' || error?.name === 'AbortError';
+}
+
+function modelTimeoutResult(intent = 'conversation') {
+  return {
+    mode: 'conversation',
+    intent,
+    diagnosticCode: 'model_timeout',
+    reply: 'انتهت مهلة استجابة النموذج المحلي قبل اكتمال الطلب. لم يبدأ أي تنفيذ. يمكنك إعادة المحاولة بعد جاهزية النموذج.',
+    executionStarted: false,
+  };
+}
+
 function normalizeHistory(history) {
   if (history === undefined) return [];
   if (!Array.isArray(history) || history.length > MAX_HISTORY_ITEMS) throw new TypeError('history must contain at most 12 user/assistant messages');
@@ -91,7 +105,9 @@ export class ConversationalCore {
       return { mode: 'conversation', intent: 'conversation', reply: 'أستطيع استقبال طلبك ومناقشته، لكن محرك الحوار المحلي غير متصل حالياً. لم يتم إنشاء مهمة أو بدء أي تنفيذ.', executionStarted: false };
     }
 
-    const classifier = await this.modelAdapter.chat({
+    let classifier;
+    try {
+      classifier = await this.modelAdapter.chat({
       model,
       temperature: 0,
       format: 'json',
@@ -103,11 +119,17 @@ export class ConversationalCore {
         ...cleanHistory,
         { role: 'user', content: cleanMessage },
       ],
-    });
+      });
+    } catch (error) {
+      if (!isModelTimeout(error)) throw error;
+      return modelTimeoutResult();
+    }
     const intent = parseIntent(classifier?.content);
 
     if (intent !== 'engineering_request') {
-      const response = await this.modelAdapter.chat({
+      let response;
+      try {
+        response = await this.modelAdapter.chat({
         model,
         temperature: 0.35,
         messages: [
@@ -118,7 +140,11 @@ export class ConversationalCore {
           ...cleanHistory,
           { role: 'user', content: cleanMessage },
         ],
-      });
+        });
+      } catch (error) {
+        if (!isModelTimeout(error)) throw error;
+        return modelTimeoutResult('conversation');
+      }
       const reply = typeof response?.content === 'string' && response.content.trim()
         ? response.content.trim()
         : 'لم أتمكن من صياغة رد موثوق هذه المرة. يمكنك إعادة صياغة السؤال.';
@@ -142,6 +168,7 @@ export class ConversationalCore {
       const detail = typeof error?.message === 'string' && error.message.trim()
         ? error.message.trim().slice(0, 500)
         : 'unknown_planning_error';
+      if (isModelTimeout(error)) return modelTimeoutResult('engineering_request');
       return {
         mode: 'conversation',
         intent: 'engineering_request',

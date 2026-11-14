@@ -40,6 +40,8 @@ const lines = [
   '**Status:** ' + String(report.status ?? 'unknown').toUpperCase(),
   report.reply ? String(report.reply).slice(0, 9000) : '',
   report.status === 'awaiting_approval' ? '**Execution:** NOT STARTED — awaiting explicit owner approval.' : '',
+  report.status === 'planning_failed' ? '**Planning:** FAILED — no execution was started.' : '',
+  report.status === 'timed_out' ? '**Model:** TIMED OUT — no execution was started.' : '',
   report.summary ? '**Result:** ' + String(report.summary).slice(0, 3000) : '',
   report.error ? '**Details:** ' + String(report.error).slice(0, 2500) : '',
   report.status === 'awaiting_approval' && report.plan ? '**Proposed plan:**\\n```json\\n' + JSON.stringify(report.plan, null, 2).slice(0, 9000) + '\\n```' : '',

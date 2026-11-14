@@ -111,6 +111,7 @@ try {
     ZFORGE_ARTIFACT_DIR: artifactDir,
     ZFORGE_REPO_ROOT: process.cwd(),
     ZFORGE_MODEL: model,
+    ZFORGE_MODEL_REQUEST_TIMEOUT_MS: process.env.ZFORGE_MODEL_REQUEST_TIMEOUT_MS ?? '240000',
     ZFORGE_EXECUTION_BACKEND: 'container',
     ZFORGE_CONTAINER_ENGINE: 'docker',
     ZFORGE_CONTAINER_IMAGE: 'zforge-cloud-worker:latest',
