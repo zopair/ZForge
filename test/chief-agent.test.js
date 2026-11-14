@@ -163,3 +163,26 @@ test('Chief Agent preserves valid model roles in specialist orchestration tasks'
   assert.equal(result.orchestrationTasks[0].modelRole, 'research');
   assert.equal(result.orchestrationTasks[1].modelRole, 'review');
 });
+
+test('Chief Agent preserves validated reviewer and QA assignments in implementation plans', async () => {
+  const agent = new ChiefAgent({
+    modelAdapter: { chat: async () => ({ content: '<ORCHESTRATION_PLAN>' + JSON.stringify({
+      tasks: [{
+        id: 'implement',
+        agentId: 'builder',
+        modelRole: 'coding',
+        request: 'Implement the requested feature',
+        review: { reviewerAgentId: 'reviewer', qaAgentId: 'qa', maxIterations: 2 },
+      }],
+    }) + '</ORCHESTRATION_PLAN>' }) },
+    discoveryService: { discover: async () => ({ status: 'COMPLETE', results: [] }) },
+    memoryStore: { loadRelevant: async () => ({}) },
+    promptProvider: { getChiefAgentPrompt: async () => 'Canonical instructions' },
+    model: 'local-model',
+  });
+  const result = await agent.planTask({
+    request: 'Implement with independent review and tests',
+    availableAgents: ['builder', 'reviewer', 'qa'].map(id => ({ id, status: 'ACTIVE' })),
+  });
+  assert.deepEqual(result.orchestrationTasks[0].review, { reviewerAgentId: 'reviewer', qaAgentId: 'qa', maxIterations: 2 });
+});
