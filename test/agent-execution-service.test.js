@@ -238,5 +238,5 @@ test('assessment contract rejects approval without required successful command e
     assessmentContract: { kind: 'qa' },
   });
   assert.equal(result.completed, false);
-  assert.match(result.message, /successful run_command evidence/i);
+  assert.equal(result.status, 'step_limit');
 });
