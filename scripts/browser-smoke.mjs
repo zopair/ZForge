@@ -96,7 +96,7 @@ try {
           return fulfillGithub(route, { number: 314, title: createdCloudIssue.title }, 201);
         }
         if (url.pathname === '/repos/zopair/ZForge/issues/314/comments' && request.method() === 'GET') {
-          const correlation = createdCloudIssue?.title?.match(/\\[ZForgeChat:([a-f0-9-]{36})\\]/i)?.[1];
+          const correlation = createdCloudIssue?.title?.match(/\[ZForgeChat:([a-f0-9-]{36})\]/i)?.[1];
           return fulfillGithub(route, correlation ? [{ body: '<!-- ZFORGE_CONVERSATION_RESULT_V1:' + correlation + ' -->\\nDirect cloud chat reply verified.' }] : []);
         }
         return fulfillGithub(route, { message: 'unexpected GitHub API request', method: request.method(), path: url.pathname }, 404);
