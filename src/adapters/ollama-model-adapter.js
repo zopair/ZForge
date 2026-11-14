@@ -6,7 +6,7 @@ function localBaseUrl(value){
   return url.toString().replace(/\/$/,'');
 }
 export class OllamaModelAdapter{
-  constructor({baseUrl=DEFAULT_URL,fetchImpl=globalThis.fetch,timeoutMs=60000}={}){
+  constructor({baseUrl=DEFAULT_URL,fetchImpl=globalThis.fetch,timeoutMs=Number(process.env.ZFORGE_MODEL_REQUEST_TIMEOUT_MS??60000)}={}){
     if(typeof fetchImpl!=='function')throw new TypeError('fetchImpl must be a function');
     if(!Number.isInteger(timeoutMs)||timeoutMs<1000||timeoutMs>300000)throw new RangeError('timeoutMs must be between 1000 and 300000');
     this.baseUrl=localBaseUrl(baseUrl);this.fetchImpl=fetchImpl;this.timeoutMs=timeoutMs;
