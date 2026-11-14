@@ -175,7 +175,7 @@
   document.addEventListener('submit', async event => {
     if (event.target !== form) return;
     const request = input.value.trim();
-    if (!request) return;
+    if (!request || status.textContent.trim() !== 'العامل السحابي عند الطلب') return;
     event.preventDefault();
     event.stopImmediatePropagation();
     if (sending) return;
