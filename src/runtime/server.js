@@ -74,7 +74,7 @@ const voiceService = new LocalVoiceService({
   kemetoneTimeoutMs: Number(process.env.ZFORGE_KEMETONE_TIMEOUT_MS ?? 300000),
   timeoutMs: Number(process.env.ZFORGE_VOICE_TIMEOUT_MS ?? 120000),
 });
-const modelAdapter = new OllamaModelAdapter({ baseUrl: process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434' });
+const modelAdapter = new OllamaModelAdapter({ baseUrl: process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434', timeoutMs: Number(process.env.ZFORGE_MODEL_REQUEST_TIMEOUT_MS ?? 60000) });
 const workspaceManager = await new PersistentAgentWorkspaceManager({ dataDir }).initialize();
 
 const discoveryClient = new GitHubDiscoveryClient({ token: process.env.GITHUB_TOKEN ?? null });
