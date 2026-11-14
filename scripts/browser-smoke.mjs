@@ -67,29 +67,51 @@ try {
       assert.match(await page.title(), /BLACK VANTA/);
       let createdCloudIssue = null;
       let createdCloudIssueCount = 0;
+      let githubPreflightCount = 0;
+      const githubCorsHeaders = {
+        'access-control-allow-origin': '*',
+        'access-control-allow-methods': 'GET, POST, OPTIONS',
+        'access-control-allow-headers': 'Accept, Authorization, Content-Type, X-GitHub-Api-Version',
+        'access-control-max-age': '600',
+      };
+      const fulfillGithub = (route, payload, status = 200) => route.fulfill({
+        status,
+        headers: githubCorsHeaders,
+        json: payload,
+      });
       await page.route('https://api.github.com/**', async route => {
         const request = route.request();
         const url = new URL(request.url());
-        if (url.pathname === '/user') return route.fulfill({ json: { login: 'zopair' } });
+        if (request.method() === 'OPTIONS') {
+          githubPreflightCount += 1;
+          return route.fulfill({ status: 204, headers: githubCorsHeaders });
+        }
+        if (url.pathname === '/user' && request.method() === 'GET') return fulfillGithub(route, { login: 'zopair' });
         if (url.pathname === '/repos/zopair/ZForge' && request.method() === 'GET') {
-          return route.fulfill({ json: { permissions: { push: true, admin: false } } });
+          return fulfillGithub(route, { permissions: { push: true, admin: false } });
         }
         if (url.pathname === '/repos/zopair/ZForge/issues' && request.method() === 'POST') {
           createdCloudIssue = request.postDataJSON();
           createdCloudIssueCount += 1;
-          return route.fulfill({ status: 201, json: { number: 314, title: createdCloudIssue.title } });
+          return fulfillGithub(route, { number: 314, title: createdCloudIssue.title }, 201);
         }
-        if (url.pathname === '/repos/zopair/ZForge/issues/314/comments') {
-          const correlation = createdCloudIssue?.title?.match(/\[ZForgeChat:([a-f0-9-]{36})\]/i)?.[1];
-          return route.fulfill({ json: correlation ? [{ body: '<!-- ZFORGE_CONVERSATION_RESULT_V1:' + correlation + ' -->\nDirect cloud chat reply verified.' }] : [] });
+        if (url.pathname === '/repos/zopair/ZForge/issues/314/comments' && request.method() === 'GET') {
+          const correlation = createdCloudIssue?.title?.match(/\\[ZForgeChat:([a-f0-9-]{36})\\]/i)?.[1];
+          return fulfillGithub(route, correlation ? [{ body: '<!-- ZFORGE_CONVERSATION_RESULT_V1:' + correlation + ' -->\\nDirect cloud chat reply verified.' }] : []);
         }
-        return route.fulfill({ status: 404, json: { message: 'unexpected GitHub API request' } });
+        return fulfillGithub(route, { message: 'unexpected GitHub API request', method: request.method(), path: url.pathname }, 404);
       });
       await page.locator('#github-settings > summary').click();
       await page.locator('#github-token').fill('github_pat_browser_test_token');
       await page.locator('#github-connect').click();
-      await page.waitForFunction(() => document.querySelector('#github-auth-status')?.textContent.includes('تم ربط @zopair'), null, { timeout: 5000 });
+      await page.waitForFunction(() => {
+        const message = document.querySelector('#github-auth-status')?.textContent ?? '';
+        return message.includes('تم ربط @zopair') || message.includes('تعذر الربط:');
+      }, null, { timeout: 5000 });
+      const githubAuthMessage = await page.locator('#github-auth-status').textContent();
+      assert.match(githubAuthMessage, /تم ربط @zopair/, name + ': GitHub auth must succeed; actual status: ' + githubAuthMessage);
       assert.equal(await page.locator('#github-settings').evaluate(element => element.open), false, name + ': GitHub settings should collapse after successful connection to restore the chat viewport');
+      if (name === 'webkit') assert.ok(githubPreflightCount > 0, 'webkit: GitHub mock must exercise and support CORS OPTIONS preflight');
       await page.locator('#chat-input').fill('Build a sample PWA');
       await page.locator('#send-button').click();
       await page.getByText('Direct cloud chat reply verified.').waitFor({ timeout: 5000 });
