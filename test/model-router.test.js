@@ -50,7 +50,8 @@ test('router requires a distinct installed model for independent review', async 
     routes: { review: 'qwen3:8b' },
   }).initialize();
 
-  assert.throws(() => router.resolveIndependentReview({ authorModel: 'qwen3:8b' }), /distinct installed model/i);
+  const singleModelRouter = await new LocalModelRouter({ modelAdapter: adapter(['qwen3:8b']), defaultModel: 'qwen3:8b' }).initialize();
+  assert.throws(() => singleModelRouter.resolveIndependentReview({ authorModel: 'qwen3:8b' }), /distinct installed model/i);
   assert.equal(router.resolveIndependentReview({ authorModel: 'qwen3:8b' }).model, 'gemma3:4b');
 });
 
