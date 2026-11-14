@@ -37,16 +37,30 @@ test('rejects malformed correlation identifiers', () => {
   assert.throws(() => extractCloudConversationReply([], 'not-an-id'), /correlation id/i);
 });
 
-test('browser correlation search uses the same colon-delimited issue title marker', async () => {
+
+test('cloud chat creates the issue directly with an authenticated owner token', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../assets/cloud-execution.js', import.meta.url), 'utf8');
-  assert.match(source, /in:title \"ZForgeChat:/);
-  assert.match(source, /ZForgeChat:/);
-  assert.doesNotMatch(source, /ZForgeChat-/);
+  assert.ok(source.includes("method: 'POST'"));
+  assert.ok(source.includes("Authorization: 'Bearer ' + githubToken"));
+  assert.ok(source.includes("githubToken"));
+  assert.equal(source.includes('issues/new'), false);
+  assert.equal(source.includes('فتح طلب التنفيذ السحابي'), false);
 });
 
-test('browser polling stays within unauthenticated GitHub API rate limits', async () => {
+test('cloud chat polls the created issue directly and allows the full worker timeout', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../assets/cloud-execution.js', import.meta.url), 'utf8');
-  assert.match(source, /POLL_INTERVAL_MS = 60000/);
+  assert.ok(source.includes('const POLL_INTERVAL_MS = 15000;'));
+  assert.ok(source.includes('const MAX_WAIT_MS = 49 * 60 * 1000;'));
+  assert.ok(source.includes("'/issues/' + issueNumber + '/comments?per_page=100'"));
+  assert.equal(source.includes('search/issues'), false);
+});
+
+test('GitHub access token is held in page memory and can be cleared explicitly', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../assets/cloud-execution.js', import.meta.url), 'utf8');
+  assert.ok(source.includes("let githubToken = '';"));
+  assert.ok(source.includes("githubToken = '';"));
+  assert.doesNotMatch(source, /localStorage|sessionStorage/);
 });

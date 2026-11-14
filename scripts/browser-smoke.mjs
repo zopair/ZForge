@@ -56,25 +56,76 @@ try {
   for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) {
     const browser = await engine.launch({ headless: true, args: name === 'chromium' ? ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] : [] });
     try {
-      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, permissions: name === 'chromium' ? ['microphone'] : [] });
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, permissions: name === 'chromium' ? ['microphone'] : [], serviceWorkers: 'block' });
       const page = await context.newPage();
       const pageErrors = [];
+      const githubNetwork = [];
       page.on('pageerror', error => pageErrors.push(error.message));
       page.on('console', message => { if (message.type() === 'error') pageErrors.push(message.text()); });
-;
+      page.on('request', request => { if (new URL(request.url()).hostname === 'api.github.com') githubNetwork.push({ event: 'request', method: request.method(), url: request.url() }); });
+      page.on('requestfailed', request => { if (new URL(request.url()).hostname === 'api.github.com') githubNetwork.push({ event: 'requestfailed', method: request.method(), url: request.url(), error: request.failure()?.errorText ?? 'unknown' }); });
+      page.on('response', response => { if (new URL(response.url()).hostname === 'api.github.com') githubNetwork.push({ event: 'response', status: response.status(), url: response.url() }); });
       const navigation = await page.goto(origin, { waitUntil: 'networkidle' });
       assert.equal(navigation?.status(), 200, name + ': app document should return HTTP 200');
       assert.match(await page.title(), /BLACK VANTA/);
+      let createdCloudIssue = null;
+      let createdCloudIssueCount = 0;
+      let githubPreflightCount = 0;
+      const githubCorsHeaders = {
+        'access-control-allow-origin': '*',
+        'access-control-allow-methods': 'GET, POST, OPTIONS',
+        'access-control-allow-headers': 'Accept, Authorization, Content-Type, X-GitHub-Api-Version',
+        'access-control-max-age': '600',
+      };
+      const fulfillGithub = (route, payload, status = 200) => route.fulfill({
+        status,
+        headers: githubCorsHeaders,
+        json: payload,
+      });
+      await context.route('**/*', async route => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (url.hostname !== 'api.github.com') return route.continue();
+        if (request.method() === 'OPTIONS') {
+          githubPreflightCount += 1;
+          return route.fulfill({ status: 204, headers: githubCorsHeaders });
+        }
+        if (url.pathname === '/user' && request.method() === 'GET') return fulfillGithub(route, { login: 'zopair' });
+        if (url.pathname === '/repos/zopair/ZForge' && request.method() === 'GET') {
+          return fulfillGithub(route, { permissions: { push: true, admin: false } });
+        }
+        if (url.pathname === '/repos/zopair/ZForge/issues' && request.method() === 'POST') {
+          createdCloudIssue = request.postDataJSON();
+          createdCloudIssueCount += 1;
+          return fulfillGithub(route, { number: 314, title: createdCloudIssue.title }, 201);
+        }
+        if (url.pathname === '/repos/zopair/ZForge/issues/314/comments' && request.method() === 'GET') {
+          const correlation = createdCloudIssue?.title?.match(/\[ZForgeChat:([a-f0-9-]{36})\]/i)?.[1];
+          return fulfillGithub(route, correlation ? [{ body: '<!-- ZFORGE_CONVERSATION_RESULT_V1:' + correlation + ' -->\\nDirect cloud chat reply verified.' }] : []);
+        }
+        return fulfillGithub(route, { message: 'unexpected GitHub API request blocked by fail-closed browser fixture', method: request.method(), path: url.pathname }, 599);
+      });
+      await page.locator('#github-settings > summary').click();
+      await page.locator('#github-token').fill('github_pat_browser_test_token');
+      await page.locator('#github-connect').click();
+      await page.waitForFunction(() => {
+        const message = document.querySelector('#github-auth-status')?.textContent ?? '';
+        return message.includes('تم ربط @zopair') || message.includes('تعذر الربط:');
+      }, null, { timeout: 5000 });
+      const githubAuthMessage = await page.locator('#github-auth-status').textContent();
+      assert.match(githubAuthMessage, /تم ربط @zopair/, name + ': GitHub auth must succeed; actual status: ' + githubAuthMessage + '; network: ' + JSON.stringify(githubNetwork));
+      assert.ok(githubNetwork.some(item => item.event === 'response' && item.status === 200), name + ': GitHub auth requests must be intercepted by the local fixture; network: ' + JSON.stringify(githubNetwork));
+      assert.equal(await page.locator('#github-settings').evaluate(element => element.open), false, name + ': GitHub settings should collapse after successful connection to restore the chat viewport');
+      assert.match(githubCorsHeaders['access-control-allow-headers'], /Authorization/, name + ': fixture CORS policy must explicitly permit authenticated requests');
+      assert.ok(githubNetwork.every(item => item.event !== 'response' || item.status === 200 || item.status === 201), name + ': all GitHub responses must come from the fail-closed local fixture; network: ' + JSON.stringify(githubNetwork));
       await page.locator('#chat-input').fill('Build a sample PWA');
       await page.locator('#send-button').click();
-      const cloudHandoff = page.locator('.cloud-task-link');
-      await cloudHandoff.waitFor({ timeout: 5000 });
-      const cloudHandoffUrl = new URL(await cloudHandoff.getAttribute('href'));
-      assert.equal(cloudHandoffUrl.origin, 'https://github.com', name + ': cloud handoff should use GitHub issue creation');
-      assert.equal(cloudHandoffUrl.pathname, '/zopair/ZForge/issues/new', name + ': cloud handoff should target the ZForge repository');
-      assert.match(cloudHandoffUrl.searchParams.get('title') ?? '', /^\[ZForge Cloud Task\]/, name + ': cloud task issue title should carry the execution prefix');
-      assert.match(cloudHandoffUrl.searchParams.get('title') ?? '', /\[ZForgeChat:[a-f0-9-]{36}\]/i, name + ': cloud task issue title should carry a reply correlation id');
-      assert.equal(cloudHandoffUrl.searchParams.get('body'), 'Build a sample PWA', name + ': cloud task body should preserve the user request');
+      await page.getByText('Direct cloud chat reply verified.').waitFor({ timeout: 5000 });
+      assert.ok(createdCloudIssue, name + ': cloud chat should create a GitHub issue automatically');
+      assert.match(createdCloudIssue.title, /^\[ZForge Cloud Task\]/, name + ': cloud task issue title should carry the execution prefix');
+      assert.match(createdCloudIssue.title, /\[ZForgeChat:[a-f0-9-]{36}\]/i, name + ': cloud task issue title should carry a reply correlation id');
+      assert.equal(createdCloudIssue.body, 'Build a sample PWA\n\n<!-- Created automatically by BLACK VANTA cloud chat. -->', name + ': cloud task body should preserve the user request without the token');
+      assert.equal(await page.locator('#github-token').inputValue(), '', name + ': token field should be cleared after successful connection');
       assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
       const visualContract = await page.evaluate(() => {
         const style = selector => getComputedStyle(document.querySelector(selector));
@@ -121,6 +172,7 @@ try {
       await page.locator('#chat-input').fill('اختبر تطبيق الويب');
       await page.locator('#send-button').click();
       await page.locator('.plan-approve-button').waitFor({ timeout: 10000 });
+      assert.equal(createdCloudIssueCount, 1, name + ': an active Runtime must route the message to the conversational API instead of creating a second cloud issue');
       assert.ok((await page.locator('#conversation').innerText()).includes('تم إعداد خطة اختبارية ولم يبدأ التنفيذ.'), name + ': engineering requests should produce a plan before execution');
       assert.ok((await page.locator('#conversation').innerText()).includes('بصمة الخطة SHA-256'), name + ': plan approval must display its immutable fingerprint');
       await page.locator('.plan-approve-button').click();
@@ -190,4 +242,4 @@ const verification = await verifier.verify({
 });
 assert.equal(verification.status, 'passed', 'generated web preview should pass all engines: ' + JSON.stringify(verification));
 assert.deepEqual(verification.summary, { total: 3, passed: 3, failed: 0 });
-process.stdout.write('generated web app preview: Chromium, Firefox and WebKit passed\\n');
+process.stdout.write('generated web app preview: Chromium, Firefox and WebKit passed\n');
