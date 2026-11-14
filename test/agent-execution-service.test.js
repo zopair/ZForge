@@ -188,3 +188,55 @@ test('failed commands trigger open-source recovery research before the agent cho
   assert.equal(investigated, 1);
   assert.deepEqual(executed, ['missing-build-tool', 'node']);
 });
+
+test('assessment contract requires structured verdict and successful inspection evidence', async () => {
+  let turn = 0;
+  const agent = new AgentExecutionService({
+    modelAdapter: { chat: async ({ messages }) => {
+      turn += 1;
+      if (turn === 1) return { toolCalls: [{ id: 'inspect', name: 'read_file', arguments: { path: 'src/index.js' } }] };
+      const evidence = JSON.parse(messages.filter(message => message.role === 'tool').at(-1).content);
+      return { toolCalls: [{ id: 'finish-review', name: 'finish_task', arguments: {
+        summary: 'Reviewed source and tests',
+        evidenceIds: [evidence.id],
+        assessment: { decision: 'approved', findings: [] },
+      } }] };
+    } },
+    runtime: { createWorkspace: async () => ({}), readFile: async () => ({ content: 'export const value = 1;' }) },
+  });
+  const result = await agent.runTask({
+    request: 'Independently review this change',
+    model: 'reviewer-local',
+    workspaceId: 'review-contract',
+    allowedTools: ['read_file', 'list_files'],
+    assessmentContract: { kind: 'review' },
+  });
+  assert.equal(result.completed, true);
+  assert.deepEqual(result.assessment, { decision: 'approved', findings: [] });
+});
+
+test('assessment contract rejects approval without required successful command evidence', async () => {
+  let turn = 0;
+  const agent = new AgentExecutionService({
+    modelAdapter: { chat: async ({ messages }) => {
+      turn += 1;
+      if (turn === 1) return { toolCalls: [{ id: 'read', name: 'read_file', arguments: { path: 'package.json' } }] };
+      const evidence = JSON.parse(messages.filter(message => message.role === 'tool').at(-1).content);
+      return { toolCalls: [{ id: 'finish-qa', name: 'finish_task', arguments: {
+        summary: 'Tests passed',
+        evidenceIds: [evidence.id],
+        assessment: { decision: 'approved', findings: [] },
+      } }] };
+    } },
+    runtime: { createWorkspace: async () => ({}), readFile: async () => ({ content: '{}' }) },
+  });
+  const result = await agent.runTask({
+    request: 'Run and assess the project tests',
+    model: 'qa-local',
+    workspaceId: 'qa-contract',
+    allowedTools: ['read_file', 'run_command'],
+    assessmentContract: { kind: 'qa' },
+  });
+  assert.equal(result.completed, false);
+  assert.match(result.message, /successful run_command evidence/i);
+});
