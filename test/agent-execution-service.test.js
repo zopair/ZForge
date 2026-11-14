@@ -202,7 +202,7 @@ test('assessment contract requires structured verdict and successful inspection 
         assessment: { decision: 'approved', findings: [] },
       } }] };
     } },
-    runtime: { createWorkspace: async () => ({}), readFile: async () => ({ content: 'export const value = 1;' }) },
+    runtime: { createWorkspace: async () => ({}), execute: async () => ({ exitCode: 0 }), readFile: async () => ({ content: 'export const value = 1;' }) },
   });
   const result = await agent.runTask({
     request: 'Independently review this change',
@@ -228,7 +228,7 @@ test('assessment contract rejects approval without required successful command e
         assessment: { decision: 'approved', findings: [] },
       } }] };
     } },
-    runtime: { createWorkspace: async () => ({}), readFile: async () => ({ content: '{}' }) },
+    runtime: { createWorkspace: async () => ({}), execute: async () => ({ exitCode: 0 }), readFile: async () => ({ content: '{}' }) },
   });
   const result = await agent.runTask({
     request: 'Run and assess the project tests',
