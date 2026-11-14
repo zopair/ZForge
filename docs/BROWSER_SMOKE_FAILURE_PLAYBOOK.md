@@ -20,14 +20,14 @@ This is a required diagnostic reference for ZForge browser-smoke failures. Read 
 
 **Observed:** Chromium and Firefox pass, while WebKit times out waiting for GitHub authentication success in `scripts/browser-smoke.mjs`.
 
-**Root cause:** The browser test mocks `https://api.github.com/**`, but a cross-origin request carrying the Authorization header can trigger a CORS `OPTIONS` preflight. A mock that only handles GET/POST is incomplete. Real GitHub API responses include CORS behavior; mocked responses must model it too. WebKit exposed the missing preflight handling.
+**Root cause:** The browser test initially mocked only the narrow `https://api.github.com/**` page route. WebKit returned `Bad credentials`, showing that the request escaped the intended fixture. The repair uses a context-wide, fail-closed route installed before navigation and blocks service workers. It also records request/response events. In the repaired run, WebKit authentication succeeded; the next failure was only the assertion that Playwright must expose an OPTIONS event. This event is not guaranteed when route interception fulfills the actual request. Test the CORS policy itself and keep the OPTIONS branch available, without requiring a synthetic preflight event from every engine.
 
 **Required fixture behavior:**
 - Handle `OPTIONS` before endpoint-specific routes and return HTTP 204.
 - Include `Access-Control-Allow-Origin`, `Access-Control-Allow-Methods`, `Access-Control-Allow-Headers`, and optionally `Access-Control-Max-Age`.
 - Include `Access-Control-Allow-Origin` on the mocked GET/POST responses as well.
 - Explicitly allow the headers used by the app: `Accept`, `Authorization`, `Content-Type`, and `X-GitHub-Api-Version`.
-- Assert that WebKit exercised the preflight path, so a future fixture regression cannot silently reappear.
+- Verify the fixture's CORS policy explicitly allows Authorization and the other request headers. Playwright route interception may fulfill the actual request without surfacing the browser's internal preflight as a routable request; therefore test OPTIONS handling directly at the fixture layer rather than requiring an OPTIONS event in every browser engine.
 - When authentication fails, capture and report the actual `#github-auth-status` text instead of waiting only for the success phrase until timeout.
 
 ## Known anti-patterns to avoid
