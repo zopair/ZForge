@@ -147,3 +147,101 @@ test('coordinator validates specialist model roles before execution', async () =
   }), /modelRole is invalid/i);
   assert.equal(called, false);
 });
+
+test('reviewed coding tasks require independent review, bounded repair, and a separate QA pass', async () => {
+  const calls = [];
+  const events = [];
+  let reviews = 0;
+  const profiles = {
+    builder: { allowedTools: ['read_file', 'write_file', 'run_command', 'finish_task'], resourceLimits: {} },
+    reviewer: { allowedTools: ['read_file', 'list_files', 'finish_task'], resourceLimits: {} },
+    qa: { allowedTools: ['read_file', 'list_files', 'run_command', 'finish_task'], resourceLimits: {} },
+  };
+  const coordinator = new MultiAgentCoordinator({
+    agentFactory: { getExecutionProfile: async agentId => profiles[agentId] },
+    modelRouter: {
+      initialized: true,
+      routes: { review: 'review-model', qa: 'qa-model' },
+      resolve: ({ role }) => ({ model: role === 'coding' ? 'coder-model' : 'qa-model', role, fallback: false, reason: null }),
+      resolveIndependentReview: ({ authorModel }) => ({ model: authorModel === 'coder-model' ? 'review-model' : 'qa-model', independent: true }),
+    },
+    agentService: { runTask: async input => {
+      calls.push(input);
+      if (input.assessmentContract?.kind === 'review') {
+        reviews += 1;
+        return { completed: true, summary: 'Review complete', evidence: [{ id: 'review-' + reviews }], assessment: reviews === 1
+          ? { decision: 'changes_requested', findings: ['Handle empty input before parsing.'] }
+          : { decision: 'approved', findings: [] } };
+      }
+      if (input.assessmentContract?.kind === 'qa') {
+        return { completed: true, summary: 'Tests passed', evidence: [{ id: 'qa-command', name: 'run_command', ok: true }], assessment: { decision: 'approved', findings: [] } };
+      }
+      return { completed: true, summary: 'Implementation iteration ' + calls.filter(call => !call.assessmentContract).length, evidence: [{ id: 'author-' + calls.length }] };
+    } },
+  });
+  const result = await coordinator.executePlan({
+    workspaceId: 'review-lifecycle',
+    tasks: [{
+      id: 'implementation', agentId: 'builder', modelRole: 'coding', request: 'Implement parser',
+      review: { reviewerAgentId: 'reviewer', qaAgentId: 'qa', maxIterations: 1 },
+    }],
+    onProgress: async event => events.push(event),
+  });
+  assert.equal(result.status, 'completed');
+  assert.equal(result.tasks[0].review.decision, 'approved');
+  assert.equal(result.tasks[0].qa.decision, 'approved');
+  assert.equal(result.tasks[0].reviewIterations, 2);
+  assert.equal(calls.filter(call => !call.assessmentContract).length, 2);
+  assert.equal(calls.find(call => call.assessmentContract?.kind === 'review').allowedTools.includes('write_file'), false);
+  assert.equal(calls.find(call => call.assessmentContract?.kind === 'qa').allowedTools.includes('run_command'), true);
+  assert.ok(events.some(event => event.type === 'agent.review.changes_requested'));
+  assert.ok(events.some(event => event.type === 'agent.qa.completed'));
+});
+
+test('reviewed coding task fails closed when independent reviewer profile can modify the workspace', async () => {
+  let executed = false;
+  const coordinator = new MultiAgentCoordinator({
+    agentFactory: { getExecutionProfile: async agentId => ({
+      allowedTools: agentId === 'reviewer' ? ['read_file', 'write_file', 'finish_task'] : ['read_file', 'run_command', 'finish_task'],
+      resourceLimits: {},
+    }) },
+    modelRouter: {
+      initialized: true,
+      resolve: () => ({ model: 'coder-model', role: 'coding' }),
+      resolveIndependentReview: () => ({ model: 'review-model', independent: true }),
+    },
+    agentService: { runTask: async () => { executed = true; return { completed: true }; } },
+  });
+  const result = await coordinator.executePlan({
+    workspaceId: 'unsafe-review',
+    tasks: [{ id: 'implementation', agentId: 'builder', request: 'Implement', review: { reviewerAgentId: 'reviewer', qaAgentId: 'qa' } }],
+  });
+  assert.equal(result.status, 'failed');
+  assert.match(result.tasks[0].reason, /read-only/i);
+  assert.equal(executed, false);
+});
+
+test('reviewed coding task cannot pass when QA assessment is missing or unsuccessful', async () => {
+  const coordinator = new MultiAgentCoordinator({
+    agentFactory: { getExecutionProfile: async agentId => ({
+      allowedTools: agentId === 'reviewer' ? ['read_file', 'list_files', 'finish_task'] : ['read_file', 'run_command', 'finish_task'],
+      resourceLimits: {},
+    }) },
+    modelRouter: {
+      initialized: true,
+      resolve: ({ role }) => ({ model: role === 'coding' ? 'coder-model' : 'qa-model', role }),
+      resolveIndependentReview: ({ authorModel }) => ({ model: authorModel === 'coder-model' ? 'review-model' : 'qa-model', independent: true }),
+    },
+    agentService: { runTask: async input => input.assessmentContract?.kind === 'review'
+      ? { completed: true, summary: 'approved', evidence: [{ id: 'r' }], assessment: { decision: 'approved', findings: [] } }
+      : input.assessmentContract?.kind === 'qa'
+        ? { completed: true, summary: 'No command evidence', evidence: [{ id: 'read' }], assessment: { decision: 'approved', findings: [] } }
+        : { completed: true, summary: 'implemented', evidence: [{ id: 'a' }] } },
+  });
+  const result = await coordinator.executePlan({
+    workspaceId: 'qa-fails-closed',
+    tasks: [{ id: 'implementation', agentId: 'builder', request: 'Implement', review: { reviewerAgentId: 'reviewer', qaAgentId: 'qa' } }],
+  });
+  assert.equal(result.status, 'failed');
+  assert.match(result.tasks[0].reason, /QA|quality|command/i);
+});
