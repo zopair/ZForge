@@ -7,23 +7,68 @@ const metadataResponse = await fetch(metadataUrl, { signal: AbortSignal.timeout(
 if (!metadataResponse.ok) throw new Error(`SearXNG instance metadata returned HTTP ${metadataResponse.status}`);
 const metadata = await metadataResponse.json();
 const instances = metadata.instances ?? metadata;
+
+// searx.space currently publishes network_type, http and timing.search.
+// It does not publish a has_api or timing.api field. Verify JSON API support
+// with a bounded live preflight probe and derive those two values empirically.
 const candidates = Object.entries(instances).flatMap(([key, item]) => {
-  const url = item?.url ?? item?.http?.url ?? (key.startsWith('https://') ? key : `https://${key}`);
-  const responseTime = Number(item?.timing?.api?.response);
-  const healthy = item?.has_api === true && item?.network_type === 'normal'
-    && Number.isFinite(responseTime) && responseTime > 0 && responseTime <= 5
-    && (item?.http?.status_code === undefined || item.http.status_code === 200);
+  const url = item?.url ?? item?.http?.url ?? key;
+  const searchTiming = item?.timing?.search;
+  const responseTime = Number(searchTiming?.all?.value ?? searchTiming?.all?.mean ?? searchTiming?.all?.median);
+  const success = Number(searchTiming?.success_percentage ?? 0);
+  const healthy = item?.network_type === 'normal'
+    && item?.http?.status_code === 200
+    && !item?.error
+    && success >= 80
+    && Number.isFinite(responseTime) && responseTime > 0 && responseTime <= 5;
   if (!healthy) return [];
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return [];
-    return [{ url: parsed.origin, responseTime }];
+    return [{ url: parsed.origin, responseTime, success }];
   } catch { return []; }
 }).sort((a, b) => a.responseTime - b.responseTime);
-if (!candidates.length) throw new Error('No SearXNG instance passed has_api=true, network_type=normal, healthy timing.api.response <= 5s, and HTTPS checks.');
-const selected = candidates[0];
+console.log(`[SEARXNG] metadata_instances=${Object.keys(instances).length}; healthy_normal_candidates=${candidates.length}`);
+
+let selected = null;
+for (const candidate of candidates.slice(0, 5)) {
+  const endpoint = new URL('/search', candidate.url);
+  endpoint.searchParams.set('q', 'ZForge API capability preflight');
+  endpoint.searchParams.set('format', 'json');
+  const started = performance.now();
+  try {
+    const response = await fetch(endpoint, {
+      signal: AbortSignal.timeout(8000),
+      headers: {
+        accept: 'application/json',
+        'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36',
+      },
+    });
+    const elapsed = (performance.now() - started) / 1000;
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!response.ok || !contentType.toLowerCase().includes('application/json')) {
+      console.log(`[SEARXNG] API probe rejected ${candidate.url}: HTTP ${response.status}; content-type=${contentType}`);
+      continue;
+    }
+    const payload = await response.json();
+    if (!Array.isArray(payload.results)) {
+      console.log(`[SEARXNG] API probe rejected ${candidate.url}: missing results array`);
+      continue;
+    }
+    if (elapsed > 5) {
+      console.log(`[SEARXNG] API probe rejected ${candidate.url}: response ${elapsed.toFixed(3)}s exceeds 5s`);
+      continue;
+    }
+    selected = { ...candidate, hasApi: true, apiResponse: elapsed };
+    break;
+  } catch (error) {
+    console.log(`[SEARXNG] API probe failed ${candidate.url}: ${error.name}`);
+  }
+}
+if (!selected) throw new Error('No healthy normal-network SearXNG instance empirically exposed a responsive JSON API in the bounded preflight (maximum 5 candidates).');
+
 process.env.ZFORGE_SEARXNG_INSTANCES = selected.url;
-console.log(`[SEARXNG] selected=${selected.url} api_response_seconds=${selected.responseTime}`);
+console.log(`[SEARXNG] has_api=${selected.hasApi}; network_type=normal; timing.api.response=${selected.apiResponse.toFixed(3)}s; url=${selected.url}`);
 const budget = new GlobalApiBudget({ maxRequests: 1, agentLimits: { blacksmith: 1 } });
 const gateway = new KnowledgeGateway({ instances: [selected.url] });
 const result = await gateway.search({ query: 'Open Source Autonomous Agents', agentId: 'blacksmith', budget });
@@ -34,7 +79,8 @@ const report = [
   '',
   '- Query: Open Source Autonomous Agents',
   `- SearXNG instance: ${selected.url}`,
-  `- Requests consumed: ${snapshot.used}/1`,
+  `- API preflight response: ${selected.apiResponse.toFixed(3)}s`,
+  `- Requests consumed by Gateway search: ${snapshot.used}/1`,
   `- Results returned: ${result.resultCount}`,
   '- Trust: UNVERIFIED; search snippets are untrusted research evidence.',
   '',
