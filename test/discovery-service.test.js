@@ -20,7 +20,8 @@ test('discovery service enforces a bounded query budget and returns a continuati
 test('discovery service reuses unexpired cache without making duplicate API calls',async()=>{
   let calls=0;
   const client={searchRepositories:async()=>{calls++;return{results:[{id:1,fullName:'org/cached'}]};}};
-  const service=new UniversalDiscoveryService({client,cache:new Map(),maxQueriesPerRun:1,ttlMs:60000});
+  const cache=new Map();
+  const service=new UniversalDiscoveryService({client,cache,maxQueriesPerRun:1,ttlMs:60000});
   const first=await service.discover({keywords:['unique-capability'],includeVendorSeeds:false});
   const second=await service.discover({keywords:['unique-capability']});
   assert.equal(calls,1);
