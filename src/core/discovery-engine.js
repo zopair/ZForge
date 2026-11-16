@@ -171,8 +171,16 @@ export function evaluateRepositoryCandidate(candidate) {
   if (candidate.securityReviewed !== true) unresolved.push('SECURITY_REVIEW_INCOMPLETE');
   if (candidate.maintenanceReviewed !== true) unresolved.push('MAINTENANCE_REVIEW_INCOMPLETE');
   if (candidate.versionPinned !== true || typeof candidate.version !== 'string' || !candidate.version.trim()) unresolved.push('VERSION_NOT_PINNED');
-  if (failures.length) return { status:'REJECTED', eligible:false, license, quality, failures, unresolved };
-  if (unresolved.length) return { status:'QUARANTINED', eligible:false, license, quality, failures, unresolved };
+  const identity = candidate.fullName ?? candidate.full_name ?? 'unknown';
+  if (failures.length) {
+    audit(`REJECTED ${identity}: ${failures.join(', ')}`);
+    return { status:'REJECTED', eligible:false, license, quality, failures, unresolved };
+  }
+  if (unresolved.length) {
+    audit(`QUARANTINED ${identity}: ${unresolved.join(', ')}`);
+    return { status:'QUARANTINED', eligible:false, license, quality, failures, unresolved };
+  }
+  audit(`ACCEPTED ${identity}: all candidate-level gates clear`);
   return { status:'CANDIDATE', eligible:true, license, quality, failures, unresolved:[] };
 }
 
