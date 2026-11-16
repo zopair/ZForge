@@ -13,15 +13,15 @@ test('GitHub discovery requests public repositories and normalizes license metad
   assert.equal(result.results[0].fullName,'org/tool');
   assert.equal(result.results[0].license.spdxId,'MIT');
   assert.equal(result.results[0].discoveryOnly,true);
-  assert.match(requested.url,/search\/repositories/);
-  assert.equal(requested.headers.Authorization,'Bearer test-token');
+  assert.match(requests[1].url,/search\/repositories/);
+  assert.equal(requests[1].headers.Authorization,'Bearer test-token');
 });
 
 test('GitHub discovery stops on official rate-limit response without retrying or bypassing', async () => {
   let calls=0;
   const client=new GitHubDiscoveryClient({fetchImpl:async url=>{calls++; if(String(url).endsWith('/rate_limit')) return {ok:true,status:200,json:async()=>({resources:{search:{remaining:20,limit:30},core:{remaining:4000,limit:5000}}})}; return {ok:false,status:403,headers:{get:()=> '1790000000'}};}});
   await assert.rejects(()=>client.searchRepositories('web framework'),error=>error instanceof GitHubDiscoveryError&&error.status===403);
-  assert.equal(calls,1);
+  assert.equal(calls,2);
 });
 
 test('GitHub discovery validates query and bounded result limits', async () => {
