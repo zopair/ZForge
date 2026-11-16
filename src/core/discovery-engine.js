@@ -335,6 +335,11 @@ export function evaluateDiscoveryQuality(repository, { now = Date.now(), maxInac
 /** Merge dependency manifests and .env.example into one fail-closed static cost assessment. */
 export function inspectZeroCostDependencies(manifests = []) {
   if (!Array.isArray(manifests)) throw new TypeError('manifests must be an array');
+  if (manifests.length === 0) {
+    const result = { status:'QUARANTINED_UNVERIFIED', zeroCostVerified:false, paidDependency:false, dependencies:[], blocked:[], unresolved:[{ file:'(none)', reason:'No dependency manifest or environment template was inspected.' }], executionPerformed:false, limitations:['No dependency manifest was available; zero-cost requirements remain unverified.'] };
+    audit('QUARANTINED: No dependency manifest or environment template was inspected');
+    return result;
+  }
   const dependencies = [];
   const blocked = [];
   const unresolved = [];
