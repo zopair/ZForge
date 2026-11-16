@@ -124,6 +124,13 @@ test('zero-cost gate rejects required commercial APIs discovered in package mani
   assert.equal(result.executionPerformed,false);
 });
 
+test('zero-cost gate quarantines repositories with no inspected dependency evidence', () => {
+  const result = inspectZeroCostDependencies([]);
+  assert.equal(result.status, 'QUARANTINED_UNVERIFIED');
+  assert.equal(result.zeroCostVerified, false);
+  assert.match(result.unresolved[0].reason, /No dependency manifest/);
+});
+
 test('zero-cost gate quarantines malformed manifests and clears ordinary local dependencies', () => {
   const malformed=inspectZeroCostDependencies([{name:'package.json',content:'{bad json'}]);
   assert.equal(malformed.status,'QUARANTINED_UNVERIFIED');
