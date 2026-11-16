@@ -14,6 +14,7 @@ test('candidate audit stops at the shared budget and logs an explicit reason for
       repository: { name: fullName.split('/')[1], htmlUrl: `https://github.com/${fullName}`, license: { spdxId: 'MIT' } },
       structuralEvidence: { readme: true, testsDirectory: true, apiDocumentation: false, configurationManifest: false },
       zeroCostAssessment: { status: 'STATIC_REVIEW_CLEAR' },
+      licenseFiles: [{ name: 'LICENSE', content: 'MIT License' }],
       inspectionComplete: true,
       evidence: { sourcePath: 'README.md', snippet: '# OCR tool', url: `https://github.com/${fullName}/blob/main/README.md` },
     };
