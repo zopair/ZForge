@@ -8,6 +8,7 @@ Use one dated subsection per discovery. Keep claims evidence-backed and include 
 
 ### YYYY-MM-DD — Discovery title
 
+<!-- Copy and complete these fields for each discovery:
 - Tool: Name and concise purpose.
 - API: Public API name, endpoint family, or "None".
 - Model: Model name and license/availability, or "None".
@@ -21,6 +22,7 @@ Use one dated subsection per discovery. Keep claims evidence-backed and include 
 - Integration opportunity: Concrete way this could compose with another catalogued tool.
 - Feasibility: High / Medium / Low, with evidence.
 - Status: Candidate / Reviewed / Rejected.
+-->
 
 ## Research policy
 
