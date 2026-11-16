@@ -16,7 +16,7 @@ function decodeContent(value){
   return new TextDecoder().decode(bytes);
 }
 export class GitHubRepositoryInspector {
-  constructor({token=null,fetchImpl=globalThis.fetch,maxFiles=8}={}){
+  constructor({token=null,fetchImpl=globalThis.fetch,maxFiles=12}={}){
     if(typeof fetchImpl!=='function')throw new TypeError('fetchImpl must be a function');
     if(!Number.isInteger(maxFiles)||maxFiles<1||maxFiles>12)throw new RangeError('maxFiles must be 1..12');
     this.token=token;this.fetchImpl=fetchImpl;this.maxFiles=maxFiles;
