@@ -39,6 +39,7 @@ function validateHttpUrl(value) {
   let url;
   try { url = new URL(value); } catch { throw new TypeError('URL is invalid'); }
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new TypeError('only credential-free HTTP(S) URLs are allowed');
+  if (url.port && !['80', '443'].includes(url.port)) throw new TypeError('non-standard destination ports are blocked');
   const hostname = url.hostname.replace(/^\[|\]$/g, '');
   if (!hostname || hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local')) throw new TypeError('local network destinations are blocked');
   if (isIP(hostname) && !isPublicAddress(hostname)) throw new TypeError('private or reserved IP destinations are blocked');
@@ -90,6 +91,7 @@ async function requestWithRedirects(initialUrl, { budget, agentId, maxBytes, sam
     const location = response.headers.location;
     if (typeof location !== 'string' || !location) throw new Error('upstream redirect omitted its location');
     const next = validateHttpUrl(new URL(location, current).href);
+    if (current.protocol === 'https:' && next.protocol !== 'https:') throw new Error('HTTPS downgrade redirects are blocked');
     if (sameHost && next.host !== originalHost) throw new Error('SearXNG redirects to a different host are blocked');
     current = next;
   }

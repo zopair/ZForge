@@ -6,7 +6,7 @@ export class ApiBudgetExceededError extends Error {
   }
 }
 
-/** One request ledger shared by every GitHub adapter in a discovery run. */
+/** Shared request ledger with optional per-agent allocations; GitHub quota observation remains available to discovery clients. */
 export class GlobalApiBudget {
   constructor({ maxRequests = 50, criticalThreshold = 0.10, agentLimits = {} } = {}) {
     if (!Number.isInteger(maxRequests) || maxRequests < 1) throw new RangeError('maxRequests must be a positive integer');
@@ -35,7 +35,7 @@ export class GlobalApiBudget {
       if (agentUsed >= agentLimit) throw new ApiBudgetExceededError(`Agent ${agentId} web request budget exhausted.`, this.snapshot());
     }
     if (this.used >= this.maxRequests) {
-      this.halt('Global GitHub API request budget exhausted.');
+      this.halt('Global API request budget exhausted.');
       throw new ApiBudgetExceededError(this.haltReason, this.snapshot());
     }
     this.used += 1;

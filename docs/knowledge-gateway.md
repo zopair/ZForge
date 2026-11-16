@@ -4,7 +4,7 @@
 
 Web access is enabled by `config/agent-policies.json`. Each task receives one shared `GlobalApiBudget` with a hard ceiling of 20 HTTP requests. Blacksmith is allocated at most 12 requests; agents without an explicit allocation are denied. Every HTTP attempt and redirect consumes one unit. The budget records path-only request evidence and agent IDs, never query strings.
 
-Blacksmith receives only `web_search` and `web_fetch` when its policy is enabled. Search is routed through configured HTTPS SearXNG instances using `/search?q=...&format=json`; only the first five results are returned as Markdown and are labelled unverified. Configure instances with the comma-separated `ZFORGE_SEARXNG_INSTANCES` environment variable. No arbitrary instance is selected automatically.
+Blacksmith receives only `web_search` and `web_fetch` when its policy is enabled. Search is routed through configured HTTPS SearXNG instances using `/search?q=...&format=json`; only the first five results are returned as Markdown and are labelled unverified. Configure instances with the comma-separated `ZFORGE_SEARXNG_INSTANCES` environment variable. No arbitrary instance is selected automatically. Search terms are sent to third-party instance operators; do not submit secrets, private repository names, or confidential task details.
 
 Public SearXNG JSON availability is not guaranteed. The upstream API documentation states that JSON output must be enabled by each instance operator and that many public instances disable it. If all configured instances fail or return HTML/challenge pages, search fails closed. Do not add instances without reviewing operator trust, TLS, uptime, JSON support and privacy implications.
 
