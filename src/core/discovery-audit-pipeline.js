@@ -42,6 +42,7 @@ export async function auditDiscoveredCandidates({ candidates = [], inspector, bu
       const cost = inspection.zeroCostAssessment;
       const license = classifyLicense(repository.license);
       const reasons = [];
+      if (!inspection.licenseFiles?.some(file => typeof file.content === 'string' && file.content.trim())) reasons.push('Quarantined: Full license text not inspected');
       if (inspection.inspectionComplete === false) reasons.push('Inspection incomplete: API budget exhausted before all priority files were read');
       if (!quality.eligible) {
         reasons.push(
