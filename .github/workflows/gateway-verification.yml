@@ -1,0 +1,89 @@
+name: Blacksmith Gateway Validation
+on:
+  push:
+    branches:
+      - work/blacksmith-knowledge-gateway
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: blacksmith-gateway-validation
+  cancel-in-progress: true
+
+jobs:
+  gateway-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ZFORGE_EXECUTION_BACKEND: container
+      ZFORGE_CONTAINER_NETWORK: none
+      NODE_ENV: test
+    steps:
+      - name: Checkout validation branch
+        uses: actions/checkout@v5
+        with:
+          ref: work/blacksmith-knowledge-gateway
+          persist-credentials: true
+
+      - name: Set up Node.js 20.18.1
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20.18.1
+          cache: npm
+
+      - name: Install dependencies and generate deterministic lockfile
+        run: |
+          node --version
+          npm --version
+          npm install --ignore-scripts --no-audit --no-fund
+          test -s package-lock.json
+          node -e "const p=require('./package-lock.json'); if (p.lockfileVersion !== 3) process.exit(1); console.log('LOCKFILE_VERSION=' + p.lockfileVersion)"
+
+      - name: Commit package lock to validation branch
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git add -- package-lock.json
+          if git diff --cached --quiet; then
+            echo "LOCKFILE_UNCHANGED"
+          else
+            git commit -m "build(deps): lock gateway dependency tree"
+            git push origin HEAD:work/blacksmith-knowledge-gateway
+          fi
+
+      - name: Run complete Node.js test suite
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee npm-test.log
+          grep -E '# tests |# pass |# fail |# skipped |# todo ' npm-test.log
+
+      - name: Prove direct network is blocked inside isolated agent container
+        run: |
+          docker pull node:20.18.1-bookworm-slim
+          docker run --rm --network none node:20.18.1-bookworm-slim node --input-type=module -e '
+            try {
+              const response = await fetch("https://example.com", { signal: AbortSignal.timeout(4000) });
+              console.error("ISOLATION_FAILURE: direct internet unexpectedly returned HTTP " + response.status);
+              process.exit(1);
+            } catch (error) {
+              console.log("DIRECT_NETWORK_BLOCKED: " + (error.cause?.code || error.code || error.name));
+              console.log("ISOLATION_PROOF=PASS");
+            }
+          '
+
+      - name: Discover a healthy public SearXNG JSON instance and run one live gateway request
+        run: |
+          node scripts/validate-knowledge-gateway.mjs
+
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blacksmith-gateway-validation
+          path: |
+            npm-test.log
+            WEB_RESPONSE.md
+          if-no-files-found: warn
+          retention-days: 7
