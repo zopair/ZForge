@@ -42,6 +42,8 @@ concurrency:
 
 jobs:
   dry-run:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -69,3 +71,15 @@ jobs:
           DISCOVERY_KEYWORDS: ${{ inputs.keywords }}
           DISCOVERY_INCLUDE_VENDOR_SEEDS: ${{ inputs.include_vendor_seeds || 'false' }}
         run: node scripts/run-discovery-action.mjs
+
+      - name: Persist Research Output
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -- research_logs/tools_catalog.md DAILY_BRIEF.md memory/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs(discovery): auto-persist daily brief and catalog"
+          fi
+          git push origin "HEAD:${GITHUB_REF_NAME}"
