@@ -12,7 +12,7 @@ function safe(value = '') {
   return String(value).replace(/[|\n\r]/g, ' ').trim();
 }
 
-export async function runScavenger({ fetchImpl = fetch, catalogPath = CATALOG } = {}) {
+export async function runScavenger({ fetchImpl = fetch, catalogPath = CATALOG, jsonPath = 'tools_catalog.json' } = {}) {
   const policy = createResourcePolicy({ maxRequests: 4, maxRetries: 0 });
   const client = new GitHubDiscoveryClient({
     fetchImpl: (url, options) => policy.run(() => fetchImpl(url, options)),
@@ -25,6 +25,11 @@ export async function runScavenger({ fetchImpl = fetch, catalogPath = CATALOG } 
   }
   const known = new Set([...current.matchAll(/github\.com\/([^\s|)]+)/g)].map(match => match[1].toLowerCase()));
   const rows = [];
+  let jsonCatalog = { schemaVersion: 1, tools: [] };
+  try { jsonCatalog = JSON.parse(await readFile(jsonPath, 'utf8')); } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  if (!Array.isArray(jsonCatalog.tools)) throw new TypeError('tools_catalog.json tools must be an array');
   for (const query of QUERIES) {
     if (policy.remaining === 0) break;
     const result = await client.searchRepositories(query, { maxResults: 10 });
@@ -33,10 +38,14 @@ export async function runScavenger({ fetchImpl = fetch, catalogPath = CATALOG } 
       if (!key || known.has(key)) continue;
       known.add(key);
       rows.push(`| GitHub | https://github.com/${key} | ${safe(repo.description) || 'No description'} | ${safe(repo.license?.spdxId) || 'unknown'} | review-required | ${new Date().toISOString().slice(0, 10)} |`);
+      jsonCatalog.tools.push({ name: safe(repo.name), repository: `https://github.com/${key}`, description: safe(repo.description), spdxHint: safe(repo.license?.spdxId) || 'unknown', status: 'candidate', auth: 'unknown', licenseStatus: 'unverified', baseUrl: null, discoveredAt: new Date().toISOString() });
     }
   }
   if (!current) current = '# ZForge Tools Catalog\n\nDiscovery candidates only. Verify the full license text, dependency licenses, security posture, maintenance and zero-cost terms before adoption.\n\n| Source | URL | Description | SPDX hint | Review status | Discovered |\n|---|---|---|---|---|---|\n';
-  if (rows.length) await writeFile(catalogPath, current.trimEnd() + '\n' + rows.join('\n') + '\n');
+  if (rows.length) {
+    await writeFile(catalogPath, current.trimEnd() + '\n' + rows.join('\n') + '\n');
+    await writeFile(jsonPath, JSON.stringify(jsonCatalog, null, 2) + '\n');
+  }
   return { added: rows.length, requests: policy.requests, remaining: policy.remaining };
 }
 
