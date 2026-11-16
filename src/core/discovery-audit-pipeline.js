@@ -43,12 +43,17 @@ export async function auditDiscoveredCandidates({ candidates = [], inspector, bu
       const license = classifyLicense(repository.license);
       const reasons = [];
       if (inspection.inspectionComplete === false) reasons.push('Inspection incomplete: API budget exhausted before all priority files were read');
-      if (!quality.eligible) reasons.push(...quality.failures.map(code => ({
-        README_MISSING: 'Rejected: Missing README',
-        STRUCTURAL_EVIDENCE_MISSING: 'Rejected: Missing structural evidence',
-        FORK_NOT_SIGNIFICANTLY_AHEAD: 'Rejected: Unqualified Fork',
-        INACTIVE_OVER_12_MONTHS: 'Rejected: No commit activity within 12 months',
-      }[code] ?? `Rejected: ${code}`), ...quality.unresolved.map(code => `Quarantined: ${code}`));
+      if (!quality.eligible) {
+        reasons.push(
+          ...quality.failures.map(code => ({
+            README_MISSING: 'Rejected: Missing README',
+            STRUCTURAL_EVIDENCE_MISSING: 'Rejected: Missing structural evidence',
+            FORK_NOT_SIGNIFICANTLY_AHEAD: 'Rejected: Unqualified Fork',
+            INACTIVE_OVER_12_MONTHS: 'Rejected: No commit activity within 12 months',
+          }[code] ?? `Rejected: ${code}`)),
+          ...quality.unresolved.map(code => `Quarantined: ${code}`),
+        );
+      }
       if (cost?.status === 'REJECTED_PAID_REQUIREMENT') reasons.push('Rejected: Commercial SaaS keys or paid dependencies detected');
       else if (cost?.status !== 'STATIC_REVIEW_CLEAR') reasons.push('Quarantined: Zero-cost dependencies not fully verified');
       if (license.status !== 'OPEN_SOURCE') reasons.push(`Quarantined: License not verified as approved open source (${license.spdxId ?? 'unknown'})`);
