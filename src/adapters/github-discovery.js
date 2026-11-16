@@ -77,15 +77,16 @@ export class GitHubDiscoveryClient {
           const upstreamBranch = item.parent?.default_branch;
           const forkOwner = item.owner?.login;
           const forkBranch = item.default_branch;
-          if (!parentName || !upstreamBranch || !forkOwner || !forkBranch) continue;
+          if (!parentName || !upstreamBranch || !forkOwner || !forkBranch) { console.log(`[GATE] ${item.full_name ?? 'unknown'} — Rejected: Unqualified Fork (missing upstream comparison metadata)`); continue; }
           const [owner, repo] = parentName.split('/');
-          if (!owner || !repo) continue;
+          if (!owner || !repo) { console.log(`[GATE] ${item.full_name ?? 'unknown'} — Rejected: Unqualified Fork (invalid upstream identity)`); continue; }
           const comparison = await this.request('GET /repos/{owner}/{repo}/compare/{base}...{head}', {
             owner, repo, base: upstreamBranch, head: `${forkOwner}:${forkBranch}`,
           }, 'core');
           const aheadBy = Number(comparison.data?.ahead_by);
           const uniqueCommits = Number(comparison.data?.total_commits);
-          if (!(aheadBy > 0 && uniqueCommits > 0)) continue;
+          if (!(aheadBy > 0 && uniqueCommits > 0)) { console.log(`[GATE] ${item.full_name ?? 'unknown'} — Rejected: Unqualified Fork (ahead_by=${aheadBy}, unique_commits=${uniqueCommits})`); continue; }
+          console.log(`[GATE] ${item.full_name} — Fork comparison passed (ahead_by=${aheadBy}, unique_commits=${uniqueCommits})`);
           candidate = { ...item, forkComparisonVerified: true, forkAheadBy: aheadBy, uniqueCommits };
         }
         results.push(normalizeRepository(candidate));
