@@ -11,7 +11,7 @@
     "discovery:check": "node --check src/adapters/github-api-client.js && node --check scripts/discovery-action-context.mjs && node --check scripts/run-discovery-action.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.18.1"
   },
   "dependencies": {
     "@actions/core": "3.0.1",
@@ -19,6 +19,6 @@
     "@octokit/plugin-throttling": "11.0.5",
     "@octokit/rest": "22.0.1",
     "cheerio": "1.2.0",
-    "turndown": "7.2.4"
+    "turndown": "7.2.5"
   }
 }

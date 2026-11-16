@@ -22,7 +22,7 @@ The runtime refuses to start when web access is enabled with local execution or 
 ## Dependencies
 
 - `cheerio@1.2.0` — MIT, HTML parsing only; no page JavaScript execution.
-- `turndown@7.2.4` — MIT, HTML-to-Markdown conversion.
+- `turndown@7.2.5` — MIT, HTML-to-Markdown conversion.
 - `searxng/searxng` — AGPL-3.0 upstream search engine; ZForge consumes its HTTP JSON API and does not embed or redistribute the server.
 
-Dependencies are exact-version pinned in `package.json`. The repository currently has no package lockfile, so transitive dependency reproducibility remains an open follow-up and must not be described as fully locked.
+The repository runtime minimum is raised to Node.js 20.18.1 to satisfy Cheerio 1.2.0. Dependencies are exact-version pinned in `package.json`. The repository currently has no package lockfile, so transitive dependency reproducibility remains an open follow-up and must not be described as fully locked.
