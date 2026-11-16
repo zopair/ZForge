@@ -29,7 +29,7 @@ export function renderCatalogEntry(candidate) {
     `- Cost assessment: ${clean(candidate.costAssessment)}`,
     `- Status: ${clean(candidate.status ?? 'HUMAN_REVIEW_REQUIRED')}`,
     ''
-  ].join('\\n');
+  ].join('\n');
 }
 
 export function renderDailyBrief({ generatedAt = new Date().toISOString(), discoveries = [], apiRequests = 0, apiRequestBudget = 50, dryRun = false } = {}) {
@@ -46,5 +46,5 @@ export function renderDailyBrief({ generatedAt = new Date().toISOString(), disco
   if (!discoveries.length) lines.push('- No discoveries passed the evidence pipeline.');
   for (const item of discoveries) lines.push(`- ${clean(item.name)} — ${clean(item.status)} — ${clean(item.repoUrl)}`);
   lines.push('', '## Verification policy', '', '- Every entry requires an exact repository URL and source-path evidence.', '- Unverifiable, duplicate, inactive, structurally weak, or commercially dependent candidates are rejected or quarantined.', '- Integration feasibility is an assessment, not proof of runtime compatibility.', '');
-  return lines.join('\\n');
+  return lines.join('\n');
 }
