@@ -75,7 +75,7 @@ export class GitHubDiscoveryClient {
       nextPage:!complete?page+pagesFetched:null,source:'GitHub Search API (GET only)',retrievedAt:new Date().toISOString()};
   }
   async listOrganizationRepositories(organization,{page=1,perPage=100}={}) {
-    if(typeof organization!=='string'||!/^[-\\w.]+$/.test(organization))throw new TypeError('organization name is invalid');
+    if(typeof organization!=='string'||!/^[a-zA-Z0-9_.-]+$/.test(organization))throw new TypeError('organization name is invalid');
     if(!Number.isInteger(page)||page<1)throw new RangeError('page must be positive');
     if(!Number.isInteger(perPage)||perPage<1||perPage>100)throw new RangeError('perPage must be 1..100');
     const url=new URL(`/orgs/${encodeURIComponent(organization)}/repos`,API);
