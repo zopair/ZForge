@@ -4,29 +4,29 @@ import { GlobalApiBudget } from '../core/global-api-budget.js';
 
 const ThrottledOctokit = Octokit.plugin(throttling);
 
-/**
- * Sole outbound GitHub REST boundary for discovery and inspection.
- * Preflight and all data reads share one budget. Retries are disabled so no
- * hidden retry can bypass the strict per-run request ceiling.
- */
+/** Sole outbound GitHub REST boundary; preflight and all data reads share one budget. */
 export class GitHubApiClient {
   #octokit;
   #rateLimits = null;
   #preflightPromise = null;
 
-  constructor({ token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? null, budget = new GlobalApiBudget(), baseUrl } = {}) {
+  constructor({ token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? null, budget = new GlobalApiBudget(), baseUrl, octokit = null } = {}) {
     this.budget = budget;
+    if (octokit) {
+      this.#octokit = octokit;
+      return;
+    }
     const options = {
       auth: token || undefined,
       throttle: {
-        onRateLimit: (retryAfter, request, octokit) => {
+        onRateLimit: (retryAfter, request, client) => {
           budget.halt(`GitHub primary rate limit reached; safe halt (retryAfter=${retryAfter}s, ${request.method} ${request.url}).`);
-          octokit.log.warn(budget.haltReason);
+          client.log.warn(budget.haltReason);
           return false;
         },
-        onSecondaryRateLimit: (retryAfter, request, octokit) => {
+        onSecondaryRateLimit: (retryAfter, request, client) => {
           budget.halt(`GitHub secondary rate limit detected; safe halt (retryAfter=${retryAfter}s, ${request.method} ${request.url}).`);
-          octokit.log.warn(budget.haltReason);
+          client.log.warn(budget.haltReason);
           return false;
         },
       },
