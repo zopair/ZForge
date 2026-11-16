@@ -98,7 +98,7 @@ export class UniversalDiscoveryService {
           queryReports.push({ query, page, count: response.count ?? response.results?.length ?? 0, totalCount: response.totalCount ?? null, complete: response.complete !== false, nextPage: response.nextPage ?? null });
           if (response.complete === false) { nextOffset = queryOffset + index; nextQueryPage = response.nextPage ?? page + 1; break; }
         } catch (error) {
-          apiRequests += error.preflightCompleted ? 1 : 0;
+          apiRequests += Number.isInteger(error.apiRequests) ? error.apiRequests : 1;
           if (error.safeHalt) { safeHalt = true; rateLimit = { remaining: error.remaining, limit: error.limit, resource: error.resource, message: error.message }; nextOffset = queryOffset + index; nextQueryPage = page; break; }
           if (error instanceof GitHubDiscoveryError && (error.status === 403 || error.status === 429)) { rateLimit = { status: error.status, resetAt: error.resetAt ?? null, message: error.message }; nextOffset = queryOffset + index; nextQueryPage = page; break; }
           apiErrors.push({ query, message: error instanceof Error ? error.message : String(error), status: error.status ?? null });
