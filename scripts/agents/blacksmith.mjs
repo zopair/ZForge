@@ -19,10 +19,14 @@ export async function generateProposals({ catalogPath = CATALOG, outputDir = 'ag
   for (const entry of catalog.tools.filter(validateEntry)) {
     const filename = `${entry.name}.adapter.mjs`;
     const source = `// Generated proposal. Review license, provenance, hostname and tests before use.\nexport const name = ${JSON.stringify(entry.name)};\nexport const baseUrl = ${JSON.stringify(entry.baseUrl)};\nexport async function request(pathname, { signal } = {}) {\n  if (typeof pathname !== 'string' || !pathname.startsWith('/') || pathname.startsWith('//')) throw new TypeError('relative path required');\n  const url = new URL(pathname, baseUrl);\n  if (url.origin !== new URL(baseUrl).origin) throw new Error('cross-origin request blocked');\n  return fetch(url, { signal, headers: { accept: 'application/json' } });\n}\n`;
-    await writeFile(path.join(outputDir, filename), source, { flag: 'wx' }).catch(error => {
-      if (error.code !== 'EEXIST') throw error;
-    });
-    proposals.push(filename);
+    const pythonName = `${entry.name.replace(/-/g, '_')}_adapter.py`;
+    const pythonSource = `\"\"\"Generated proposal; standard-library only. Review before use.\"\"\"\nfrom urllib.parse import urljoin, urlsplit\nfrom urllib.request import Request, urlopen\n\nBASE_URL = ${JSON.stringify(entry.baseUrl)}\n\ndef request(pathname: str, timeout: int = 10):\n    if not isinstance(pathname, str) or not pathname.startswith('/') or pathname.startswith('//'):\n        raise ValueError('relative path required')\n    url = urljoin(BASE_URL, pathname)\n    if urlsplit(url).netloc != urlsplit(BASE_URL).netloc or urlsplit(url).scheme != 'https':\n        raise ValueError('cross-origin request blocked')\n    req = Request(url, headers={'Accept': 'application/json'})\n    with urlopen(req, timeout=min(max(timeout, 1), 15)) as response:\n        return response.read()\n`;
+    for (const [file, body] of [[filename, source], [pythonName, pythonSource]]) {
+      await writeFile(path.join(outputDir, file), body, { flag: 'wx' }).catch(error => {
+        if (error.code !== 'EEXIST') throw error;
+      });
+      proposals.push(file);
+    }
   }
   return { proposals, generated: proposals.length, executed: false, installed: false };
 }
