@@ -1,0 +1,44 @@
+name: ZForge Blacksmith Proposal Builder
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: zforge-blacksmith-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-proposals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Generate wrappers from approved catalog entries
+        run: node scripts/agents/blacksmith.mjs
+      - name: Open review-only proposal pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if git diff --quiet -- agents/proposals; then
+            echo "No approved catalog entries require wrappers."
+            exit 0
+          fi
+          BRANCH="agent/blacksmith-${RUN_ID}"
+          git checkout -b "$BRANCH"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add agents/proposals/
+          git commit -m "feat(blacksmith): propose reviewed resource adapters"
+          git push --set-upstream origin "$BRANCH"
+          gh pr create --repo "$GH_REPO" --head "$BRANCH" --base main \\
+            --title "Blacksmith: generated adapter proposals" \\
+            --body "Generated from manually approved, unauthenticated, license-verified catalog entries. These files are proposals only; review source licenses, security and tests before merging or activation."
