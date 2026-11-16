@@ -1,69 +1,26 @@
-# ZForge
+<div align="center">
+  <img src="assets/hero-image.png" alt="ZForge Swarm AI" width="100%" style="border-radius: 10px; box-shadow: 0px 4px 15px rgba(0,0,0,0.5);">
+  <br><br>
+  <h1>🌌 ZForge: Autonomous AGI Swarm Architecture</h1>
+  <p><b>A Zero-Cost, Self-Replicating, Event-Driven AI Ecosystem</b></p>
 
-**Zubair Autonomous Engineering Forge** — *From Idea to Reality. Autonomously.*
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+  [![GitHub Actions](https://img.shields.io/badge/Compute-GitHub_Actions-blue.svg)](https://github.com/features/actions)
+  [![Architecture](https://img.shields.io/badge/Architecture-Serverless_Swarm-success.svg)](#)
+</div>
 
-ZForge is a zero-budget, open-source-only autonomous engineering platform. Its internal Chief Autonomous Engineer discovers, verifies, composes and maintains engineering tools; specialist agents build and test software; BLACK VANTA is the human-facing text/voice control surface.
+<hr>
 
-## Non-negotiable principles
-1. **Open source only:** public source code is not enough; verify OSI-compatible licensing for code, dependencies, models, data, fonts and assets.
-2. **Zero budget:** no paid APIs, subscriptions, credits, required commercial SaaS or expiring trial dependencies.
-3. **Evidence over popularity:** stars, forks, downloads and branding are discovery hints only, never proof of superiority.
-4. **Proof before claims:** status is scoped to capability, version, environment and reproducible test.
-5. **Learning without repeating failures:** preserve root causes, tested fixes, failed approaches and resource limits.
-6. **Safe autonomy:** least privilege, secret isolation, isolated execution, explicit approval for destructive or externally visible actions.
-7. **Reversible improvement:** updates are proposed, tested in isolation and rollback-ready; no silent production upgrades.
+## 🧠 System Overview
+ZForge is not a single AI model; it is a decentralized factory of specialized micro-agents. Operating entirely on client-side logic and serverless GitHub Actions, it acts as an intent-resolution engine that builds its own tools, heals its own errors, and executes complex tasks without incurring centralized infrastructure costs.
 
-## Architecture
-- [Architecture](docs/ARCHITECTURE.md)
-- [Phone-only Cloud Execution Fabric](docs/CLOUD_EXECUTION.md)
-- [Universal Open-Source Discovery Engine](docs/UNIVERSAL_DISCOVERY_ENGINE.md)
-- [Secure Execution Runtime Contract](docs/EXECUTION_RUNTIME_CONTRACT.md)
-- [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
-- [Local Model Registry](memory/MODEL_REGISTRY.md)
-- [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
-- [BLACK VANTA UI](docs/BLACK_VANTA_UI.md)
-- [Web Build Worker](docs/WEB_BUILD_WORKER.md)
-- [Generated Web App Browser Verification](docs/WEB_BROWSER_VERIFICATION.md)
-- [Browser QA](docs/BROWSER_QA.md)
-- [Live Agent Progress and Specialist Delegation](docs/LIVE_AGENT_PROGRESS.md)
-- [Chief Agent Specialist Delegation](docs/CHIEF_AGENT_ORCHESTRATION.md)
-- [Local Voice Runtime and Readiness](docs/LOCAL_VOICE.md)
-- [Tool evaluation protocol](docs/TOOL_EVALUATION.md)
-- [Agent operating system](docs/AGENT_OPERATING_SYSTEM.md)
-- [Conversational Core](docs/CONVERSATIONAL_CORE.md)
+## ⚙️ The Agent Swarm
+The ecosystem is orchestrated by the **Master Builder**, delegating tasks to a resilient pool of autonomous agents:
+*   **R&D & Scavenger:** Scrapes GitHub for open-source repositories and zero-cost APIs, indexing tools for the swarm.
+*   **The Blacksmith (Tool-Maker):** Writes logic and API wrappers to synthesize missing capabilities using available open-source fragments.
+*   **QA Sandboxer:** Tests new scripts inside isolated environments before merging to the main production branch.
+*   **Root-Cause Healer:** Analyzes execution logs and rewrites source code to immunize the system against infinite loops and recurrent errors.
+*   **Resource Manager:** Enforces rate limits, handles API fallbacks, and ensures 100% zero-cost operation.
 
-## Internal components
-- Discovery planner, strict license/zero-cost gates and toolchain composition: src/core/discovery-engine.js
-- Bounded discovery orchestration with query budget and cache: src/core/discovery-service.js
-- Read-only GitHub search adapter with official rate-limit stop: src/adapters/github-discovery.js
-- Repository metadata/license/manifest inspector: src/adapters/github-repository-inspector.js
-- Official release metadata adapter and review-only update monitor: src/adapters/github-release-monitor.js and src/core/release-monitor.js
-- Local-only Ollama model adapter: src/adapters/ollama-model-adapter.js
-- Local repository memory and canonical prompt providers: src/adapters/local-repository-memory-store.js
-- Approval-gated GitHub task branch/file and draft-PR writer: src/adapters/github-repository-writer.js
-- Chief Agent draft planner and validated active-specialist DAG proposals: src/core/chief-agent.js
-- Bounded parallel specialist orchestration with dependency-aware scheduling: src/core/multi-agent-coordinator.js
-- Central conversational interface, intent routing, capability registry and immutable approval-gated task planning: src/core/conversational-core.js
-- Durable conversational sessions: src/runtime/conversation-store.js
-- Authenticated task gateway, durable task ledger and cursor-based progress events: src/runtime/task-gateway.js
-- Local-only whisper.cpp transcription, Piper TTS and optional Egyptian Cairene KemeTone TTS with readiness checks and automatic language-aware fallback: src/runtime/local-voice-service.js
-- Self-hosted web build and Chromium/Firefox/WebKit generated-app verification workers: src/runtime/web-build-service.js and src/runtime/web-browser-verification-service.js
-- Self-hosted local workspace process runner: src/runtime/local-execution-runtime.js
-- Runtime API and deployment guide: docs/TASK_GATEWAY.md
-- Agent manifest and activation gates: src/core/agent-architect.js
-- Local-only Ollama model adapter: src/adapters/ollama-model-adapter.js
-- Chief Agent draft planner with validated active-specialist DAG proposals: src/core/chief-agent.js
-- Bounded multi-agent DAG coordinator with dependency-aware execution and progress callbacks: src/core/multi-agent-coordinator.js
-- Agent manifest and activation gates: src/core/agent-architect.js
-- Chief Agent: prompts/CHIEF_AGENT.md
-- Agent Architect: prompts/AGENT_ARCHITECT.md
-- Tool registry and engineering memory: memory/
-
-## Current implementation status
-The repository includes a BLACK VANTA PWA with an optional self-hosted Runtime connection and a phone-only cloud handoff. The cloud workflow accepts owner-authored task issues, provisions an ephemeral GitHub Actions runner, starts the existing ZForge Task Gateway and a small open model on that runner, executes tasks in a disposable repository snapshot, then posts a result comment and uploads artifacts. It does not require phone-side installation or a permanent runtime host. The issue-based handoff is asynchronous and requires the user to submit a public GitHub issue; it does not provide a live in-page stream. Chief Agent can propose a validated specialist DAG using only independently ACTIVE Agent Factory profiles; the gateway executes delegated tasks concurrently where dependencies allow and streams their lifecycle into the same live progress feed. Explicit specialist selection continues to run only that profile. The gateway persists task state, invokes Chief Agent planning with bounded discovery and engineering memory, then runs a local model tool loop (`run_command`, `read_file`, `write_file`, `list_files`, `finish_task`) in a workspace. Completion requires successful tool evidence. The host process runner is not a container/OS sandbox and runs with the service account's permissions; deploy it as an unprivileged user or choose the optional Podman/Docker backend. The container backend applies a read-only root filesystem, workspace-only writable mount, CPU/RAM/PID limits and reduced capabilities. Binary artifacts can be published with SHA-256 verification and downloaded through the authenticated gateway. Agent proposals, test evidence, independent reviews and explicit activation are now handled by the Agent Factory; BLACK VANTA can select active specialist agents. Bounded multi-agent DAG scheduling is implemented with dependency-aware parallel execution and per-agent profiles. A self-hosted Android debug worker now runs Gradle tests, assembles APK/AAB outputs, and stores verified artifacts; release signing remains pending. The runtime also persists bounded agent progress events and streams them into BLACK VANTA; optional local whisper.cpp transcription, Piper synthesis and Egyptian Cairene KemeTone synthesis are available when host binaries and models are configured; the readiness endpoint verifies local executables, Python modules and model files before enabling each engine. Arabic-only text prefers KemeTone when installed, while mixed-language text falls back to Piper. Still pending: persistent distributed scheduling/recovery, SBOM/provenance generation, Android release signing and iOS build workers, independent verification workers and production-grade deployment automation. GitHub Pages remains static hosting; GitHub Actions provide ephemeral event-triggered execution, not a persistent backend. See docs/CLOUD_EXECUTION.md for the cloud worker's exact limits and security boundary.
-
-## Tests
-Run `npm test` with Node.js 20 or newer. CI uses Node.js 24.
-
-## GitHub Pages
-Set **Settings → Pages → Build and deployment → Source** to **GitHub Actions**. The included workflow deploys the static shell.
+## 🚀 Deployment & Execution
+This system relies on a **Just-In-Time (JIT) Execution Fabric**. Agents remain dormant in the repository and are activated exclusively via `workflow_dispatch` events. Upon task completion, they return to standby or are automatically replenished by the Master Builder.
