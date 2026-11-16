@@ -6,7 +6,7 @@ import {
 } from '../src/core/discovery-engine.js';
 
 const repo = (overrides = {}) => ({
-  id: 1, fullName: 'example/tool', name: 'tool', description: 'Example tool',
+  id: 1, fullName: 'example/tool', name: 'tool', description: 'Example tool', fork:false, pushedAt:'2026-11-10T00:00:00Z', structuralEvidence:{readme:true,testsDirectory:true,apiDocumentation:false,configurationManifest:false},
   htmlUrl: 'https://github.com/example/tool', archived: false,
   license: { spdxId: 'MIT', name: 'MIT License' },
   zeroCostVerified: true, selfHosted: true, paidDependency: false,
