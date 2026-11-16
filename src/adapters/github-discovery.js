@@ -65,9 +65,24 @@ export class GitHubDiscoveryClient {
       pagesFetched += 1;
       totalCount = Number.isInteger(payload.total_count) ? payload.total_count : totalCount;
       for (const item of payload.items ?? []) {
-        const verifiedAheadFork = item.fork === true && item.forkComparisonVerified === true
-          && Number(item.forkAheadBy) > 0 && Number(item.uniqueCommits) > 0;
-        if (item.fork !== true || verifiedAheadFork) results.push(normalizeRepository(item));
+        let candidate = item;
+        if (item.fork === true) {
+          const parentName = item.parent?.full_name;
+          const upstreamBranch = item.parent?.default_branch;
+          const forkOwner = item.owner?.login;
+          const forkBranch = item.default_branch;
+          if (!parentName || !upstreamBranch || !forkOwner || !forkBranch) continue;
+          const [owner, repo] = parentName.split('/');
+          if (!owner || !repo) continue;
+          const comparison = await this.request('GET /repos/{owner}/{repo}/compare/{base}...{head}', {
+            owner, repo, base: upstreamBranch, head: `${forkOwner}:${forkBranch}`,
+          }, 'core');
+          const aheadBy = Number(comparison.data?.ahead_by);
+          const uniqueCommits = Number(comparison.data?.total_commits);
+          if (!(aheadBy > 0 && uniqueCommits > 0)) continue;
+          candidate = { ...item, forkComparisonVerified: true, forkAheadBy: aheadBy, uniqueCommits };
+        }
+        results.push(normalizeRepository(candidate));
       }
       if (!payload.items?.length || results.length >= Math.min(maxResults, totalCount)) break;
     }

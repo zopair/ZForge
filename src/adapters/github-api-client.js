@@ -10,7 +10,7 @@ export class GitHubApiClient {
   #rateLimits = null;
   #preflightPromise = null;
 
-  constructor({ token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? null, budget = new GlobalApiBudget(), baseUrl, octokit = null } = {}) {
+  constructor({ token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? null, budget = new GlobalApiBudget(), baseUrl, octokit = null, fetchImpl = globalThis.fetch } = {}) {
     this.budget = budget;
     if (octokit) {
       this.#octokit = octokit;
@@ -31,6 +31,7 @@ export class GitHubApiClient {
         },
       },
       retry: { enabled: false },
+      request: { fetch: fetchImpl },
     };
     if (baseUrl) options.baseUrl = baseUrl;
     this.#octokit = new ThrottledOctokit(options);
