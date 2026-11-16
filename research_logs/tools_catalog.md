@@ -32,3 +32,5 @@ Use one dated subsection per discovery. Keep claims evidence-backed and include 
 - Never store API keys, tokens, personal data, or secrets.
 - Do not install, execute, deploy, or invoke discovered tools in this research phase.
 - Distinguish verified facts from hypotheses and record the date of each observation.
+
+_No newly verified candidates in this bounded run._

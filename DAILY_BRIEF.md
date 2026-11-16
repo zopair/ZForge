@@ -1,26 +1,22 @@
-# 📊 Daily Research Brief
+# Daily Research Brief
 
-- **Generated:** 2026-11-16 02:53:14 UTC
-- **Reporting window:** 2026-11-15 02:53:14 UTC — 2026-11-16 02:53:14 UTC
+- Generated: 2026-11-16T04:09:49.414Z
+- Mode: LIVE BOUNDED GITHUB RESEARCH
+- API requests: 5/5
 
-## Executive Summary
+- Candidates processed: 1
+- Accepted for human review: 0
+- Rejected: 0
+- Quarantined: 1
+- Skipped at budget boundary: 29
 
-### New APIs, tools, and models discovered
-- Research files changed, but no structured Tool/API/Model entries were found.
+## Discoveries
 
-### Theoretical blueprints and architectures drafted
-- No blueprint files were changed during this 24-hour window.
+- No discoveries passed the evidence pipeline.
 
-### Identified integration opportunities
-- No structured integration-opportunity entries were found in the updated files.
+## Verification policy
 
-## Cryptographic IP Proof
+- Every entry requires an exact repository URL and source-path evidence.
+- Unverifiable, duplicate, inactive, structurally weak, or commercially dependent candidates are rejected or quarantined.
+- Integration feasibility is an assessment, not proof of runtime compatibility.
 
-- **Algorithm:** SHA-256
-- **Research-log files included:** 1
-- **Digest:** 
-- **Scope:** SHA-256 over the sorted per-file SHA-256 manifest of research-log files committed in the reporting window. An empty-set digest means no research-log files changed.
-
-## IP & Copyright
-
-> © 2026 ZForge. All Intellectual Property Rights Reserved. The architectural blueprints, tool syntheses, and research logs documented herein are the exclusive proprietary intellectual property of the repository owner. Unauthorized execution, commercial replication, or derivation of these blueprints is strictly prohibited.
