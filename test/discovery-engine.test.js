@@ -132,3 +132,23 @@ test('zero-cost gate quarantines malformed manifests and clears ordinary local d
   assert.equal(local.zeroCostVerified,true);
   assert.equal(local.executionPerformed,false);
 });
+
+
+test('quality gate rejects stale, structurally weak, and unverified fork candidates', () => {
+  const { evaluateDiscoveryQuality } = await import('../src/core/discovery-engine.js');
+  const now=Date.parse('2026-11-16T00:00:00Z');
+  const base={fork:false,pushedAt:'2026-11-01T00:00:00Z',structuralEvidence:{readme:true,testsDirectory:true,apiDocumentation:false,configurationManifest:false}};
+  assert.equal(evaluateDiscoveryQuality(base,{now}).status,'QUALITY_CLEAR');
+  assert.ok(evaluateDiscoveryQuality({...base,pushedAt:'2024-01-01T00:00:00Z'},{now}).failures.includes('INACTIVE_OVER_12_MONTHS'));
+  assert.ok(evaluateDiscoveryQuality({...base,structuralEvidence:{readme:true,testsDirectory:false,apiDocumentation:false,configurationManifest:false}},{now}).failures.includes('STRUCTURAL_EVIDENCE_MISSING'));
+  assert.ok(evaluateDiscoveryQuality({...base,fork:true},{now}).failures.includes('FORK_NOT_SIGNIFICANTLY_AHEAD'));
+  assert.equal(evaluateDiscoveryQuality({...base,fork:true,forkAheadBy:4,uniqueCommits:4,forkComparisonVerified:true},{now}).eligible,true);
+});
+
+test('zero-cost gate rejects commercial credentials in .env.example and quarantines unknown credentials', () => {
+  const paid=inspectZeroCostDependencies([{name:'.env.example',content:'OPENAI_API_KEY=replace-me\\nDATABASE_URL=sqlite:./local.db'}]);
+  assert.equal(paid.status,'REJECTED_PAID_REQUIREMENT');
+  assert.equal(paid.blocked[0].service,'openai-api');
+  const unknown=inspectZeroCostDependencies([{name:'.env.example',content:'CUSTOM_VENDOR_API_KEY=replace-me'}]);
+  assert.equal(unknown.status,'QUARANTINED_UNVERIFIED');
+});
