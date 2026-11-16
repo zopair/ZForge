@@ -240,3 +240,64 @@ export function evaluateReleaseUpdate({ current, latest, pinned = true, security
 
 export const DISCOVERY_DOMAINS = DOMAINS;
 export const VENDOR_SEEDS = VENDORS;
+
+const COMMERCIAL_SERVICE_MARKERS = Object.freeze([
+  { id:'openai-api', pattern:/^(openai|@openai\/)/i, reason:'OpenAI hosted API dependency may require paid credits or an account.' },
+  { id:'anthropic-api', pattern:/^(anthropic|@anthropic-ai\/)/i, reason:'Anthropic hosted API dependency may require paid credits or an account.' },
+  { id:'google-genai-api', pattern:/^(google-generativeai|@google\/generative-ai|@google-cloud\/aiplatform)$/i, reason:'Hosted Google AI service dependency requires account/quota verification.' },
+  { id:'replicate-api', pattern:/^(replicate|@replicate\/)/i, reason:'Hosted inference API may require paid credits.' },
+  { id:'fal-api', pattern:/^(fal-client|@fal-ai\/)/i, reason:'Hosted inference API may require paid credits.' },
+  { id:'elevenlabs-api', pattern:/^(elevenlabs|@elevenlabs\/)/i, reason:'Hosted voice API may require paid credits.' },
+  { id:'assemblyai-api', pattern:/^(assemblyai|@assemblyai\/)/i, reason:'Hosted speech API may require paid credits.' },
+  { id:'deepgram-api', pattern:/^(@deepgram-sdk\/|deepgram)/i, reason:'Hosted speech API may require paid credits.' },
+  { id:'pinecone-service', pattern:/^(@pinecone-database\/|pinecone-client)/i, reason:'Managed vector database service may require a paid plan.' },
+  { id:'algolia-service', pattern:/^(algoliasearch|@algolia\/)/i, reason:'Hosted search service may require a paid plan.' },
+  { id:'mapbox-service', pattern:/^(mapbox-gl|@mapbox\/)/i, reason:'Hosted map tiles/geocoding may require tokens and paid quota.' },
+  { id:'sentry-service', pattern:/^(sentry|@sentry\/)/i, reason:'Hosted observability service requires plan/quota verification.' },
+]);
+const PAID_TEXT_MARKERS = /\b(?:requires?|must use|mandatory|only supported (?:through|by))\b.{0,90}\b(?:paid|subscription|credits?|billing|commercial api|saas|trial)\b|\b(?:paid|subscription|credits?|billing|commercial api|saas|trial)\b.{0,90}\b(?:required|mandatory|must)\b/i;
+
+function dependencyNamesFromManifest(manifest) {
+  const name = manifest.name ?? manifest.path ?? manifest.filename ?? '';
+  const content = String(manifest.content ?? '');
+  if (/package\.json$/i.test(name)) {
+    try {
+      const parsed = JSON.parse(content);
+      return Object.keys({ ...(parsed.dependencies ?? {}), ...(parsed.optionalDependencies ?? {}), ...(parsed.peerDependencies ?? {}) });
+    } catch { return null; }
+  }
+  if (/requirements\.txt$/i.test(name)) {
+    return content.split(/\r?\n/).map(line => line.trim()).filter(line => line && !line.startsWith('#')).map(line => line.split(/[<=>!~;\[]/, 1)[0].trim());
+  }
+  if (/pyproject\.toml$/i.test(name)) {
+    return [...content.matchAll(/^\s*"([^"]+)\s*(?:[<=>!~].*)?"\s*,?\s*$/gm)].map(match => match[1].split(/[<=>!~]/,1)[0].trim());
+  }
+  return [];
+}
+
+/** Static-only, fail-closed commercial-service screen. No manifest or third-party code is executed. */
+export function inspectZeroCostDependencies(manifests = []) {
+  if (!Array.isArray(manifests)) throw new TypeError('manifests must be an array');
+  const dependencies = []; const blocked = []; const unresolved = [];
+  for (const manifest of manifests) {
+    const names = dependencyNamesFromManifest(manifest);
+    if (names === null) { unresolved.push({ file:manifest.name ?? manifest.path ?? 'unknown', reason:'Manifest is malformed; dependency requirements cannot be verified.' }); continue; }
+    for (const dependency of names) {
+      const marker = COMMERCIAL_SERVICE_MARKERS.find(item => item.pattern.test(dependency));
+      if (marker) blocked.push({ dependency, service:marker.id, reason:marker.reason, file:manifest.name ?? manifest.path ?? 'unknown' });
+      dependencies.push(dependency);
+    }
+    const content = String(manifest.content ?? '');
+    if (PAID_TEXT_MARKERS.test(content)) blocked.push({ dependency:null, service:'explicit-paid-requirement', reason:'Manifest contains an explicit mandatory paid-service, subscription, billing, trial, or credit requirement.', file:manifest.name ?? manifest.path ?? 'unknown' });
+  }
+  return {
+    status:blocked.length ? 'REJECTED_PAID_REQUIREMENT' : unresolved.length ? 'QUARANTINED_UNVERIFIED' : 'STATIC_REVIEW_CLEAR',
+    zeroCostVerified:blocked.length === 0 && unresolved.length === 0,
+    paidDependency:blocked.length > 0,
+    dependencies:[...new Set(dependencies)].sort(),
+    blocked:[...blocked],
+    unresolved:[...unresolved],
+    executionPerformed:false,
+    limitations:['Static manifest inspection cannot prove that all runtime paths are free. Review README, configuration, deployment requirements, and official pricing before acceptance.','An SDK may expose a free/local mode; any detected commercial SDK is quarantined until an optional, genuinely zero-cost path is evidenced.'],
+  };
+}
