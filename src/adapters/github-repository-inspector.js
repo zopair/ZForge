@@ -82,7 +82,8 @@ export class GitHubRepositoryInspector {
       const fileResponse = await this.request('GET /repos/{owner}/{repo}/contents/{path}', { owner, repo, path: name });
       const file = fileResponse?.data;
       if (!file || file.encoding !== 'base64' || !file.content) {
-        console.log(`[INSPECT] ${fullName} — ${name}: file unavailable or unsupported encoding`);
+        inspectionComplete = false;
+        console.log(`[INSPECT] ${fullName} — ${name}: file unavailable or unsupported encoding; inspection evidence incomplete`);
         continue;
       }
       inspected.push({ name, path: file.path ?? name, size: file.size ?? item.size ?? null, content: decodeContent(file.content) });
