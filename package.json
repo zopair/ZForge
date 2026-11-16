@@ -7,9 +7,16 @@
   "scripts": {
     "test": "node --test",
     "start": "node src/runtime/server.js",
-    "runtime:check": "node --check src/runtime/server.js"
+    "runtime:check": "node --check src/runtime/server.js",
+    "discovery:check": "node --check src/adapters/github-api-client.js && node --check scripts/discovery-action-context.mjs"
   },
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "@actions/core": "3.0.1",
+    "@actions/github": "9.1.1",
+    "@octokit/plugin-throttling": "11.0.5",
+    "@octokit/rest": "22.0.1"
   }
 }
