@@ -31,7 +31,7 @@ test('artifact writer physically writes catalog and daily brief and hashes exact
     assert.match(brief, /LIVE BOUNDED GITHUB RESEARCH/);
     assert.match(brief, /API requests: 5\/5/);
     assert.equal(result.sha256, createHash('sha256').update(brief, 'utf8').digest('hex'));
-    assert.ok(logs.some(line => line.includes('[SHA256] DAILY_BRIEF.md')));
+    assert.ok(logs.some(line => line.includes('[SHA256]') && line.includes(briefPath)));
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
