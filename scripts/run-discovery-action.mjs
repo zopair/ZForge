@@ -71,7 +71,7 @@ async function run() {
     },
   }, cursorPath);
   core.setOutput('discovery_status', result.status);
-  core.setOutput('api_requests', String(result.apiRequests));
+  core.setOutput('api_requests', String(snapshot.used));
   core.setOutput('api_request_budget', String(result.apiRequestBudget));
   core.setOutput('discovery_complete', String(result.complete));
   core.setOutput('audit_processed', String(audit.processed));
