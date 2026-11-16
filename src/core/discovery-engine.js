@@ -37,6 +37,7 @@ const OPEN_SOURCE_LICENSES = new Set([
   'OFL-1.1','OSL-3.0','PostgreSQL','Python-2.0','Unlicense','UPL-1.0','Zlib',
 ]);
 const NON_OPEN_SOURCE_MARKERS = ['BUSL','SSPL','ELASTIC','COMMONS-CLAUSE','SOURCE-AVAILABLE','PROPRIETARY'];
+const audit = message => console.log(`[GATE] ${message}`);
 
 export function buildDiscoveryPlan({ capabilities = [], keywords = [], maxQueries = 48 } = {}) {
   if (!Array.isArray(capabilities) || !Array.isArray(keywords)) throw new TypeError('capabilities and keywords must be arrays');
@@ -317,8 +318,9 @@ export function evaluateDiscoveryQuality(repository, { now = Date.now(), maxInac
     if (structuralSignals.every(value => value === false)) failures.push('STRUCTURAL_EVIDENCE_MISSING');
     else unresolved.push('STRUCTURAL_EVIDENCE_UNVERIFIED');
   }
-  if (failures.length) return { status:'REJECTED', eligible:false, failures, unresolved };
-  if (unresolved.length) return { status:'QUARANTINED', eligible:false, failures, unresolved };
+  if (failures.length) { audit(`REJECTED ${repository.fullName ?? repository.full_name ?? 'unknown'}: ${failures.join(', ')}`); return { status:'REJECTED', eligible:false, failures, unresolved }; }
+  if (unresolved.length) { audit(`QUARANTINED ${repository.fullName ?? repository.full_name ?? 'unknown'}: ${unresolved.join(', ')}`); return { status:'QUARANTINED', eligible:false, failures, unresolved }; }
+  audit(`QUALITY_CLEAR ${repository.fullName ?? repository.full_name ?? 'unknown'}`);
   return { status:'QUALITY_CLEAR', eligible:true, failures:[], unresolved:[] };
 }
 
@@ -361,7 +363,7 @@ export function inspectZeroCostDependencies(manifests = []) {
       file: name,
     });
   }
-  return {
+  const result = {
     status: blocked.length ? 'REJECTED_PAID_REQUIREMENT' : unresolved.length ? 'QUARANTINED_UNVERIFIED' : 'STATIC_REVIEW_CLEAR',
     zeroCostVerified: blocked.length === 0 && unresolved.length === 0,
     paidDependency: blocked.length > 0,
@@ -374,4 +376,8 @@ export function inspectZeroCostDependencies(manifests = []) {
       'A declared commercial API credential is rejected even when the corresponding SDK is optional; a separately evidenced local-only mode requires human review.',
     ],
   };
+  if (result.status === 'REJECTED_PAID_REQUIREMENT') audit(`REJECTED: Commercial SaaS keys or paid dependencies detected: ${blocked.map(item => `${item.file}:${item.service}`).join(', ')}`);
+  else if (result.status === 'QUARANTINED_UNVERIFIED') audit(`QUARANTINED: Cost evidence incomplete: ${unresolved.map(item => `${item.file}:${item.reason}`).join('; ')}`);
+  else audit(`STATIC_REVIEW_CLEAR: ${result.dependencies.length} dependencies checked; no commercial markers found`);
+  return result;
 }
