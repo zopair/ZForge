@@ -96,14 +96,14 @@ export async function auditDiscoveredCandidates({ candidates = [], inspector, bu
     }
     if (budgetExhausted) break;
   }
+  let skipped = 0;
   if (budgetExhausted) {
     for (const candidate of candidates.slice(processed)) {
       const fullName = candidate.fullName ?? candidate.full_name ?? 'unknown';
       const reason = 'Skipped: API budget exhausted; not inspected';
-      quarantined.push({ fullName, reason, incomplete: true });
+      skipped += 1;
       log(`[QUALITY] ${fullName} — ${reason}`);
     }
   }
-  const skipped = quarantined.filter(item => item.incomplete && item.reason.startsWith('Skipped:')).length;
   return { accepted, rejected, quarantined, processed, skipped, budgetExhausted };
 }
