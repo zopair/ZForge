@@ -93,9 +93,6 @@ export async function auditDiscoveredCandidates({ candidates = [], inspector, bu
     if (budgetExhausted) break;
   }
   const skipped = Math.max(0, candidates.length - processed);
-  for (const candidate of candidates.slice(processed)) {
-    const fullName = candidate.fullName ?? candidate.full_name ?? 'unknown';
-    log(`[QUALITY] ${fullName} — Skipped: API budget exhausted; not inspected`);
-  }
+  // Candidates after the budget boundary are logged by the loop itself.
   return { accepted, rejected, quarantined, processed, skipped, budgetExhausted };
 }
