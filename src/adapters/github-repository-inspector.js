@@ -36,7 +36,9 @@ export class GitHubRepositoryInspector {
     if(!metadata)throw new GitHubInspectionError('Repository not found.',{status:404});
     const root=await this.request(`/repos/${fullName}/contents`);
     const available=new Map((Array.isArray(root)?root:[]).filter(item=>item.type==='file').map(item=>[item.name,item]));
-    const selected=ROOT_FILES.filter(name=>available.has(name)).slice(0,this.maxFiles);
+    const priority=['README.md','.env.example','package.json','pyproject.toml','requirements.txt','Cargo.toml','go.mod','build.gradle','build.gradle.kts','openapi.yaml','openapi.json','swagger.yaml','LICENSE','LICENSE.md','LICENSE.txt','COPYING','SECURITY.md','Dockerfile'];
+    const ordered=[...new Set([...priority,...ROOT_FILES])];
+    const selected=ordered.filter(name=>available.has(name)).slice(0,this.maxFiles);
     const inspected=[];
     for(const name of selected){
       const item=available.get(name);
