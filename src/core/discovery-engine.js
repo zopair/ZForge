@@ -339,7 +339,7 @@ export function inspectZeroCostDependencies(manifests = []) {
           file: name,
         });
       }
-      if (/\b(?:API_KEY|ACCESS_TOKEN|SECRET_KEY)\s*=\s*[^\s#]+/i.test(content)
+      if (/(?:^|\n)\s*[A-Z0-9_]*(?:API_KEY|ACCESS_TOKEN|SECRET_KEY)\s*=\s*[^\s#]+/i.test(content)
         && !PAID_ENV_MARKERS.some(marker => marker.pattern.test(content))) {
         unresolved.push({ file: name, reason: 'Environment template contains a credential variable; service and pricing requirements need manual verification.' });
       }

@@ -108,7 +108,8 @@ export class UniversalDiscoveryService {
         if (!budgetAllows()) break;
         try {
           const response = await this.client.searchRepositories(query, { maxResults: this.maxResultsPerQuery, page });
-          syncApiRequests(); searched.push(query); this.cache.set(key, { savedAt: Date.now(), response });
+          if (this.budget) syncApiRequests(); else apiRequests += requestCost;
+          searched.push(query); this.cache.set(key, { savedAt: Date.now(), response });
           addResults(response.results);
           queryReports.push({ query, page, count: response.count ?? response.results?.length ?? 0, totalCount: response.totalCount ?? null, complete: response.complete !== false, nextPage: response.nextPage ?? null });
           if (response.complete === false) { nextOffset = queryOffset + index; nextQueryPage = response.nextPage ?? page + 1; break; }

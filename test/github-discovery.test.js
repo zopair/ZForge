@@ -67,11 +67,26 @@ test('GitHub discovery exposes continuation pages when bounded search is truncat
   assert.deepEqual(pages, [1, 2]);
 });
 
-test('forks are excluded unless ahead status and unique commits are verified', async () => {
-  const apiClient = fakeApi(async () => ({ data: { total_count: 2, items: [
-    { id: 1, full_name: 'fork/unverified', fork: true },
-    { id: 2, full_name: 'fork/verified', fork: true, forkComparisonVerified: true, forkAheadBy: 3, uniqueCommits: 3 },
-  ] }, headers: {} }));
+test('forks are excluded unless GitHub compare confirms unique commits ahead of upstream', async () => {
+  const apiClient = fakeApi(async route => {
+    if (route === 'GET /search/repositories') return { data: { total_count: 2, items: [
+      { id: 1, full_name: 'fork/unverified', fork: true },
+      {
+        id: 2, full_name: 'fork/verified', fork: true, default_branch: 'main',
+        owner: { login: 'fork' },
+        parent: { full_name: 'upstream/tool', default_branch: 'main' },
+      },
+    ] }, headers: {} };
+    if (route === 'GET /repos/{owner}/{repo}/compare/{base}...{head}') {
+      assert.equal(route, 'GET /repos/{owner}/{repo}/compare/{base}...{head}');
+      return { data: { ahead_by: 3, total_commits: 3 }, headers: {} };
+    }
+    throw new Error(`Unexpected route: ${route}`);
+  });
   const result = await new GitHubDiscoveryClient({ apiClient }).searchRepositories('ocr');
   assert.deepEqual(result.results.map(item => item.fullName), ['fork/verified']);
+  const compare = apiClient.requests.find(item => item.route.includes('/compare/'));
+  assert.equal(compare.parameters.owner, 'upstream');
+  assert.equal(compare.parameters.repo, 'tool');
+  assert.equal(compare.parameters.head, 'fork:main');
 });

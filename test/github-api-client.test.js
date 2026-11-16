@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import { GitHubApiClient } from '../src/adapters/github-api-client.js';
 import { GlobalApiBudget } from '../src/core/global-api-budget.js';
 
-function fakeOctokit({ remaining = 4000, limit = 5000 } = {}) {
+function fakeOctokit({ remaining = 4000, limit = 5000, searchRemaining = 25, searchLimit = 30 } = {}) {
   const calls = [];
   return {
     calls,
     rest: { rateLimit: { get: async () => {
       calls.push('/rate_limit');
-      return { data: { resources: { core: { remaining, limit }, search: { remaining: 25, limit: 30 } } } };
+      return { data: { resources: { core: { remaining, limit }, search: { remaining: searchRemaining, limit: searchLimit } } } };
     } } },
     request: async (route, parameters) => {
       calls.push({ route, parameters });
@@ -31,7 +31,7 @@ test('one Octokit client and budget share the exact request cap across adapter c
 
 test('critical quota blocks the first data request after one counted preflight', async () => {
   const budget = new GlobalApiBudget({ maxRequests: 5 });
-  const octokit = fakeOctokit({ remaining: 4, limit: 100 });
+  const octokit = fakeOctokit({ remaining: 4, limit: 100, searchRemaining: 4, searchLimit: 100 });
   const client = new GitHubApiClient({ budget, octokit });
   await assert.rejects(() => client.request('GET /search/repositories', { q: 'ocr' }, { resource: 'search' }), /critical|quota/i);
   assert.equal(client.snapshot().used, 1);
