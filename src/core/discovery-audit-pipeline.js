@@ -24,7 +24,6 @@ export async function auditDiscoveredCandidates({ candidates = [], inspector, bu
       budgetExhausted = true;
       const reason = 'Skipped: API budget exhausted before inspection';
       log(`[QUALITY] ${fullName} — ${reason}`);
-      budgetExhausted = true;
       break;
     }
     try {
@@ -92,7 +91,6 @@ export async function auditDiscoveredCandidates({ candidates = [], inspector, bu
     }
     if (budgetExhausted) break;
   }
-  const skipped = Math.max(0, candidates.length - processed);
   if (budgetExhausted) {
     for (const candidate of candidates.slice(processed)) {
       const fullName = candidate.fullName ?? candidate.full_name ?? 'unknown';
