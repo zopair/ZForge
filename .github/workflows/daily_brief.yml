@@ -51,7 +51,7 @@ jobs:
                 if [[ -f "$file" ]]; then
                   sha256sum "$file"
                 else
-                  printf 'DELETED %s\\n' "$file"
+                  printf 'DELETED %s\n' "$file"
                 fi
               done | sha256sum | awk '{print $1}'
             )"
@@ -71,11 +71,11 @@ jobs:
             if (( research_count > 0 )); then
               matches="$(
                 for file in "${research_files[@]}"; do
-                  [[ -f "$file" ]] && grep -hE '^[[:space:]]*[-*] (Tool|API|Model):' "$file" || true
-                done | grep -v '<!--' | sort -u || true
+                  [[ -f "$file" ]] && sed '/<!--/,/-->/d' "$file" | grep -hE '^[[:space:]]*[-*] (Tool|API|Model):' || true
+                done | sort -u || true
               )"
               if [[ -n "$matches" ]]; then
-                printf '%s\\n' "$matches"
+                printf '%s\n' "$matches"
               else
                 echo "- Research files changed, but no structured Tool/API/Model entries were found."
               fi
@@ -98,11 +98,11 @@ jobs:
             if (( ${#research_files[@]} + ${#blueprint_files[@]} > 0 )); then
               matches="$(
                 for file in "${research_files[@]}" "${blueprint_files[@]}"; do
-                  [[ -f "$file" ]] && grep -hEi '^[[:space:]]*[-*] (Integration opportunity|Integration|Composition):' "$file" || true
-                done | grep -v '<!--' | sort -u || true
+                  [[ -f "$file" ]] && sed '/<!--/,/-->/d' "$file" | grep -hEi '^[[:space:]]*[-*] (Integration opportunity|Integration|Composition):' || true
+                done | sort -u || true
               )"
               if [[ -n "$matches" ]]; then
-                printf '%s\\n' "$matches"
+                printf '%s\n' "$matches"
               else
                 echo "- No structured integration-opportunity entries were found in the updated files."
               fi
