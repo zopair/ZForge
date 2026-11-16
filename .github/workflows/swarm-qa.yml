@@ -1,0 +1,38 @@
+name: ZForge Swarm QA Sandbox
+
+on:
+  pull_request:
+    paths:
+      - 'agents/**'
+      - 'scripts/agents/**'
+      - 'tools_catalog*'
+      - '.github/workflows/swarm-*.yml'
+      - 'test/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zforge-swarm-qa-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Syntax-check agent entry points
+        run: |
+          node --check scripts/agents/scavenger.mjs
+          node --check scripts/agents/blacksmith.mjs
+          node --check scripts/agents/qa-sandbox.mjs
+          node --check scripts/agents/healer-memory.mjs
+          node --check scripts/agents/resource-manager.mjs
+          node --check scripts/agents/replenish.mjs
+      - name: Run full repository test suite
+        run: npm test
