@@ -1,3 +1,4 @@
+import { inspectZeroCostDependencies } from '../core/discovery-engine.js';
 const API='https://api.github.com';
 const ROOT_FILES=['LICENSE','LICENSE.md','LICENSE.txt','COPYING','NOTICE','package.json','pyproject.toml','Cargo.toml','go.mod','requirements.txt','build.gradle','build.gradle.kts','README.md','SECURITY.md','Dockerfile'];
 const LICENSE_NAMES=new Set(['LICENSE','LICENSE.md','LICENSE.txt','COPYING']);
@@ -45,6 +46,7 @@ export class GitHubRepositoryInspector {
     const licenseFiles=inspected.filter(file=>LICENSE_NAMES.has(file.name));
     const manifests=inspected.filter(file=>MANIFEST_NAMES.has(file.name)).map(file=>({name:file.name,content:file.content}));
     const securityFiles=inspected.filter(file=>SECURITY_NAMES.has(file.name));
+    const zeroCostAssessment=inspectZeroCostDependencies(manifests);
     const mentions=new Set();
     for(const file of manifests){
       const content=file.content??'';
@@ -57,6 +59,7 @@ export class GitHubRepositoryInspector {
       dependencyManifests:manifests,
       securityFiles:securityFiles.map(file=>({name:file.name,content:file.content})),
       externalServiceMentions:[...mentions],
+      zeroCostAssessment,
       inspectionStatus:'NEEDS_DEPENDENCY_AND_LICENSE_REVIEW',
       notes:['Repository metadata license is not a substitute for reading the full license text.','External-service mentions are indicators only; inspect whether each dependency is required, optional, self-hostable or paid.','Model weights, datasets, fonts and bundled assets may have separate licenses.','No repository code or install script was executed.'],
       inspectedAt:new Date().toISOString(),

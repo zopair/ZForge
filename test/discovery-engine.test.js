@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildDiscoveryPlan, classifyLicense, createCandidateRecord, evaluateRepositoryCandidate,
-  rankCandidates, composeToolchain, evaluateReleaseUpdate,
+  rankCandidates, composeToolchain, evaluateReleaseUpdate, inspectZeroCostDependencies,
 } from '../src/core/discovery-engine.js';
 
 const repo = (overrides = {}) => ({
@@ -114,4 +114,21 @@ test('release monitor recommends review and never silently approves automatic up
   const major = evaluateReleaseUpdate({ current: '1.2.0', latest: '2.0.0', pinned: true });
   assert.equal(major.risk, 'MAJOR');
   assert.equal(evaluateReleaseUpdate({ current: '1.2.0', latest: '1.2.0', pinned: true }).action, 'NO_CHANGE');
+});
+
+test('zero-cost gate rejects required commercial APIs discovered in package manifests', () => {
+  const result=inspectZeroCostDependencies([{name:'package.json',content:JSON.stringify({dependencies:{'@anthropic-ai/sdk':'^1.0.0','express':'^4.0.0'}})}]);
+  assert.equal(result.status,'REJECTED_PAID_REQUIREMENT');
+  assert.equal(result.paidDependency,true);
+  assert.ok(result.blocked.some(item=>item.service==='anthropic-api'));
+  assert.equal(result.executionPerformed,false);
+});
+
+test('zero-cost gate quarantines malformed manifests and clears ordinary local dependencies', () => {
+  const malformed=inspectZeroCostDependencies([{name:'package.json',content:'{bad json'}]);
+  assert.equal(malformed.status,'QUARANTINED_UNVERIFIED');
+  const local=inspectZeroCostDependencies([{name:'requirements.txt',content:'fastapi==0.115.0\nnumpy>=2.0'}]);
+  assert.equal(local.status,'STATIC_REVIEW_CLEAR');
+  assert.equal(local.zeroCostVerified,true);
+  assert.equal(local.executionPerformed,false);
 });
