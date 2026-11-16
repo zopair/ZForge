@@ -121,6 +121,8 @@ export function createCandidateRecord({ repository, capabilities = [], verificat
     name: repository.name,
     htmlUrl: repository.htmlUrl ?? repository.html_url,
     archived: repository.archived,
+    fork: repository.fork === true, forkAheadBy: verification.forkAheadBy ?? 0, uniqueCommits: verification.uniqueCommits ?? 0, forkComparisonVerified: verification.forkComparisonVerified === true,
+    pushedAt: repository.pushedAt ?? repository.pushed_at ?? null, structuralEvidence: verification.structuralEvidence ?? repository.structuralEvidence ?? {},
     license: repository.license ?? null,
     version: verification.version ?? null,
     capabilities,
@@ -145,8 +147,9 @@ export function createCandidateRecord({ repository, capabilities = [], verificat
 export function evaluateRepositoryCandidate(candidate) {
   if (!candidate || typeof candidate !== 'object') throw new TypeError('candidate must be an object');
   const license = classifyLicense(candidate.license);
-  const failures = [];
-  const unresolved = [];
+  const quality = evaluateDiscoveryQuality(candidate);
+  const failures = [...quality.failures];
+  const unresolved = [...quality.unresolved];
   if (candidate.archived === true) failures.push('ARCHIVED');
   if (candidate.archived !== false) unresolved.push('ARCHIVE_STATUS_UNVERIFIED');
   if (license.status === 'NOT_OPEN_SOURCE') failures.push('NON_OPEN_SOURCE_LICENSE');
@@ -167,9 +170,9 @@ export function evaluateRepositoryCandidate(candidate) {
   if (candidate.securityReviewed !== true) unresolved.push('SECURITY_REVIEW_INCOMPLETE');
   if (candidate.maintenanceReviewed !== true) unresolved.push('MAINTENANCE_REVIEW_INCOMPLETE');
   if (candidate.versionPinned !== true || typeof candidate.version !== 'string' || !candidate.version.trim()) unresolved.push('VERSION_NOT_PINNED');
-  if (failures.length) return { status:'REJECTED', eligible:false, license, failures, unresolved };
-  if (unresolved.length) return { status:'QUARANTINED', eligible:false, license, failures, unresolved };
-  return { status:'CANDIDATE', eligible:true, license, failures, unresolved:[] };
+  if (failures.length) return { status:'REJECTED', eligible:false, license, quality, failures, unresolved };
+  if (unresolved.length) return { status:'QUARANTINED', eligible:false, license, quality, failures, unresolved };
+  return { status:'CANDIDATE', eligible:true, license, quality, failures, unresolved:[] };
 }
 
 export function rankCandidates(candidates, capability) {
