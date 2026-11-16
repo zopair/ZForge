@@ -23,9 +23,9 @@ export async function auditDiscoveredCandidates({ candidates = [], inspector, bu
     if (remaining() <= 0) {
       budgetExhausted = true;
       const reason = 'Skipped: API budget exhausted before inspection';
-      quarantined.push({ fullName, reason, incomplete: true });
       log(`[QUALITY] ${fullName} — ${reason}`);
-      continue;
+      budgetExhausted = true;
+      break;
     }
     try {
       const inspection = await inspector.inspectRepository(fullName);
@@ -93,6 +93,14 @@ export async function auditDiscoveredCandidates({ candidates = [], inspector, bu
     if (budgetExhausted) break;
   }
   const skipped = Math.max(0, candidates.length - processed);
-  // Candidates after the budget boundary are logged by the loop itself.
+  if (budgetExhausted) {
+    for (const candidate of candidates.slice(processed)) {
+      const fullName = candidate.fullName ?? candidate.full_name ?? 'unknown';
+      const reason = 'Skipped: API budget exhausted; not inspected';
+      quarantined.push({ fullName, reason, incomplete: true });
+      log(`[QUALITY] ${fullName} — ${reason}`);
+    }
+  }
+  const skipped = quarantined.filter(item => item.incomplete && item.reason.startsWith('Skipped:')).length;
   return { accepted, rejected, quarantined, processed, skipped, budgetExhausted };
 }
