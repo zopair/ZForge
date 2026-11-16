@@ -9,7 +9,7 @@ export class GitHubDiscoveryError extends Error {
 }
 function normalizeRepository(item) {
   return { id:item.id, fullName:item.full_name, name:item.name, description:item.description, htmlUrl:item.html_url,
-    defaultBranch:item.default_branch, archived:item.archived, fork:item.fork===true, parentFullName:item.parent?.full_name??null, pushedAt:item.pushed_at, updatedAt:item.updated_at,
+    defaultBranch:item.default_branch, archived:item.archived, fork:item.fork===true, parentFullName:item.parent?.full_name??null, forkAheadBy:item.forkAheadBy??null, uniqueCommits:item.uniqueCommits??null, forkComparisonVerified:item.forkComparisonVerified===true, pushedAt:item.pushed_at, updatedAt:item.updated_at,
     stars:item.stargazers_count, forks:item.forks_count, openIssues:item.open_issues_count, topics:item.topics ?? [],
     license:item.license ? {spdxId:item.license.spdx_id,name:item.license.name,url:item.license.url} : null,
     language:item.language,sizeKb:item.size,discoveryOnly:true,
@@ -62,12 +62,12 @@ export class GitHubDiscoveryClient {
     if(!Number.isInteger(page)||page<1)throw new RangeError('page must be positive');
     const results=[];let totalCount=0;let pagesFetched=0;
     for(let pageNumber=page;pageNumber<page+this.maxPages&&results.length<maxResults;pageNumber++){
-      const url=new URL('/search/repositories',API);url.searchParams.set('q',`${query} fork:false`);
+      const url=new URL('/search/repositories',API);url.searchParams.set('q',query);
       url.searchParams.set('per_page',String(Math.min(this.perPage,maxResults-results.length)));
       url.searchParams.set('page',String(pageNumber));url.searchParams.set('sort',sort);url.searchParams.set('order',order);
       const response=await this.request(url,'search');const payload=await response.json();pagesFetched++;
       totalCount=Number.isInteger(payload.total_count)?payload.total_count:totalCount;
-      for(const item of payload.items??[]) if(item.fork!==true) results.push(normalizeRepository(item));
+      for(const item of payload.items??[]) { const verifiedAheadFork=item.fork===true&&item.forkComparisonVerified===true&&Number(item.forkAheadBy)>0&&Number(item.uniqueCommits)>0; if(item.fork!==true||verifiedAheadFork) results.push(normalizeRepository(item)); }
       if(!payload.items?.length||results.length>=Math.min(maxResults,totalCount))break;
     }
     const complete=results.length>=Math.min(maxResults,totalCount)||totalCount===0;
