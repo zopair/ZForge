@@ -59,26 +59,34 @@ jobs:
             echo
             echo "### New APIs, tools, and models discovered"
             if [[ -n "$research_files" ]]; then
-              matches="$(grep -hE '^[[:space:]]*[-*] (Tool|API|Model):' $research_files 2>/dev/null | sort -u || true)"
+              matches="$(
+                for file in "${research_files[@]}"; do
+                  [[ -f "$file" ]] && grep -hE '^[[:space:]]*[-*] (Tool|API|Model):' "$file" || true
+                done | grep -v '<!--' | sort -u || true
+              )"
               if [[ -n "$matches" ]]; then printf '%s\n' "$matches"; else echo "- Research files changed, but no structured Tool/API/Model entries were found."; fi
             else
               echo "- No research-log updates were committed during this 24-hour window."
             fi
             echo
             echo "### Theoretical blueprints and architectures drafted"
-            if [[ -n "$blueprint_files" ]]; then
-              while IFS= read -r file; do
+            if (( ${#blueprint_files[@]} > 0 )); then
+              for file in "${blueprint_files[@]}"; do
                 [[ -f "$file" ]] || continue
                 echo "- `$file`"
                 grep -E '^#{1,3} ' "$file" | head -n 5 | sed 's/^/  /' || true
-              done <<< "$blueprint_files"
+              done
             else
               echo "- No blueprint files were changed during this 24-hour window."
             fi
             echo
             echo "### Identified integration opportunities"
-            if [[ -n "$research_files$blueprint_files" ]]; then
-              matches="$(grep -hEi '^[[:space:]]*[-*] (Integration opportunity|Integration|Composition):' $research_files $blueprint_files 2>/dev/null | sort -u || true)"
+            if (( ${#research_files[@]} + ${#blueprint_files[@]} > 0 )); then
+              matches="$(
+                for file in "${research_files[@]}" "${blueprint_files[@]}"; do
+                  [[ -f "$file" ]] && grep -hEi '^[[:space:]]*[-*] (Integration opportunity|Integration|Composition):' "$file" || true
+                done | grep -v '<!--' | sort -u || true
+              )"
               if [[ -n "$matches" ]]; then printf '%s\n' "$matches"; else echo "- No structured integration-opportunity entries were found in the updated files."; fi
             else
               echo "- No new integration opportunities were recorded in this reporting window."
