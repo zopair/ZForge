@@ -335,14 +335,10 @@ export function evaluateDiscoveryQuality(repository, { now = Date.now(), maxInac
 /** Merge dependency manifests and .env.example into one fail-closed static cost assessment. */
 export function inspectZeroCostDependencies(manifests = []) {
   if (!Array.isArray(manifests)) throw new TypeError('manifests must be an array');
-  if (manifests.length === 0) {
-    const result = { status:'QUARANTINED_UNVERIFIED', zeroCostVerified:false, paidDependency:false, dependencies:[], blocked:[], unresolved:[{ file:'(none)', reason:'No dependency manifest or environment template was inspected.' }], executionPerformed:false, limitations:['No dependency manifest was available; zero-cost requirements remain unverified.'] };
-    audit('QUARANTINED: No dependency manifest or environment template was inspected');
-    return result;
-  }
   const dependencies = [];
   const blocked = [];
   const unresolved = [];
+  let dependencyManifestCount = 0;
   for (const manifest of manifests) {
     const name = manifest.name ?? manifest.path ?? manifest.filename ?? 'unknown';
     const content = String(manifest.content ?? '');
@@ -360,6 +356,7 @@ export function inspectZeroCostDependencies(manifests = []) {
       }
       continue;
     }
+    dependencyManifestCount += 1;
     const names = dependencyNamesFromManifest(manifest);
     if (names === null) {
       unresolved.push({ file: name, reason: 'Manifest is malformed; dependency requirements cannot be verified.' });
@@ -376,6 +373,7 @@ export function inspectZeroCostDependencies(manifests = []) {
       file: name,
     });
   }
+  if (dependencyManifestCount === 0) unresolved.push({ file:'(none)', reason:'No dependency manifest was inspected; zero-cost requirements remain unverified.' });
   const result = {
     status: blocked.length ? 'REJECTED_PAID_REQUIREMENT' : unresolved.length ? 'QUARANTINED_UNVERIFIED' : 'STATIC_REVIEW_CLEAR',
     zeroCostVerified: blocked.length === 0 && unresolved.length === 0,
