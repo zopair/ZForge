@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "webAccess": {
+    "enabled": true,
+    "maxRequestsPerTask": 20,
+    "defaultAgentQuota": 0,
+    "agents": {
+      "blacksmith": {
+        "enabled": true,
+        "maxRequests": 12,
+        "allowedOperations": ["search", "fetch"]
+      }
+    }
+  }
+}

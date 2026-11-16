@@ -26,3 +26,12 @@ test('budget snapshot records request evidence but never authentication material
   assert.match(snapshot, /repos\/org\/tool/);
   assert.doesNotMatch(snapshot, /authorization|secret|bearer/i);
 });
+
+test('per-agent quotas are enforced inside the shared global budget', () => {
+  const budget = new GlobalApiBudget({ maxRequests: 20, agentLimits: { blacksmith: 12 } });
+  for (let index = 0; index < 12; index += 1) budget.consume({ url: '/search', agentId: 'blacksmith' });
+  assert.throws(() => budget.consume({ url: '/search', agentId: 'blacksmith' }), /budget exhausted/);
+  assert.equal(budget.snapshot().used, 12);
+  assert.equal(budget.snapshot().agentUsage.blacksmith, 12);
+  assert.throws(() => budget.consume({ url: '/search', agentId: 'observer' }), /no web request allocation/);
+});

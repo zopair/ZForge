@@ -6,6 +6,8 @@ const TOOL_PERMISSION = {
   read_file: ['workspace:read'],
   list_files: ['workspace:read'],
   write_file: ['workspace:write'],
+  web_search: ['web:search'],
+  web_fetch: ['web:fetch'],
   publish_artifact: ['artifact:publish'],
 };
 const EXECUTION_TOOLS = new Set(Object.keys(TOOL_PERMISSION));
@@ -13,9 +15,10 @@ const EXECUTION_TOOLS = new Set(Object.keys(TOOL_PERMISSION));
 function clone(value) { return structuredClone(value); }
 
 export class AgentFactory {
-  constructor({ registry } = {}) {
+  constructor({ registry, webPolicy = null } = {}) {
     if (!registry || typeof registry.get !== 'function' || (!(registry instanceof Map) && typeof registry.list !== 'function')) throw new TypeError('registry must provide get and list');
     this.registry = registry;
+    this.webPolicy = webPolicy;
   }
 
   async #save(record) {
@@ -124,6 +127,17 @@ export class AgentFactory {
       if (permissions.some(permission => denied.has(permission))) continue;
       if (permissions.some(permission => approvalRequired.has(permission))) { approvalRequiredTools.push(tool); continue; }
       if (permissions.some(permission => allowed.has(permission))) allowedTools.push(tool);
+    }
+    const webAgentPolicy = this.webPolicy?.getAgentPolicy?.(agentId);
+    if (webAgentPolicy?.enabled) {
+      for (const [operation, tool, permission] of [
+        ['search', 'web_search', 'web:search'],
+        ['fetch', 'web_fetch', 'web:fetch'],
+      ]) {
+        if (!webAgentPolicy.allowedOperations.includes(operation) || denied.has(permission)) continue;
+        if (approvalRequired.has(permission)) approvalRequiredTools.push(tool);
+        else allowedTools.push(tool);
+      }
     }
     return {
       agentId,

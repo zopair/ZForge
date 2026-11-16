@@ -43,7 +43,7 @@ export class MultiAgentCoordinator {
     this.defaultModel = defaultModel;
   }
 
-  async executePlan({ workspaceId, tasks, onProgress = null } = {}) {
+  async executePlan({ workspaceId, tasks, webBudget = null, onProgress = null } = {}) {
     validatePlan({ workspaceId, tasks });
     if (onProgress !== null && typeof onProgress !== 'function') throw new TypeError('onProgress must be a function');
     const emitProgress = async (type, details = {}) => { if (onProgress) await onProgress({ type, details }); };
@@ -80,6 +80,8 @@ export class MultiAgentCoordinator {
             plan: [task.plan, dependencyContext].filter(Boolean).join('\n\n') || null,
             allowedTools: profile.allowedTools,
             resourceLimits: profile.resourceLimits,
+            agentId: profile.agentId,
+            webBudget,
             onProgress: onProgress ? event => onProgress({ type: event.type, details: { ...event.details, taskId: task.id, agentId: task.agentId } }) : null,
           });
           if (execution?.completed !== true) {

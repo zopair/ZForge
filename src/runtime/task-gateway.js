@@ -185,7 +185,7 @@ export class TaskStore {
   }
 }
 
-export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, agentFactory = null, multiAgentCoordinator = null, androidBuildService = null, webBuildService = null, webBrowserVerificationService = null, voiceService = null, artifactStore = null, engineeringIssueLedger = null, conversationalCore = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
+export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, clock, runtime = null, agentService = null, chiefAgent = null, agentFactory = null, multiAgentCoordinator = null, webPolicy = null, androidBuildService = null, webBuildService = null, webBrowserVerificationService = null, voiceService = null, artifactStore = null, engineeringIssueLedger = null, conversationalCore = null, defaultModel = 'qwen3:8b', allowedOrigins = [] } = {}) {
   if (typeof token !== 'string' || token.length < 16) throw new TypeError('a gateway bearer token of at least 16 characters is required');
   if (!Number.isInteger(maxBodyBytes) || maxBodyBytes < 1024) throw new RangeError('maxBodyBytes must be at least 1024');
   if (!Array.isArray(allowedOrigins) || allowedOrigins.some(origin => typeof origin !== 'string' || !isValidOrigin(origin))) throw new TypeError('allowedOrigins must be an array of exact HTTP(S) origins');
@@ -528,6 +528,8 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
           try { executionProfile = await agentFactory.getExecutionProfile(body.agentId); }
           catch (error) { return send(response, 409, { error: error.message }); }
         }
+        const webBudget = webPolicy?.isEnabled?.() ? webPolicy.createTaskBudget() : null;
+        const executingAgentId = executionProfile?.agentId ?? body.agentId ?? 'chief-agent';
         await store.transition(task.id, 'running', { details: { mode: 'local-agent', model, agentId: body.agentId ?? null } });
         try {
           const capabilities = Array.isArray(body.capabilities) ? body.capabilities.slice(0, 20).map(String) : [];
@@ -551,6 +553,7 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
             const orchestration = await multiAgentCoordinator.executePlan({
               workspaceId: task.workspaceId ?? task.id,
               tasks: delegatedTasks,
+              webBudget,
               onProgress: event => store.appendEvent(task.id, event.type, event.details),
             });
             execution = {
@@ -570,6 +573,8 @@ export function createTaskGateway({ dataDir, token, maxBodyBytes = 1024 * 1024, 
               plan: planning?.plan ?? null,
               allowedTools: executionProfile?.allowedTools ?? null,
               resourceLimits: executionProfile?.resourceLimits ?? null,
+              agentId: executingAgentId,
+              webBudget,
               onProgress: event => store.appendEvent(task.id, event.type, event.details),
             });
           }

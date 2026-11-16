@@ -14,7 +14,7 @@ export class ContainerExecutionRuntime {
     hostRuntime,
     engine = 'podman',
     image = 'node:24-bookworm-slim',
-    network = 'bridge',
+    network = 'none',
     cpuLimit = 2,
     memoryLimit = '4g',
     pidsLimit = 256,

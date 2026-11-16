@@ -20,6 +20,8 @@ import { GitHubDiscoveryClient } from '../adapters/github-discovery.js';
 import { LocalRepositoryMemoryStore, LocalPromptProvider } from '../adapters/local-repository-memory-store.js';
 import { LocalTaskHistoryMemoryStore, CompositeMemoryStore } from '../adapters/local-task-history-memory-store.js';
 import { EngineeringIssueLedger } from '../adapters/engineering-issue-ledger.js';
+import { loadAgentWebPolicy } from '../core/agent-web-policy.js';
+import { KnowledgeGateway } from '../adapters/knowledge-gateway.js';
 
 const token = process.env.ZFORGE_GATEWAY_TOKEN;
 if (!token || token.length < 16) {
@@ -34,15 +36,22 @@ const artifactDir = process.env.ZFORGE_ARTIFACT_DIR ?? './.zforge-artifacts';
 const repositoryRoot = process.env.ZFORGE_REPO_ROOT ?? process.cwd();
 const model = process.env.ZFORGE_MODEL ?? 'qwen3:8b';
 const allowedOrigins = (process.env.ZFORGE_ALLOWED_ORIGINS ?? 'https://zopair.github.io').split(',').map(value => value.trim()).filter(Boolean);
-const hostRuntime = await new LocalExecutionRuntime({ rootDir: workspaceDir }).initialize();
 const executionBackend = process.env.ZFORGE_EXECUTION_BACKEND ?? 'local';
+const containerNetwork = process.env.ZFORGE_CONTAINER_NETWORK ?? 'none';
+const webPolicy = await loadAgentWebPolicy({ filePath: process.env.ZFORGE_AGENT_POLICY_PATH ?? new URL('../../config/agent-policies.json', import.meta.url) });
+if (webPolicy.isEnabled() && (executionBackend !== 'container' || containerNetwork !== 'none')) {
+  throw new Error('Gateway-only web access requires ZFORGE_EXECUTION_BACKEND=container and ZFORGE_CONTAINER_NETWORK=none. Direct local/bridged command execution is not permitted.');
+}
+const searxngInstances = (process.env.ZFORGE_SEARXNG_INSTANCES ?? '').split(',').map(value => value.trim()).filter(Boolean);
+const knowledgeGateway = new KnowledgeGateway({ instances: searxngInstances });
+const hostRuntime = await new LocalExecutionRuntime({ rootDir: workspaceDir }).initialize();
 if (!['local', 'container'].includes(executionBackend)) throw new TypeError('ZFORGE_EXECUTION_BACKEND must be local or container');
 const runtime = executionBackend === 'container'
   ? await new ContainerExecutionRuntime({
       hostRuntime,
       engine: process.env.ZFORGE_CONTAINER_ENGINE ?? 'podman',
       image: process.env.ZFORGE_CONTAINER_IMAGE ?? 'node:24-bookworm-slim',
-      network: process.env.ZFORGE_CONTAINER_NETWORK ?? 'bridge',
+      network: containerNetwork,
       cpuLimit: Number(process.env.ZFORGE_CONTAINER_CPUS ?? 2),
       memoryLimit: process.env.ZFORGE_CONTAINER_MEMORY ?? '4g',
       pidsLimit: Number(process.env.ZFORGE_CONTAINER_PIDS ?? 256),
@@ -84,12 +93,12 @@ const taskHistoryMemoryStore = new LocalTaskHistoryMemoryStore({ dataDir });
 const engineeringIssueLedger = await new EngineeringIssueLedger({ dataDir }).initialize();
 const memoryStore = new CompositeMemoryStore({ stores: [repositoryMemoryStore, taskHistoryMemoryStore, engineeringIssueLedger] });
 const selfHealingEngine = new SelfHealingEngineeringEngine({ discoveryService, memoryStore });
-const agentService = new AgentExecutionService({ modelAdapter, runtime, workspaceManager, artifactStore, selfHealingEngine, maxSteps: Number(process.env.ZFORGE_AGENT_MAX_STEPS ?? 16) });
+const agentService = new AgentExecutionService({ modelAdapter, runtime, workspaceManager, artifactStore, selfHealingEngine, knowledgeGateway, maxSteps: Number(process.env.ZFORGE_AGENT_MAX_STEPS ?? 16) });
 const promptProvider = new LocalPromptProvider({ rootDir: repositoryRoot });
 const chiefAgent = new ChiefAgent({ modelAdapter, discoveryService, memoryStore, promptProvider, model });
 
 const agentRegistry = await new LocalAgentRegistry({ dataDir }).initialize();
-const agentFactory = new AgentFactory({ registry: agentRegistry });
+const agentFactory = new AgentFactory({ registry: agentRegistry, webPolicy });
 const multiAgentCoordinator = new MultiAgentCoordinator({ agentFactory, agentService, maxParallel: Number(process.env.ZFORGE_MAX_PARALLEL_AGENTS ?? 3), defaultModel: model });
 const conversationalCore = new ConversationalCore({
   modelAdapter,
@@ -109,7 +118,7 @@ const conversationalCore = new ConversationalCore({
     { id: 'safe-cleanup', label: 'تنظيف المستودع الآمن', status: 'planned', description: 'مؤجل حالياً ولم يبدأ تطويره.' },
   ],
 });
-const gateway = createTaskGateway({ dataDir, token, runtime, agentService, chiefAgent, agentFactory, multiAgentCoordinator, androidBuildService, webBuildService, webBrowserVerificationService, voiceService, artifactStore, engineeringIssueLedger, conversationalCore, defaultModel: model, allowedOrigins });
+const gateway = createTaskGateway({ dataDir, token, runtime, agentService, chiefAgent, agentFactory, multiAgentCoordinator, webPolicy, androidBuildService, webBuildService, webBrowserVerificationService, voiceService, artifactStore, engineeringIssueLedger, conversationalCore, defaultModel: model, allowedOrigins });
 
 await gateway.ready;
 gateway.server.listen(port, host, () => {
