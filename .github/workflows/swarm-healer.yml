@@ -1,0 +1,45 @@
+name: ZForge Root-Cause Memory
+
+on:
+  workflow_run:
+    workflows: ["ZForge Quality Gate", "ZForge Swarm QA Sandbox"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: zforge-healer-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  record-failure:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - name: Retrieve failed run logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          GH_REPO: ${{ github.repository }}
+        run: gh run view "$RUN_ID" --repo "$GH_REPO" --log > /tmp/zforge-run.log
+      - name: Create redacted incident memory
+        env:
+          ZFORGE_LOG_FILE: /tmp/zforge-run.log
+        run: node scripts/agents/healer-memory.mjs
+      - name: Commit incident record only
+        run: |
+          if git diff --quiet -- memory_logs; then
+            echo "No incident record."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add memory_logs/
+          git commit -m "chore(memory): record redacted workflow incident"
+          git push
