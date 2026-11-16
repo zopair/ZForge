@@ -4,8 +4,9 @@ import { createDiscoveryAdapters } from '../src/adapters/discovery-adapters.js';
 import { GlobalApiBudget } from '../src/core/global-api-budget.js';
 import { UniversalDiscoveryService } from '../src/core/discovery-service.js';
 
-function listInput(name) {
-  return core.getInput(name, { required: false }).split(',').map(value => value.trim()).filter(Boolean);
+function listInput(name, environmentName) {
+  return (core.getInput(name, { required: false }) || process.env[environmentName] || '')
+    .split(',').map(value => value.trim()).filter(Boolean);
 }
 
 async function run() {
@@ -15,7 +16,7 @@ async function run() {
   const cursorFile = await readDiscoveryCursor(cursorPath);
   const budget = new GlobalApiBudget({ maxRequests: context.apiBudget });
   const adapters = createDiscoveryAdapters({ token: context.token, budget });
-  const maxQueries = Number(core.getInput('max-queries', { required: false }) || '25');
+  const maxQueries = Number(core.getInput('max-queries', { required: false }) || process.env.DISCOVERY_MAX_QUERIES || '25');
   if (!Number.isInteger(maxQueries) || maxQueries < 1 || maxQueries > 25) throw new RangeError('max-queries must be between 1 and 25');
 
   const service = new UniversalDiscoveryService({
@@ -26,13 +27,13 @@ async function run() {
   });
   const savedCursor = cursorFile.cursor ?? {};
   const result = await service.discover({
-    capabilities: listInput('capabilities'),
-    keywords: listInput('keywords'),
+    capabilities: listInput('capabilities', 'DISCOVERY_CAPABILITIES'),
+    keywords: listInput('keywords', 'DISCOVERY_KEYWORDS'),
     queryOffset: Number(savedCursor.queryOffset ?? 0),
     queryPage: Number(savedCursor.queryPage ?? 1),
     vendorOffset: Number(savedCursor.vendorOffset ?? 0),
     vendorPage: Number(savedCursor.vendorPage ?? 1),
-    includeVendorSeeds: core.getInput('include-vendor-seeds', { required: false }) !== 'false',
+    includeVendorSeeds: (core.getInput('include-vendor-seeds', { required: false }) || process.env.DISCOVERY_INCLUDE_VENDOR_SEEDS || 'true') === 'true',
   });
 
   await writeDiscoveryCursor({
