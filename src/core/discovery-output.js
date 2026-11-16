@@ -32,13 +32,19 @@ export function renderCatalogEntry(candidate) {
   ].join('\n');
 }
 
-export function renderDailyBrief({ generatedAt = new Date().toISOString(), discoveries = [], apiRequests = 0, apiRequestBudget = 50, dryRun = false } = {}) {
+export function renderDailyBrief({ generatedAt = new Date().toISOString(), discoveries = [], apiRequests = 0, apiRequestBudget = 50, dryRun = false, audit = {} } = {}) {
   const lines = [
     '# Daily Research Brief',
     '',
     `- Generated: ${clean(generatedAt)}`,
-    `- Mode: ${dryRun ? 'DRY-RUN (mocked; no external API calls)' : 'RESEARCH'}`,
+    `- Mode: ${dryRun ? 'DRY-RUN (mocked; no external API calls)' : 'LIVE BOUNDED GITHUB RESEARCH'}`,
     `- API requests: ${apiRequests}/${apiRequestBudget}`,
+    '',
+    `- Candidates processed: ${clean(audit.processed ?? 0)}`,
+    `- Accepted for human review: ${clean(audit.accepted ?? discoveries.length)}`,
+    `- Rejected: ${clean(audit.rejected ?? 0)}`,
+    `- Quarantined: ${clean(audit.quarantined ?? 0)}`,
+    `- Skipped at budget boundary: ${clean(audit.skipped ?? 0)}`,
     '',
     '## Discoveries',
     ''
