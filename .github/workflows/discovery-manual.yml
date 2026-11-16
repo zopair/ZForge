@@ -17,7 +17,7 @@ on:
         description: Narrow capability focus
         required: true
         type: string
-        default: ocr
+        default: OCR
       keywords:
         description: Discovery keywords
         required: true
@@ -28,6 +28,10 @@ on:
         required: true
         type: boolean
         default: false
+
+  push:
+    branches:
+      - test/discovery-quality-dry-run
 
 permissions:
   contents: read
@@ -59,9 +63,9 @@ jobs:
       - name: Run bounded manual discovery
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DISCOVERY_API_BUDGET: ${{ inputs.api_budget }}
-          DISCOVERY_MAX_QUERIES: ${{ inputs.max_queries }}
-          DISCOVERY_CAPABILITIES: ${{ inputs.capabilities }}
+          DISCOVERY_API_BUDGET: ${{ inputs.api_budget || '5' }}
+          DISCOVERY_MAX_QUERIES: ${{ inputs.max_queries || '1' }}
+          DISCOVERY_CAPABILITIES: ${{ inputs.capabilities || 'OCR' }}
           DISCOVERY_KEYWORDS: ${{ inputs.keywords }}
-          DISCOVERY_INCLUDE_VENDOR_SEEDS: ${{ inputs.include_vendor_seeds }}
+          DISCOVERY_INCLUDE_VENDOR_SEEDS: ${{ inputs.include_vendor_seeds || 'false' }}
         run: node scripts/run-discovery-action.mjs
