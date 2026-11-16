@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { renderCatalogEntry, renderDailyBrief } from './discovery-output.js';
 
 async function readOptional(path) {
@@ -13,7 +14,8 @@ export async function writeDiscoveryArtifacts({
   catalogPath = 'research_logs/tools_catalog.md', briefPath = 'DAILY_BRIEF.md',
   logger = console, generatedAt = new Date().toISOString(),
 } = {}) {
-  await mkdir('research_logs', { recursive: true });
+  await mkdir(dirname(catalogPath), { recursive: true });
+  await mkdir(dirname(briefPath), { recursive: true });
   const existingCatalog = await readOptional(catalogPath);
   const catalog = existingCatalog.trim() || '# ZForge Research Tools Catalog\n';
   const entries = accepted.map(candidate => renderCatalogEntry({
