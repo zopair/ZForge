@@ -4,6 +4,10 @@
 
 ZForge is a zero-budget, open-source-only autonomous engineering platform. Its internal Chief Autonomous Engineer discovers, verifies, composes and maintains engineering tools; specialist agents build and test software; BLACK VANTA is the human-facing text/voice control surface.
 
+## 📊 Daily Research Brief
+
+The latest 24-hour research summary and SHA-256 integrity digest: [Open DAILY_BRIEF.md](DAILY_BRIEF.md).
+
 ## Non-negotiable principles
 1. **Open source only:** public source code is not enough; verify OSI-compatible licensing for code, dependencies, models, data, fonts and assets.
 2. **Zero budget:** no paid APIs, subscriptions, credits, required commercial SaaS or expiring trial dependencies.
