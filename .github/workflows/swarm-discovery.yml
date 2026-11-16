@@ -1,0 +1,36 @@
+name: ZForge R&D Scavenger
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 4 * * *'
+
+concurrency:
+  group: zforge-scavenger
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Discover bounded public GitHub candidates
+        run: node scripts/agents/scavenger.mjs
+      - name: Commit catalog-only changes
+        run: |
+          if git diff --quiet -- tools_catalog.md; then
+            echo "No new candidates."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tools_catalog.md
+          git commit -m "chore(catalog): record open-source discovery candidates"
+          git push
