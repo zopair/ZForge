@@ -4,9 +4,7 @@ import { createDiscoveryAdapters } from '../src/adapters/discovery-adapters.js';
 import { GlobalApiBudget } from '../src/core/global-api-budget.js';
 import { UniversalDiscoveryService } from '../src/core/discovery-service.js';
 import { auditDiscoveredCandidates } from '../src/core/discovery-audit-pipeline.js';
-import { renderCatalogEntry, renderDailyBrief } from '../src/core/discovery-output.js';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { writeDiscoveryArtifacts } from '../src/core/discovery-artifacts.js';
 
 function listInput(name, environmentName) {
   return (core.getInput(name, { required: false }) || process.env[environmentName] || '')
@@ -53,34 +51,16 @@ async function run() {
   const snapshot = budget.snapshot();
   core.info(`[BUDGET] Audit phase complete: used=${snapshot.used}; remaining=${snapshot.remainingBudget}; hard_limit=${snapshot.maxRequests}; halted=${snapshot.halted}.`);
 
-  const catalogPath = 'research_logs/tools_catalog.md';
-  const briefPath = 'DAILY_BRIEF.md';
-  await mkdir('research_logs', { recursive: true });
-  let catalog = '';
-  try { catalog = await readFile(catalogPath, 'utf8'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
-  if (!catalog.trim()) catalog = '# ZForge Research Tools Catalog\n\n';
-  const catalogEntries = audit.accepted.map(candidate => renderCatalogEntry({
-    ...candidate,
-    date: new Date().toISOString().slice(0, 10),
-    evidence: candidate.evidence,
-  }));
-  const catalogOutput = catalogEntries.length
-    ? `${catalog.trimEnd()}\n\n${catalogEntries.join('\n')}`
-    : catalog.trimEnd() + '\n\n_No newly verified candidates in this bounded run._\n';
-  await writeFile(catalogPath, catalogOutput, 'utf8');
-  core.info(`[OUTPUT] Wrote ${catalogPath}; newly accepted entries=${catalogEntries.length}; bytes=${Buffer.byteLength(catalogOutput)}.`);
-
-  const brief = renderDailyBrief({
-    discoveries: audit.accepted,
+  const artifacts = await writeDiscoveryArtifacts({
+    accepted: audit.accepted,
+    audit,
     apiRequests: snapshot.used,
     apiRequestBudget: snapshot.maxRequests,
-    dryRun: false,
-    audit: { processed: audit.processed, accepted: audit.accepted.length, rejected: audit.rejected.length, quarantined: audit.quarantined.length, skipped: audit.skipped },
+    logger: core,
   });
-  await writeFile(briefPath, brief + '\n', 'utf8');
-  const digest = createHash('sha256').update(brief + '\n', 'utf8').digest('hex');
-  core.info(`[OUTPUT] Wrote ${briefPath}; bytes=${Buffer.byteLength(brief + '\n')}.`);
-  core.info(`[SHA256] ${briefPath} ${digest}`);
+  core.setOutput('catalog_path', artifacts.catalogPath);
+  core.setOutput('daily_brief_path', artifacts.briefPath);
+  core.setOutput('daily_brief_sha256', artifacts.sha256);
 
   await writeDiscoveryCursor({
     cursor: {
