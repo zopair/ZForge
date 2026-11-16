@@ -282,18 +282,18 @@ function dependencyNamesFromManifest(manifest) {
 
 
 const PAID_ENV_MARKERS = [
-  { id:'openai-api', pattern:/\\b(?:OPENAI_API_KEY|OPENAI_BASE_URL)\\b|api\\.openai\\.com/i },
-  { id:'anthropic-api', pattern:/\\b(?:ANTHROPIC_API_KEY|CLAUDE_API_KEY)\\b|api\\.anthropic\\.com/i },
-  { id:'google-genai-api', pattern:/\\b(?:GEMINI_API_KEY|GOOGLE_API_KEY)\\b|generativelanguage\\.googleapis\\.com/i },
-  { id:'replicate-api', pattern:/\\bREPLICATE_API_TOKEN\\b|api\\.replicate\\.com/i },
-  { id:'fal-api', pattern:/\\bFAL_KEY\\b|fal\\.ai/i },
-  { id:'elevenlabs-api', pattern:/\\bELEVENLABS_API_KEY\\b|api\\.elevenlabs\\.io/i },
-  { id:'assemblyai-api', pattern:/\\bASSEMBLYAI_API_KEY\\b|api\\.assemblyai\\.com/i },
-  { id:'deepgram-api', pattern:/\\bDEEPGRAM_API_KEY\\b|api\\.deepgram\\.com/i },
-  { id:'pinecone-service', pattern:/\\bPINECONE_API_KEY\\b|pinecone\\.io/i },
-  { id:'algolia-service', pattern:/\\bALGOLIA_(?:APP_ID|API_KEY)\\b/i },
-  { id:'mapbox-service', pattern:/\\bMAPBOX_ACCESS_TOKEN\\b|api\\.mapbox\\.com/i },
-  { id:'sentry-service', pattern:/\\bSENTRY_DSN\\b|sentry\\.io/i },
+  { id:'openai-api', pattern:/\b(?:OPENAI_API_KEY|OPENAI_BASE_URL)\b|api\.openai\.com/i },
+  { id:'anthropic-api', pattern:/\b(?:ANTHROPIC_API_KEY|CLAUDE_API_KEY)\b|api\.anthropic\.com/i },
+  { id:'google-genai-api', pattern:/\b(?:GEMINI_API_KEY|GOOGLE_API_KEY)\b|generativelanguage\.googleapis\.com/i },
+  { id:'replicate-api', pattern:/\bREPLICATE_API_TOKEN\b|api\.replicate\.com/i },
+  { id:'fal-api', pattern:/\bFAL_KEY\b|fal\.ai/i },
+  { id:'elevenlabs-api', pattern:/\bELEVENLABS_API_KEY\b|api\.elevenlabs\.io/i },
+  { id:'assemblyai-api', pattern:/\bASSEMBLYAI_API_KEY\b|api\.assemblyai\.com/i },
+  { id:'deepgram-api', pattern:/\bDEEPGRAM_API_KEY\b|api\.deepgram\.com/i },
+  { id:'pinecone-service', pattern:/\bPINECONE_API_KEY\b|pinecone\.io/i },
+  { id:'algolia-service', pattern:/\bALGOLIA_(?:APP_ID|API_KEY)\b/i },
+  { id:'mapbox-service', pattern:/\bMAPBOX_ACCESS_TOKEN\b|api\.mapbox\.com/i },
+  { id:'sentry-service', pattern:/\bSENTRY_DSN\b|sentry\.io/i },
 ];
 
 /** Evaluate repository quality from explicit, inspectable GitHub metadata and file evidence. */
@@ -325,36 +325,53 @@ export function evaluateDiscoveryQuality(repository, { now = Date.now(), maxInac
 /** Merge dependency manifests and .env.example into one fail-closed static cost assessment. */
 export function inspectZeroCostDependencies(manifests = []) {
   if (!Array.isArray(manifests)) throw new TypeError('manifests must be an array');
-  const dependencies = []; const blocked = []; const unresolved = [];
+  const dependencies = [];
+  const blocked = [];
+  const unresolved = [];
   for (const manifest of manifests) {
     const name = manifest.name ?? manifest.path ?? manifest.filename ?? 'unknown';
     const content = String(manifest.content ?? '');
-    if (/\\.env(?:\\.example|\\.sample|\\.template)$/i.test(name)) {
-      for (const marker of PAID_ENV_MARKERS) if (marker.pattern.test(content)) {
-        blocked.push({ dependency:null, service:marker.id, reason:'Environment template declares a commercial-service credential or endpoint; a zero-cost path is not established.', file:name });
+    if (/\.env(?:\.example|\.sample|\.template)$/i.test(name)) {
+      for (const marker of PAID_ENV_MARKERS) {
+        if (marker.pattern.test(content)) blocked.push({
+          dependency: null, service: marker.id,
+          reason: 'Environment template declares a commercial-service credential or endpoint; a zero-cost path is not established.',
+          file: name,
+        });
       }
-      if (/\\b(?:API_KEY|ACCESS_TOKEN|SECRET_KEY)\\s*=\\s*[^\\s#]+/i.test(content) && !PAID_ENV_MARKERS.some(marker=>marker.pattern.test(content))) {
-        unresolved.push({ file:name, reason:'Environment template contains a credential variable; service and pricing requirements need manual verification.' });
+      if (/\b(?:API_KEY|ACCESS_TOKEN|SECRET_KEY)\s*=\s*[^\s#]+/i.test(content)
+        && !PAID_ENV_MARKERS.some(marker => marker.pattern.test(content))) {
+        unresolved.push({ file: name, reason: 'Environment template contains a credential variable; service and pricing requirements need manual verification.' });
       }
       continue;
     }
     const names = dependencyNamesFromManifest(manifest);
-    if (names === null) { unresolved.push({ file:name, reason:'Manifest is malformed; dependency requirements cannot be verified.' }); continue; }
+    if (names === null) {
+      unresolved.push({ file: name, reason: 'Manifest is malformed; dependency requirements cannot be verified.' });
+      continue;
+    }
     for (const dependency of names) {
       const marker = COMMERCIAL_SERVICE_MARKERS.find(item => item.pattern.test(dependency));
-      if (marker) blocked.push({ dependency, service:marker.id, reason:marker.reason, file:name });
+      if (marker) blocked.push({ dependency, service: marker.id, reason: marker.reason, file: name });
       dependencies.push(dependency);
     }
-    if (PAID_TEXT_MARKERS.test(content)) blocked.push({ dependency:null, service:'explicit-paid-requirement', reason:'Manifest contains an explicit mandatory paid-service, subscription, billing, trial, or credit requirement.', file:name });
+    if (PAID_TEXT_MARKERS.test(content)) blocked.push({
+      dependency: null, service: 'explicit-paid-requirement',
+      reason: 'Manifest contains an explicit mandatory paid-service, subscription, billing, trial, or credit requirement.',
+      file: name,
+    });
   }
   return {
-    status:blocked.length ? 'REJECTED_PAID_REQUIREMENT' : unresolved.length ? 'QUARANTINED_UNVERIFIED' : 'STATIC_REVIEW_CLEAR',
-    zeroCostVerified:blocked.length === 0 && unresolved.length === 0,
-    paidDependency:blocked.length > 0,
-    dependencies:[...new Set(dependencies)].sort(),
-    blocked:[...blocked],
-    unresolved:[...unresolved],
-    executionPerformed:false,
-    limitations:['Static manifest and .env.example inspection cannot prove that all runtime paths are free. Review README, configuration, deployment requirements, and official pricing before acceptance.','A declared commercial API credential is rejected even when the corresponding SDK is optional; a separately evidenced local-only mode requires human review.'],
+    status: blocked.length ? 'REJECTED_PAID_REQUIREMENT' : unresolved.length ? 'QUARANTINED_UNVERIFIED' : 'STATIC_REVIEW_CLEAR',
+    zeroCostVerified: blocked.length === 0 && unresolved.length === 0,
+    paidDependency: blocked.length > 0,
+    dependencies: [...new Set(dependencies)].sort(),
+    blocked: [...blocked],
+    unresolved: [...unresolved],
+    executionPerformed: false,
+    limitations: [
+      'Static manifest and .env.example inspection cannot prove that all runtime paths are free. Review README, configuration, deployment requirements, and official pricing before acceptance.',
+      'A declared commercial API credential is rejected even when the corresponding SDK is optional; a separately evidenced local-only mode requires human review.',
+    ],
   };
 }
