@@ -28,7 +28,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
         run: |
-          if git diff --quiet -- agents/proposals; then
+          if [ -z "$(git status --porcelain -- agents/proposals)" ]; then
             echo "No approved catalog entries require wrappers."
             exit 0
           fi
@@ -39,6 +39,4 @@ jobs:
           git add agents/proposals/
           git commit -m "feat(blacksmith): propose reviewed resource adapters"
           git push --set-upstream origin "$BRANCH"
-          gh pr create --repo "$GH_REPO" --head "$BRANCH" --base main \\
-            --title "Blacksmith: generated adapter proposals" \\
-            --body "Generated from manually approved, unauthenticated, license-verified catalog entries. These files are proposals only; review source licenses, security and tests before merging or activation."
+          gh pr create --repo "$GH_REPO" --head "$BRANCH" --base main --title "Blacksmith: generated adapter proposals" --body "Generated from manually approved, unauthenticated, license-verified catalog entries. These files are proposals only; review source licenses, security and tests before merging or activation."
