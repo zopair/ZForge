@@ -310,7 +310,8 @@ export function evaluateDiscoveryQuality(repository, { now = Date.now(), maxInac
   if (!Number.isFinite(pushedAt)) unresolved.push('LAST_COMMIT_ACTIVITY_UNVERIFIED');
   else if (now - pushedAt > maxInactiveDays * 86400000) failures.push('INACTIVE_OVER_12_MONTHS');
   const evidence = repository.structuralEvidence ?? {};
-  if (evidence.readme !== true) failures.push(evidence.readme === false ? 'README_MISSING' : 'README_UNVERIFIED');
+  if (evidence.readme === false) failures.push('README_MISSING');
+  else if (evidence.readme !== true) unresolved.push('README_UNVERIFIED');
   const structuralSignals = [evidence.testsDirectory, evidence.apiDocumentation, evidence.configurationManifest];
   if (!structuralSignals.some(value => value === true)) {
     if (structuralSignals.every(value => value === false)) failures.push('STRUCTURAL_EVIDENCE_MISSING');
