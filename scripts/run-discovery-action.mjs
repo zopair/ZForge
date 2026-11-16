@@ -58,15 +58,15 @@ async function run() {
   await mkdir('research_logs', { recursive: true });
   let catalog = '';
   try { catalog = await readFile(catalogPath, 'utf8'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
-  if (!catalog.trim()) catalog = '# ZForge Research Tools Catalog\\n\\n';
+  if (!catalog.trim()) catalog = '# ZForge Research Tools Catalog\n\n';
   const catalogEntries = audit.accepted.map(candidate => renderCatalogEntry({
     ...candidate,
     date: new Date().toISOString().slice(0, 10),
     evidence: candidate.evidence,
   }));
   const catalogOutput = catalogEntries.length
-    ? `${catalog.trimEnd()}\\n\\n${catalogEntries.join('\\n')}`
-    : catalog.trimEnd() + '\\n\\n_No newly verified candidates in this bounded run._\\n';
+    ? `${catalog.trimEnd()}\n\n${catalogEntries.join('\n')}`
+    : catalog.trimEnd() + '\n\n_No newly verified candidates in this bounded run._\n';
   await writeFile(catalogPath, catalogOutput, 'utf8');
   core.info(`[OUTPUT] Wrote ${catalogPath}; newly accepted entries=${catalogEntries.length}; bytes=${Buffer.byteLength(catalogOutput)}.`);
 
@@ -77,9 +77,9 @@ async function run() {
     dryRun: false,
     audit: { processed: audit.processed, accepted: audit.accepted.length, rejected: audit.rejected.length, quarantined: audit.quarantined.length, skipped: audit.skipped },
   });
-  await writeFile(briefPath, brief + '\\n', 'utf8');
-  const digest = createHash('sha256').update(brief + '\\n', 'utf8').digest('hex');
-  core.info(`[OUTPUT] Wrote ${briefPath}; bytes=${Buffer.byteLength(brief + '\\n')}.`);
+  await writeFile(briefPath, brief + '\n', 'utf8');
+  const digest = createHash('sha256').update(brief + '\n', 'utf8').digest('hex');
+  core.info(`[OUTPUT] Wrote ${briefPath}; bytes=${Buffer.byteLength(brief + '\n')}.`);
   core.info(`[SHA256] ${briefPath} ${digest}`);
 
   await writeDiscoveryCursor({
