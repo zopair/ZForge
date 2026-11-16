@@ -58,10 +58,15 @@ export class UniversalDiscoveryService {
     if (!Number.isInteger(maxResultsPerQuery) || maxResultsPerQuery < 1 || maxResultsPerQuery > 100) throw new RangeError('maxResultsPerQuery must be 1..100');
     if (!Number.isInteger(maxVendorOrgsPerRun) || maxVendorOrgsPerRun < 1 || maxVendorOrgsPerRun > 7) throw new RangeError('maxVendorOrgsPerRun must be 1..7');
     this.client = client;
+    this.budget = client.apiClient?.budget ?? client.budget ?? null;
     this.cache = cache ?? new JsonDiscoveryCache({ filePath: cachePath, ttlMs });
     this.ttlMs = ttlMs;
-    this.maxApiRequestsPerRun = maxApiRequestsPerRun;
-    this.maxQueriesPerRun = Math.min(maxQueriesPerRun, Math.floor(maxApiRequestsPerRun / (client.requestsPerOperation ?? 2)));
+    this.maxApiRequestsPerRun = Math.min(maxApiRequestsPerRun, this.budget?.maxRequests ?? maxApiRequestsPerRun);
+    if (this.budget && this.budget.maxRequests > this.maxApiRequestsPerRun) this.budget.maxRequests = this.maxApiRequestsPerRun;
+    const fallbackRequestCost = client.requestsPerOperation ?? 2;
+    this.maxQueriesPerRun = this.budget
+      ? maxQueriesPerRun
+      : Math.min(maxQueriesPerRun, Math.floor(this.maxApiRequestsPerRun / fallbackRequestCost));
     this.maxResultsPerQuery = maxResultsPerQuery;
     this.maxVendorOrgsPerRun = maxVendorOrgsPerRun;
   }
@@ -78,12 +83,22 @@ export class UniversalDiscoveryService {
     const selectedOrganizations = typeof this.client.listOrganizationRepositories === 'function' ? organizations.slice(vendorOffset, vendorOffset + this.maxVendorOrgsPerRun) : [];
     const results = new Map(); const searched = []; const cached = []; const queryReports = [];
     const organizationScans = []; const organizationCached = []; const apiErrors = []; const unavailableOrganizations = [];
-    let rateLimit = null; let safeHalt = false; let fatalError = false; let apiRequests = 0;
+    let rateLimit = null; let safeHalt = false; let fatalError = false;
+    let apiRequests = this.budget?.snapshot?.().used ?? 0;
     let nextOffset = queryOffset; let nextQueryPage = queryPage; let nextVendorOffset = vendorOffset; let nextVendorPage = vendorPage;
     const addResults = items => { for (const item of items ?? []) { const key = String(item.fullName ?? item.id); results.set(key, item); if (key && key !== 'undefined') this.cache.set(`repo:${key.toLowerCase()}`, { savedAt: Date.now(), response: { repository: item } }); } };
     const persist = async () => { if (typeof this.cache.save === 'function') await this.cache.save({ checkpoint: { queryOffset: nextOffset, queryPage: nextQueryPage, vendorOffset: nextVendorOffset, vendorPage: nextVendorPage }, apiRequests }); };
     const requestCost = this.client.requestsPerOperation ?? 2;
-    const budgetAllows = () => apiRequests + requestCost <= this.maxApiRequestsPerRun;
+    const syncApiRequests = () => {
+      const snapshot = this.budget?.snapshot?.();
+      if (snapshot) apiRequests = snapshot.used;
+    };
+    const budgetAllows = () => {
+      const snapshot = this.budget?.snapshot?.();
+      return snapshot
+        ? !snapshot.halted && snapshot.used < this.maxApiRequestsPerRun
+        : apiRequests + requestCost <= this.maxApiRequestsPerRun;
+    };
     for (let index = 0; index < selected.length; index++) {
       const query = selected[index]; const page = index === 0 ? queryPage : 1; const key = `query:${query}:page:${page}`;
       const cachedEntry = this.cache.get(key);
@@ -93,12 +108,14 @@ export class UniversalDiscoveryService {
         if (!budgetAllows()) break;
         try {
           const response = await this.client.searchRepositories(query, { maxResults: this.maxResultsPerQuery, page });
-          apiRequests += requestCost; searched.push(query); this.cache.set(key, { savedAt: Date.now(), response });
+          if (this.budget) syncApiRequests(); else apiRequests += requestCost;
+          searched.push(query); this.cache.set(key, { savedAt: Date.now(), response });
           addResults(response.results);
           queryReports.push({ query, page, count: response.count ?? response.results?.length ?? 0, totalCount: response.totalCount ?? null, complete: response.complete !== false, nextPage: response.nextPage ?? null });
           if (response.complete === false) { nextOffset = queryOffset + index; nextQueryPage = response.nextPage ?? page + 1; break; }
         } catch (error) {
-          apiRequests += Number.isInteger(error.apiRequests) ? error.apiRequests : 1;
+          syncApiRequests();
+          if (!this.budget) apiRequests += Number.isInteger(error.apiRequests) ? error.apiRequests : 1;
           if (error.safeHalt) { safeHalt = true; rateLimit = { remaining: error.remaining, limit: error.limit, resource: error.resource, message: error.message }; nextOffset = queryOffset + index; nextQueryPage = page; break; }
           if (error instanceof GitHubDiscoveryError && (error.status === 403 || error.status === 429)) { rateLimit = { status: error.status, resetAt: error.resetAt ?? null, message: error.message }; nextOffset = queryOffset + index; nextQueryPage = page; break; }
           apiErrors.push({ query, message: error instanceof Error ? error.message : String(error), status: error.status ?? null });
@@ -118,10 +135,12 @@ export class UniversalDiscoveryService {
           if (!budgetAllows()) break;
           try {
             const response = await this.client.listOrganizationRepositories(entry.organization, { page: currentPage, perPage: 100 });
-            apiRequests += requestCost; this.cache.set(key, { savedAt: Date.now(), response }); addResults(response.results);
+            if (this.budget) syncApiRequests(); else apiRequests += requestCost;
+            this.cache.set(key, { savedAt: Date.now(), response }); addResults(response.results);
             organizationScans.push({ vendor: entry.vendor, organization: entry.organization, page: currentPage, count: response.count, complete: response.complete });
             if (!response.complete) { currentPage = response.nextPage ?? currentPage + 1; break; }
           } catch (error) {
+            syncApiRequests();
             if (error.safeHalt) { safeHalt = true; rateLimit = { remaining: error.remaining, limit: error.limit, resource: error.resource, message: error.message }; break; }
             if (error instanceof GitHubDiscoveryError && (error.status === 403 || error.status === 429)) { rateLimit = { status: error.status, resetAt: error.resetAt ?? null, message: error.message }; break; }
             if (error instanceof GitHubDiscoveryError && error.status === 404) unavailableOrganizations.push(entry.organization);
@@ -132,6 +151,7 @@ export class UniversalDiscoveryService {
       }
       nextVendorOffset = currentOffset; nextVendorPage = currentPage;
     }
+    syncApiRequests();
     await persist();
     const queryComplete = nextOffset >= unique.length;
     const vendorComplete = !includeVendorSeeds || nextVendorOffset >= organizations.length;

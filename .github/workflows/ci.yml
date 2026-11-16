@@ -1,7 +1,7 @@
 name: ZForge Quality Gate
 on:
   push:
-    branches: [main, 'feat/**']
+    branches: [main, 'feat/**', 'test/**']
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
@@ -21,7 +21,11 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
-      - name: Run dependency-free unit tests
+      - name: Install pinned official GitHub SDK dependencies
+        run: npm install --ignore-scripts --no-fund --package-lock=false
+      - name: Validate discovery adapter syntax
+        run: npm run discovery:check
+      - name: Run unit tests
         run: npm test
       - name: Validate cloud execution entrypoints
         run: |

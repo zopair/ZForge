@@ -1,0 +1,85 @@
+name: ZForge Manual Discovery Dry Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_budget:
+        description: Maximum GitHub API requests, including quota preflight
+        required: true
+        type: number
+        default: 5
+      max_queries:
+        description: Maximum discovery queries in this batch
+        required: true
+        type: number
+        default: 1
+      capabilities:
+        description: Narrow capability focus
+        required: true
+        type: string
+        default: OCR
+      keywords:
+        description: Discovery keywords
+        required: true
+        type: string
+        default: optical character recognition OCR
+      include_vendor_seeds:
+        description: Include vendor organization scans
+        required: true
+        type: boolean
+        default: false
+
+  push:
+    branches:
+      - test/discovery-quality-dry-run
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zforge-manual-discovery-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  dry-run:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Restore discovery cursor and cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            discovery_cursor.json
+            discovery_cache.json
+          key: zforge-discovery-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            zforge-discovery-${{ github.ref_name }}-
+      - name: Install pinned official GitHub SDK dependencies
+        run: npm install --ignore-scripts --no-fund --package-lock=false
+      - name: Run bounded manual discovery
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISCOVERY_API_BUDGET: ${{ inputs.api_budget || '5' }}
+          DISCOVERY_MAX_QUERIES: ${{ inputs.max_queries || '1' }}
+          DISCOVERY_CAPABILITIES: ${{ inputs.capabilities || 'OCR' }}
+          DISCOVERY_KEYWORDS: ${{ inputs.keywords }}
+          DISCOVERY_INCLUDE_VENDOR_SEEDS: ${{ inputs.include_vendor_seeds || 'false' }}
+        run: node scripts/run-discovery-action.mjs
+
+      - name: Persist Research Output
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -- research_logs/tools_catalog.md DAILY_BRIEF.md memory/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs(discovery): auto-persist daily brief and catalog"
+          fi
+          git push origin "HEAD:${GITHUB_REF_NAME}"

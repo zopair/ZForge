@@ -121,3 +121,25 @@ test('discovery checkpoints and exits successfully on an adapter safe halt', asy
   assert.equal(result.safeHalt,true);
   assert.equal(result.nextOffset,0);
 });
+
+test('discovery service reports actual shared Octokit budget, including preflight, not estimated per-query cost', async () => {
+  const { GlobalApiBudget } = await import('../src/core/global-api-budget.js');
+  const budget = new GlobalApiBudget({ maxRequests: 5 });
+  let queries = 0;
+  const apiClient = { budget };
+  const client = {
+    apiClient,
+    searchRepositories: async () => {
+      if (budget.used === 0) budget.consume({ url: '/rate_limit' });
+      budget.consume({ url: '/search/repositories' });
+      queries += 1;
+      return { results: [{ id: queries, fullName: `org/shared-${queries}` }] };
+    },
+  };
+  const service = new UniversalDiscoveryService({ client, cache: new Map(), maxApiRequestsPerRun: 5, maxQueriesPerRun: 10 });
+  const result = await service.discover({ keywords: ['shared-global-budget'], includeVendorSeeds: false });
+  assert.equal(result.apiRequests, 5);
+  assert.equal(result.apiRequestBudget, 5);
+  assert.equal(queries, 4);
+  assert.equal(budget.snapshot().used, 5);
+});
