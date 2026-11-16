@@ -28,22 +28,32 @@ jobs:
         run: |
           set -euo pipefail
 
-          mkdir -p research_logs blueprints
-
           timestamp="$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           window_start="$(date -u -d '24 hours ago' '+%Y-%m-%d %H:%M:%S UTC')"
 
           changed_files="$(git log --since='24 hours ago' --format= --name-only -- research_logs blueprints | sed '/^[[:space:]]*$/d' | sort -u)"
-          research_files="$(printf '%s\n' "$changed_files" | grep '^research_logs/' || true)"
-          blueprint_files="$(printf '%s\n' "$changed_files" | grep '^blueprints/' || true)"
+          research_files=()
+          blueprint_files=()
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+            case "$file" in
+              research_logs/*) research_files+=("$file") ;;
+              blueprints/*)
+                [[ "$file" == "blueprints/README.md" ]] || blueprint_files+=("$file")
+                ;;
+            esac
+          done <<< "$changed_files"
 
-          research_count=0
-          if [[ -n "$research_files" ]]; then
-            research_count="$(printf '%s\n' "$research_files" | wc -l | tr -d ' ')"
+          research_count="${#research_files[@]}"
+          if (( research_count > 0 )); then
             ip_hash="$(
-              while IFS= read -r file; do
-                [[ -f "$file" ]] && sha256sum "$file"
-              done <<< "$research_files" | sha256sum | awk '{print $1}'
+              for file in "${research_files[@]}"; do
+                if [[ -f "$file" ]]; then
+                  sha256sum "$file"
+                else
+                  printf 'DELETED %s\\n' "$file"
+                fi
+              done | sha256sum | awk '{print $1}'
             )"
           else
             ip_hash="$(printf '' | sha256sum | awk '{print $1}')"
@@ -58,13 +68,17 @@ jobs:
             echo "## Executive Summary"
             echo
             echo "### New APIs, tools, and models discovered"
-            if [[ -n "$research_files" ]]; then
+            if (( research_count > 0 )); then
               matches="$(
                 for file in "${research_files[@]}"; do
                   [[ -f "$file" ]] && grep -hE '^[[:space:]]*[-*] (Tool|API|Model):' "$file" || true
                 done | grep -v '<!--' | sort -u || true
               )"
-              if [[ -n "$matches" ]]; then printf '%s\n' "$matches"; else echo "- Research files changed, but no structured Tool/API/Model entries were found."; fi
+              if [[ -n "$matches" ]]; then
+                printf '%s\\n' "$matches"
+              else
+                echo "- Research files changed, but no structured Tool/API/Model entries were found."
+              fi
             else
               echo "- No research-log updates were committed during this 24-hour window."
             fi
@@ -87,7 +101,11 @@ jobs:
                   [[ -f "$file" ]] && grep -hEi '^[[:space:]]*[-*] (Integration opportunity|Integration|Composition):' "$file" || true
                 done | grep -v '<!--' | sort -u || true
               )"
-              if [[ -n "$matches" ]]; then printf '%s\n' "$matches"; else echo "- No structured integration-opportunity entries were found in the updated files."; fi
+              if [[ -n "$matches" ]]; then
+                printf '%s\\n' "$matches"
+              else
+                echo "- No structured integration-opportunity entries were found in the updated files."
+              fi
             else
               echo "- No new integration opportunities were recorded in this reporting window."
             fi
