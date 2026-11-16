@@ -19,7 +19,7 @@ test('GitHub discovery requests public repositories and normalizes license metad
 
 test('GitHub discovery stops on official rate-limit response without retrying or bypassing', async () => {
   let calls=0;
-  const client=new GitHubDiscoveryClient({fetchImpl:async url=>{calls++; if(String(url).endsWith('/rate_limit')) return {ok:true,status:200,json:async()=>({resources:{search:{remaining:2,limit:30},core:{remaining:4000,limit:5000}}})}; return {ok:false,status:403,headers:{get:()=> '1790000000'}};}});
+  const client=new GitHubDiscoveryClient({fetchImpl:async url=>{calls++; if(String(url).endsWith('/rate_limit')) return {ok:true,status:200,json:async()=>({resources:{search:{remaining:20,limit:30},core:{remaining:4000,limit:5000}}})}; return {ok:false,status:403,headers:{get:()=> '1790000000'}};}});
   await assert.rejects(()=>client.searchRepositories('web framework'),error=>error instanceof GitHubDiscoveryError&&error.status===403);
   assert.equal(calls,1);
 });
@@ -32,7 +32,7 @@ test('GitHub discovery validates query and bounded result limits', async () => {
 
 test('GitHub discovery can enumerate public repositories in a vendor organization',async()=>{
   let requested;
-  const client=new GitHubDiscoveryClient({fetchImpl:async url=>{requested=String(url);return{ok:true,status:200,json:async()=>String(url).endsWith('/rate_limit')?({resources:{core:{remaining:4000,limit:5000}}}):([{id:11,full_name:'google/project',name:'project',html_url:'https://github.com/google/project',archived:false,license:{spdx_id:'Apache-2.0',name:'Apache License 2.0'}}])};}});
+  const client=new GitHubDiscoveryClient({fetchImpl:async url=>{if(!String(url).endsWith('/rate_limit'))requested=String(url);return{ok:true,status:200,json:async()=>String(url).endsWith('/rate_limit')?({resources:{core:{remaining:4000,limit:5000}}}):([{id:11,full_name:'google/project',name:'project',html_url:'https://github.com/google/project',archived:false,license:{spdx_id:'Apache-2.0',name:'Apache License 2.0'}}])};}});
   const result=await client.listOrganizationRepositories('google');
   assert.equal(result.results[0].fullName,'google/project');
   assert.match(requested,/orgs\/google\/repos/);
