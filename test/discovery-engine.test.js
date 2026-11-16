@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildDiscoveryPlan, classifyLicense, createCandidateRecord, evaluateRepositoryCandidate,
-  rankCandidates, composeToolchain, evaluateReleaseUpdate, inspectZeroCostDependencies,
+  rankCandidates, composeToolchain, evaluateReleaseUpdate, inspectZeroCostDependencies, evaluateDiscoveryQuality,
 } from '../src/core/discovery-engine.js';
 
 const repo = (overrides = {}) => ({
@@ -135,7 +135,6 @@ test('zero-cost gate quarantines malformed manifests and clears ordinary local d
 
 
 test('quality gate rejects stale, structurally weak, and unverified fork candidates', () => {
-  const { evaluateDiscoveryQuality } = await import('../src/core/discovery-engine.js');
   const now=Date.parse('2026-11-16T00:00:00Z');
   const base={fork:false,pushedAt:'2026-11-01T00:00:00Z',structuralEvidence:{readme:true,testsDirectory:true,apiDocumentation:false,configurationManifest:false}};
   assert.equal(evaluateDiscoveryQuality(base,{now}).status,'QUALITY_CLEAR');
