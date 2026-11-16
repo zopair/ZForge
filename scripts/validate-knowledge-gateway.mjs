@@ -31,7 +31,7 @@ const candidates = Object.entries(instances).flatMap(([key, item]) => {
 console.log(`[SEARXNG] metadata_instances=${Object.keys(instances).length}; healthy_normal_candidates=${candidates.length}`);
 
 let selected = null;
-for (const candidate of candidates.slice(0, 5)) {
+for (const candidate of candidates.slice(0, 20)) {
   const endpoint = new URL('/search', candidate.url);
   endpoint.searchParams.set('q', 'ZForge API capability preflight');
   endpoint.searchParams.set('format', 'json');
@@ -41,7 +41,7 @@ for (const candidate of candidates.slice(0, 5)) {
       signal: AbortSignal.timeout(8000),
       headers: {
         accept: 'application/json',
-        'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36',
+        'user-agent': 'ZForge-KnowledgeGateway/1.0 (+https://github.com/zopair/ZForge)',
       },
     });
     const elapsed = (performance.now() - started) / 1000;
@@ -65,7 +65,7 @@ for (const candidate of candidates.slice(0, 5)) {
     console.log(`[SEARXNG] API probe failed ${candidate.url}: ${error.name}`);
   }
 }
-if (!selected) throw new Error('No healthy normal-network SearXNG instance empirically exposed a responsive JSON API in the bounded preflight (maximum 5 candidates).');
+if (!selected) throw new Error('No healthy normal-network SearXNG instance empirically exposed a responsive JSON API in the bounded preflight (maximum 20 candidates).');
 
 process.env.ZFORGE_SEARXNG_INSTANCES = selected.url;
 console.log(`[SEARXNG] has_api=${selected.hasApi}; network_type=normal; timing.api.response=${selected.apiResponse.toFixed(3)}s; url=${selected.url}`);
