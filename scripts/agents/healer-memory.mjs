@@ -12,6 +12,7 @@ export async function recordIncident({ eventPath = process.env.GITHUB_EVENT_PATH
   if (!eventPath) throw new Error('GITHUB_EVENT_PATH is required');
   const event = JSON.parse(await readFile(eventPath, 'utf8'));
   const run = event.workflow_run ?? {};
+  if (!logs && process.env.ZFORGE_LOG_FILE) logs = await readFile(process.env.ZFORGE_LOG_FILE, 'utf8');
   const incident = {
     workflow: run.name ?? 'unknown',
     runId: run.id ?? null,
