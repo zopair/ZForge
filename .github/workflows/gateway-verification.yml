@@ -36,7 +36,11 @@ jobs:
         run: |
           node --version
           npm --version
-          npm install --ignore-scripts --no-audit --no-fund
+          if [ -s package-lock.json ]; then
+            npm ci --ignore-scripts --no-audit --no-fund
+          else
+            npm install --ignore-scripts --no-audit --no-fund
+          fi
           test -s package-lock.json
           node -e "const p=require('./package-lock.json'); if (p.lockfileVersion !== 3) process.exit(1); console.log('LOCKFILE_VERSION=' + p.lockfileVersion)"
 
