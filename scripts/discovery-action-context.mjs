@@ -30,7 +30,7 @@ export async function writeDiscoveryCursor(cursor, path = 'discovery_cursor.json
   const temporary = `${path}.tmp`;
   await writeFile(temporary, `${JSON.stringify({ version: 1, ...cursor, updatedAt: new Date().toISOString() }, null, 2)}\n`, { mode: 0o600 });
   await rename(temporary, path);
-  core.saveState('discovery_cursor', JSON.stringify(cursor));
+  if (process.env.GITHUB_STATE) core.saveState('discovery_cursor', JSON.stringify(cursor));
   core.setOutput('discovery_cursor_path', path);
   return path;
 }

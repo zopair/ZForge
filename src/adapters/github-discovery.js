@@ -44,7 +44,13 @@ export class GitHubDiscoveryClient {
       return await this.apiClient.request(route, parameters, { resource });
     } catch (error) {
       if (error.status === 403 || error.status === 429 || this.apiClient.budget?.halted) {
-        throw new GitHubDiscoveryError(error.message, { status: error.status ?? 0, safeHalt: true, resource, apiRequests: this.apiClient.budget?.used ?? 0 });
+        const quota = this.apiClient.budget?.snapshot?.().lastQuota ?? null;
+        throw new GitHubDiscoveryError(error.message, {
+          status: error.status ?? 0, safeHalt: true, resource,
+          apiRequests: this.apiClient.budget?.snapshot?.().used ?? 0,
+          remaining: quota?.remaining ?? null, limit: quota?.limit ?? null,
+          resetAt: quota?.reset ?? null,
+        });
       }
       throw new GitHubDiscoveryError(error.message, { status: error.status ?? 0, resource });
     }

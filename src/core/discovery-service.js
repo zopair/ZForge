@@ -135,7 +135,8 @@ export class UniversalDiscoveryService {
           if (!budgetAllows()) break;
           try {
             const response = await this.client.listOrganizationRepositories(entry.organization, { page: currentPage, perPage: 100 });
-            syncApiRequests(); this.cache.set(key, { savedAt: Date.now(), response }); addResults(response.results);
+            if (this.budget) syncApiRequests(); else apiRequests += requestCost;
+            this.cache.set(key, { savedAt: Date.now(), response }); addResults(response.results);
             organizationScans.push({ vendor: entry.vendor, organization: entry.organization, page: currentPage, count: response.count, complete: response.complete });
             if (!response.complete) { currentPage = response.nextPage ?? currentPage + 1; break; }
           } catch (error) {

@@ -20,3 +20,8 @@ The `gh` CLI is appropriate for interactive operator diagnostics and one-off she
 ## Supply-chain posture
 
 The four direct packages are official GitHub-maintained projects, pinned to exact versions and MIT-licensed. CI installs with lifecycle scripts disabled and runs npm's default audit during install. There is no package lockfile in the existing repository; dependency versions are pinned directly until a lockfile can be generated and reviewed in a network-enabled build environment.
+
+
+## Manual workflow runner
+
+`node scripts/run-discovery-action.mjs` is the Actions-aware runner entrypoint. It reads the workflow repository/ref/run context, uses the configured API budget, resumes from `discovery_cursor.json`, and writes the next cursor atomically. It is not scheduled or invoked automatically by this PR; enabling a scheduled research workflow remains a separate operational decision.
