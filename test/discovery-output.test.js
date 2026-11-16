@@ -25,3 +25,13 @@ test('daily brief explicitly labels mocked dry-run and API budget', () => {
 test('integration assessment stays conservative for unknown architecture', () => {
   assert.equal(assessIntegrationFeasibility().score,'LOW');
 });
+
+test('offline OCR dry-run consumes exactly five mocked request events and never reaches network', async () => {
+  const ledger=[];
+  const mockFetch=async endpoint=>{ledger.push(String(endpoint));return {ok:true,status:200,json:async()=>({fixture:true})};};
+  for (const endpoint of ['/search/repositories?q=ocr','/repos/mock/ocr','/repos/mock/ocr/contents','/repos/mock/ocr/contents/package.json','/repos/mock/ocr/contents/.env.example']) {
+    await mockFetch(endpoint);
+  }
+  assert.equal(ledger.length,5);
+  assert.deepEqual(ledger,['/search/repositories?q=ocr','/repos/mock/ocr','/repos/mock/ocr/contents','/repos/mock/ocr/contents/package.json','/repos/mock/ocr/contents/.env.example']);
+});
