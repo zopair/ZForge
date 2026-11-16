@@ -1,0 +1,36 @@
+name: ZForge Agent Replenishment
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["ZForge Quality Gate", "ZForge Swarm QA Sandbox"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  restore-standby-pool:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Restore immutable standby copies
+        run: node scripts/agents/replenish.mjs
+      - name: Commit standby pool
+        run: |
+          if git diff --quiet -- agents/standby; then
+            echo "Standby pool is current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add agents/standby/
+          git commit -m "chore(agents): replenish standby templates"
+          git push
