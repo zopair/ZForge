@@ -5,13 +5,21 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
+    inputs:
+      run_browser_smoke:
+        description: "Run optional multi-browser smoke tests (downloads browser engines; higher resource use)"
+        required: false
+        default: false
+        type: boolean
 
 # One active validation per PR; newer commits supersede stale in-progress runs.
 concurrency:
   group: zforge-quality-gate-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+
 permissions:
   contents: read
+
 jobs:
   unit-tests:
     timeout-minutes: 20
@@ -35,7 +43,9 @@ jobs:
       - name: Validate offline KemeTone Python adapter syntax
         run: python3 -m py_compile scripts/kemetone-inference.py
 
+  # Deliberately opt-in: do not download Chromium, Firefox or WebKit on normal CI runs.
   browser-smoke:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_browser_smoke == true
     timeout-minutes: 30
     runs-on: ubuntu-24.04
     steps:
@@ -45,7 +55,7 @@ jobs:
           node-version: 24
       - name: Install pinned Playwright runner
         run: npm install --no-save --package-lock=false playwright@1.56.1
-      - name: Install Chromium, Firefox and WebKit
-        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Install Chromium only
+        run: npx playwright install --with-deps chromium
       - name: Run BLACK VANTA browser smoke tests
         run: node scripts/browser-smoke.mjs

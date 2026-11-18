@@ -1,73 +1,131 @@
+<div align="center">
+
+<img src="assets/icon.svg" alt="ZForge mark" width="112" />
+
 # ZForge
+### Zubair Autonomous Engineering Forge
 
-**Zubair Autonomous Engineering Forge** — *From Idea to Reality. Autonomously.*
+**From Idea to Reality. Autonomously.**
 
-ZForge is a zero-budget, open-source-only autonomous engineering platform. Its internal Chief Autonomous Engineer discovers, verifies, composes and maintains engineering tools; specialist agents build and test software; BLACK VANTA is the human-facing text/voice control surface.
+An evidence-driven, zero-budget proof of concept for coordinating autonomous engineering agents, specialist workflows, and human-approved execution.
 
-## 📊 Daily Research Brief
+[![Quality Gate](https://github.com/zopair/ZForge/actions/workflows/ci.yml/badge.svg)](https://github.com/zopair/ZForge/actions/workflows/ci.yml)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Zero Budget](https://img.shields.io/badge/Approach-Zero--Budget-2563eb)](#zero-budget-engineering)
+[![Status](https://img.shields.io/badge/Status-PoC%20%2F%20MVP-orange)](#proof-of-concept--enterprise-customization-readiness)
 
-The latest 24-hour research summary and SHA-256 integrity digest: [Open DAILY_BRIEF.md](DAILY_BRIEF.md).
+</div>
 
-## Non-negotiable principles
-1. **Open source only:** public source code is not enough; verify OSI-compatible licensing for code, dependencies, models, data, fonts and assets.
-2. **Zero budget:** no paid APIs, subscriptions, credits, required commercial SaaS or expiring trial dependencies.
-3. **Evidence over popularity:** stars, forks, downloads and branding are discovery hints only, never proof of superiority.
-4. **Proof before claims:** status is scoped to capability, version, environment and reproducible test.
-5. **Learning without repeating failures:** preserve root causes, tested fixes, failed approaches and resource limits.
-6. **Safe autonomy:** least privilege, secret isolation, isolated execution, explicit approval for destructive or externally visible actions.
-7. **Reversible improvement:** updates are proposed, tested in isolation and rollback-ready; no silent production upgrades.
+> **Start here:** [Preview guide](PREVIEW.md) · [Architecture](docs/ARCHITECTURE.md) · [Cloud execution boundaries](docs/CLOUD_EXECUTION.md)
 
-## Architecture
-- [Architecture](docs/ARCHITECTURE.md)
-- [Phone-only Cloud Execution Fabric](docs/CLOUD_EXECUTION.md)
-- [Universal Open-Source Discovery Engine](docs/UNIVERSAL_DISCOVERY_ENGINE.md)
-- [Secure Execution Runtime Contract](docs/EXECUTION_RUNTIME_CONTRACT.md)
-- [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
-- [Local Model Registry](memory/MODEL_REGISTRY.md)
-- [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
-- [BLACK VANTA UI](docs/BLACK_VANTA_UI.md)
-- [Web Build Worker](docs/WEB_BUILD_WORKER.md)
-- [Generated Web App Browser Verification](docs/WEB_BROWSER_VERIFICATION.md)
-- [Browser QA](docs/BROWSER_QA.md)
-- [Live Agent Progress and Specialist Delegation](docs/LIVE_AGENT_PROGRESS.md)
-- [Chief Agent Specialist Delegation](docs/CHIEF_AGENT_ORCHESTRATION.md)
-- [Local Voice Runtime and Readiness](docs/LOCAL_VOICE.md)
-- [Tool evaluation protocol](docs/TOOL_EVALUATION.md)
-- [Agent operating system](docs/AGENT_OPERATING_SYSTEM.md)
-- [Conversational Core](docs/CONVERSATIONAL_CORE.md)
+## The business problem
 
-## Internal components
-- Discovery planner, strict license/zero-cost gates and toolchain composition: src/core/discovery-engine.js
-- Bounded discovery orchestration with query budget and cache: src/core/discovery-service.js
-- Read-only GitHub search adapter with official rate-limit stop: src/adapters/github-discovery.js
-- Repository metadata/license/manifest inspector: src/adapters/github-repository-inspector.js
-- Official release metadata adapter and review-only update monitor: src/adapters/github-release-monitor.js and src/core/release-monitor.js
-- Local-only Ollama model adapter: src/adapters/ollama-model-adapter.js
-- Local repository memory and canonical prompt providers: src/adapters/local-repository-memory-store.js
-- Approval-gated GitHub task branch/file and draft-PR writer: src/adapters/github-repository-writer.js
-- Chief Agent draft planner and validated active-specialist DAG proposals: src/core/chief-agent.js
-- Bounded parallel specialist orchestration with dependency-aware scheduling: src/core/multi-agent-coordinator.js
-- Central conversational interface, intent routing, capability registry and immutable approval-gated task planning: src/core/conversational-core.js
-- Durable conversational sessions: src/runtime/conversation-store.js
-- Authenticated task gateway, durable task ledger and cursor-based progress events: src/runtime/task-gateway.js
-- Local-only whisper.cpp transcription, Piper TTS and optional Egyptian Cairene KemeTone TTS with readiness checks and automatic language-aware fallback: src/runtime/local-voice-service.js
-- Self-hosted web build and Chromium/Firefox/WebKit generated-app verification workers: src/runtime/web-build-service.js and src/runtime/web-browser-verification-service.js
-- Self-hosted local workspace process runner: src/runtime/local-execution-runtime.js
-- Runtime API and deployment guide: docs/TASK_GATEWAY.md
-- Agent manifest and activation gates: src/core/agent-architect.js
-- Local-only Ollama model adapter: src/adapters/ollama-model-adapter.js
-- Chief Agent draft planner with validated active-specialist DAG proposals: src/core/chief-agent.js
-- Bounded multi-agent DAG coordinator with dependency-aware execution and progress callbacks: src/core/multi-agent-coordinator.js
-- Agent manifest and activation gates: src/core/agent-architect.js
-- Chief Agent: prompts/CHIEF_AGENT.md
-- Agent Architect: prompts/AGENT_ARCHITECT.md
-- Tool registry and engineering memory: memory/
+Engineering teams lose time moving from an idea to a verified implementation: discovering tools, coordinating specialists, tracking execution, and proving that a task is actually complete. Autonomous workflows can help, but opaque execution and uncontrolled permissions make them difficult to trust.
 
-## Current implementation status
-The repository includes a BLACK VANTA PWA with an optional self-hosted Runtime connection and a phone-only cloud handoff. The cloud workflow accepts owner-authored task issues, provisions an ephemeral GitHub Actions runner, starts the existing ZForge Task Gateway and a small open model on that runner, executes tasks in a disposable repository snapshot, then posts a result comment and uploads artifacts. It does not require phone-side installation or a permanent runtime host. The issue-based handoff is asynchronous and requires the user to submit a public GitHub issue; it does not provide a live in-page stream. Chief Agent can propose a validated specialist DAG using only independently ACTIVE Agent Factory profiles; the gateway executes delegated tasks concurrently where dependencies allow and streams their lifecycle into the same live progress feed. Explicit specialist selection continues to run only that profile. The gateway persists task state, invokes Chief Agent planning with bounded discovery and engineering memory, then runs a local model tool loop (`run_command`, `read_file`, `write_file`, `list_files`, `finish_task`) in a workspace. Completion requires successful tool evidence. The host process runner is not a container/OS sandbox and runs with the service account's permissions; deploy it as an unprivileged user or choose the optional Podman/Docker backend. The container backend applies a read-only root filesystem, workspace-only writable mount, CPU/RAM/PID limits and reduced capabilities. Binary artifacts can be published with SHA-256 verification and downloaded through the authenticated gateway. Agent proposals, test evidence, independent reviews and explicit activation are now handled by the Agent Factory; BLACK VANTA can select active specialist agents. Bounded multi-agent DAG scheduling is implemented with dependency-aware parallel execution and per-agent profiles. A self-hosted Android debug worker now runs Gradle tests, assembles APK/AAB outputs, and stores verified artifacts; release signing remains pending. The runtime also persists bounded agent progress events and streams them into BLACK VANTA; optional local whisper.cpp transcription, Piper synthesis and Egyptian Cairene KemeTone synthesis are available when host binaries and models are configured; the readiness endpoint verifies local executables, Python modules and model files before enabling each engine. Arabic-only text prefers KemeTone when installed, while mixed-language text falls back to Piper. Still pending: persistent distributed scheduling/recovery, SBOM/provenance generation, Android release signing and iOS build workers, independent verification workers and production-grade deployment automation. GitHub Pages remains static hosting; GitHub Actions provide ephemeral event-triggered execution, not a persistent backend. See docs/CLOUD_EXECUTION.md for the cloud worker's exact limits and security boundary.
+## The ZForge approach
 
-## Tests
-Run `npm test` with Node.js 20 or newer. CI uses Node.js 24.
+ZForge explores an evidence-driven engineering workflow: a central Chief Agent plans work, specialist agents can be coordinated through bounded dependency-aware execution, and BLACK VANTA provides the human-facing text/voice interface. Approval boundaries and completion evidence are explicit design requirements.
 
-## GitHub Pages
-Set **Settings → Pages → Build and deployment → Source** to **GitHub Actions**. The included workflow deploys the static shell.
+The current repository includes a BLACK VANTA progressive web app, a self-hostable runtime, task gateway and optional GitHub Actions cloud handoff. The cloud handoff is asynchronous and event-triggered; GitHub Pages serves only the static interface.
+
+## Architecture at a glance
+
+```mermaid
+flowchart TD
+    U[Human / Project Owner] --> BV[BLACK VANTA PWA]
+    BV -->|Approved task| TG[Task Gateway]
+    TG --> CA[Chief Agent Planner]
+    CA --> DAG[Validated Specialist DAG]
+    DAG --> S[Specialist Agents]
+    S --> W[Isolated Task Workspace]
+    W --> T[Tests and Execution Evidence]
+    T --> TG
+    TG --> BV
+    TG --> M[Engineering Memory]
+    GH[GitHub Issue / Actions Event] -. optional async handoff .-> TG
+```
+
+*Conceptual system view; individual integrations and deployment boundaries are documented separately.*
+
+## Quick start
+
+**Requirements:** Node.js 20 or newer.
+
+```bash
+git clone https://github.com/zopair/ZForge.git
+cd ZForge
+npm test
+npm run runtime:check
+npm start
+```
+
+The runtime starts locally. Configure only the local model/runtime settings needed for the capability being demonstrated. Do not expose the runtime publicly for a showcase.
+
+- PWA entry: `index.html`
+- Runtime entry: `src/runtime/server.js`
+- Preview walkthrough and acceptance checks: [PREVIEW.md](PREVIEW.md)
+- GitHub Pages deployment: configure **Settings → Pages → Build and deployment → Source → GitHub Actions**.
+
+## What is implemented today
+
+- BLACK VANTA PWA with optional self-hosted runtime connection.
+- Chief Agent planning and validated specialist DAG proposals.
+- Bounded, dependency-aware specialist orchestration and progress events.
+- Task Gateway with task ledger, progress feed and evidence-based completion.
+- Local model adapter and local-only voice integrations when host binaries/models are configured.
+- Optional asynchronous GitHub Actions cloud handoff using ephemeral runners.
+- Engineering memory for tool evaluation, failures and tested fixes.
+
+**Known gaps:** persistent distributed scheduling/recovery, SBOM and provenance generation, Android release signing, iOS build workers, independent verification workers, and production deployment automation remain incomplete. The host process runner is not an OS/container security boundary; see [Execution Runtime Contract](docs/EXECUTION_RUNTIME_CONTRACT.md).
+
+## Zero-budget engineering
+
+- Prefer free, client-side, self-hosted, and GitHub-native infrastructure.
+- Use open-source dependencies only after checking the actual license, maintenance signals, security posture, and supply-chain red flags.
+- No paid API, subscription, credit-based service, or commercial SaaS is required for the basic local preview.
+- Keep CI focused on fast, deterministic checks. Expensive browser-engine checks are opt-in and are not part of the normal quality gate.
+- Treat external integrations and cloud execution as optional capabilities, not prerequisites for the core demonstration.
+
+## Proof of Concept & Enterprise Customization Readiness
+
+ZForge is a **Proof of Concept / MVP intended for technical evaluation, partner demonstrations, and investment discussions**. It is not represented as a production-certified enterprise platform.
+
+The current baseline demonstrates the shape of an extensible engineering workflow. Enterprise adaptation can be scoped later around a customer's identity provider, policy model, approved model/runtime, execution environment, audit requirements, integrations, and operational controls. Those integrations require customer-specific discovery, funding, and validation; they are not implied to exist today.
+
+### Development record
+
+- **Preview-readiness baseline:** reproducible setup instructions, a bounded reviewer walkthrough, acceptance criteria, and explicit known limitations.
+- **Resource-aware CI:** dependency-free unit tests and syntax checks run by default; multi-browser smoke testing is an optional manual action.
+- **Evidence-first status:** implementation claims are scoped to the code paths and checks actually available in this repository.
+
+## Documentation map
+
+| Area | Reference |
+|---|---|
+| System architecture | [ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| Preview steps and acceptance | [PREVIEW.md](PREVIEW.md) |
+| Cloud execution | [CLOUD_EXECUTION.md](docs/CLOUD_EXECUTION.md) |
+| Runtime security boundary | [EXECUTION_RUNTIME_CONTRACT.md](docs/EXECUTION_RUNTIME_CONTRACT.md) |
+| Task Gateway | [TASK_GATEWAY.md](docs/TASK_GATEWAY.md) |
+| Agent Factory | [AGENT_FACTORY.md](docs/AGENT_FACTORY.md) |
+| Chief Agent orchestration | [CHIEF_AGENT_ORCHESTRATION.md](docs/CHIEF_AGENT_ORCHESTRATION.md) |
+| Browser QA (optional) | [BROWSER_QA.md](docs/BROWSER_QA.md) |
+| Daily research brief | [DAILY_BRIEF.md](DAILY_BRIEF.md) |
+
+## CI policy
+
+Every normal push and pull request runs the lightweight quality gate: `npm test`, JavaScript syntax checks for cloud entrypoints, and Python syntax validation for the offline KemeTone adapter.
+
+The multi-browser smoke job is **manual and opt-in** from GitHub Actions → **ZForge Quality Gate** → **Run workflow** → enable `run_browser_smoke`. It installs Chromium only. Firefox and WebKit are intentionally excluded from the zero-budget preview gate.
+
+## Intellectual Property & Authorship
+
+**Founder & Developer:** **Aly Hussein Zopair (علي حسين زوبير)**.
+
+The project identity, original architecture, documentation, and project-authored source contributions are attributed to the named founder/developer, subject to the provenance and third-party notices of individual components and dependencies.
+
+**Rights notice:** All rights in original project materials are reserved by the author unless a separate written license or permission explicitly states otherwise. No open-source license grant should be inferred from public repository visibility alone. Third-party components remain governed by their respective licenses. A repository-level license file should be added only after the intended distribution terms are formally selected.
+
+---
+
+<p align="center"><sub>ZForge · Evidence-driven autonomous engineering · Proof of Concept / MVP</sub></p>
