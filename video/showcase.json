@@ -1,0 +1,36 @@
+{
+  "name": "ZForge",
+  "tag": "Zubair Autonomous Engineering Forge",
+  "url": "https://github.com/zopair/ZForge",
+  "accent": [
+    91,
+    170,
+    255
+  ],
+  "scenes": [
+    {
+      "title": "The engineering bottleneck",
+      "narration": "Teams lose time evaluating tools, rebuilding workflows, and connecting disconnected engineering systems. The result is slower experimentation and decisions that are difficult to reproduce."
+    },
+    {
+      "title": "A governed engineering forge",
+      "narration": "ZForge brings open-source discovery, tool evaluation, engineering memory, and specialist-agent coordination into one evolving platform."
+    },
+    {
+      "title": "How the platform works",
+      "narration": "A Chief Autonomous Engineer plans bounded work. Specialist agents contribute focused capabilities. BLACK VANTA provides a conversational text and voice interface, while the task gateway coordinates execution and progress."
+    },
+    {
+      "title": "Evidence before adoption",
+      "narration": "License checks, reproducible tests, explicit approvals, bounded discovery, and reversible updates are central design principles. The goal is not more automation at any cost. It is more accountable engineering."
+    },
+    {
+      "title": "Business value",
+      "narration": "For innovation and engineering teams, ZForge is designed to reduce toolchain friction, lower the cost of experimentation, and make prototype work easier to inspect, repeat, and extend."
+    },
+    {
+      "title": "A clear path forward",
+      "narration": "ZForge is an evolving proof of concept. Distributed recovery, software bill of materials provenance, some mobile build capabilities, and production deployment automation remain on the roadmap. Explore the project and its current evidence on GitHub."
+    }
+  ]
+}
