@@ -129,3 +129,9 @@ The project identity, original architecture, documentation, and project-authored
 ---
 
 <p align="center"><sub>ZForge · Evidence-driven autonomous engineering · Proof of Concept / MVP</sub></p>
+
+## Enterprise Project Overview
+
+<video controls playsinline preload="metadata" width="100%"><source src="https://raw.githubusercontent.com/zopair/ZForge/feat/enterprise-showcase-video/assets/marketing/project-overview.mp4" type="video/mp4">Your browser does not support embedded video. [Open the MP4]( https://raw.githubusercontent.com/zopair/ZForge/feat/enterprise-showcase-video/assets/marketing/project-overview.mp4 ).</video>
+
+[Watch the English project overview](VIDEO.md) · [Open the project repository](https://github.com/zopair/ZForge)
