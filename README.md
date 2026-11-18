@@ -1,5 +1,7 @@
 # ZForge
 
+> **Preview:** [Local setup, demo scenario, acceptance checks, and known limits](PREVIEW.md).
+
 **Zubair Autonomous Engineering Forge** — *From Idea to Reality. Autonomously.*
 
 ZForge is a zero-budget, open-source-only autonomous engineering platform. Its internal Chief Autonomous Engineer discovers, verifies, composes and maintains engineering tools; specialist agents build and test software; BLACK VANTA is the human-facing text/voice control surface.
