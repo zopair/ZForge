@@ -1,7 +1,7 @@
 # 📊 Daily Research Brief
 
-- **Generated:** 2026-11-23 10:51:19 UTC
-- **Reporting window:** 2026-11-22 10:51:19 UTC — 2026-11-23 10:51:19 UTC
+- **Generated:** 2026-11-24 12:34:43 UTC
+- **Reporting window:** 2026-11-23 12:34:43 UTC — 2026-11-24 12:34:43 UTC
 
 ## Executive Summary
 
