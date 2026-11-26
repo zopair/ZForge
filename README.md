@@ -230,11 +230,9 @@ The Pages workflow deploys the static site from `main` and runs a live smoke che
 
 ### Screenshots
 
-Add current, real UI captures to `docs/screenshots/` and update the paths below. These are placeholders, not screenshots of verified states.
+The Playwright browser-smoke workflow captures the initial BLACK VANTA interface at desktop (1440×1000) and mobile (390×844) viewports. After a successful or partially completed browser-smoke job, open the workflow run and download the `zforge-ui-screenshots` artifact. Artifacts are retained for 14 days and are not committed to the source tree.
 
-<!-- ![BLACK VANTA desktop interface](docs/screenshots/black-vanta-desktop.png) -->
-<!-- ![BLACK VANTA mobile interface](docs/screenshots/black-vanta-mobile.png) -->
-<!-- ![Cloud task result and artifacts](docs/screenshots/cloud-task-result.png) -->
+These captures document the initial interface only; they do not represent a completed live agent task or certify every browser interaction.
 
 ## 8. Testing & Verification
 
