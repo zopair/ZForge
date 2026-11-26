@@ -5,7 +5,7 @@
 [![Quality Gate](https://github.com/zopair/ZForge/actions/workflows/ci.yml/badge.svg)](https://github.com/zopair/ZForge/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/zopair/ZForge/actions/workflows/pages.yml/badge.svg)](https://github.com/zopair/ZForge/actions/workflows/pages.yml)
 
-**Live interface:** [BLACK VANTA — ZForge](https://zopair.github.io/ZForge/)  
+**GitHub Pages demo URL:** [BLACK VANTA — ZForge](https://zopair.github.io/ZForge/) (deployment target; verify the latest Pages workflow run for current availability)  
 **Source:** [github.com/zopair/ZForge](https://github.com/zopair/ZForge)
 
 > **Project status:** Active proof of concept / MVP. The repository contains implemented planning, agent orchestration, task-gateway, workspace, and execution components. It is not presented as a fully autonomous, production-hardened hosted service. See [implementation status and limits](#7-live-demo--screenshots) and the architecture documents before deployment.
@@ -222,7 +222,7 @@ See [Cloud Execution Fabric](docs/CLOUD_EXECUTION.md), [Task Gateway](docs/TASK_
 
 ## 7. Live Demo & Screenshots
 
-- **BLACK VANTA PWA:** [https://zopair.github.io/ZForge/](https://zopair.github.io/ZForge/)
+- **GitHub Pages deployment target:** [https://zopair.github.io/ZForge/](https://zopair.github.io/ZForge/) (the workflow is configured; current public reachability was not independently confirmed during this review)
 - **Repository:** [https://github.com/zopair/ZForge](https://github.com/zopair/ZForge)
 - **Cloud execution design:** [docs/CLOUD_EXECUTION.md](docs/CLOUD_EXECUTION.md)
 
