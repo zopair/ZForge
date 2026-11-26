@@ -1,73 +1,281 @@
 # ZForge
 
-**Zubair Autonomous Engineering Forge** — *From Idea to Reality. Autonomously.*
+**Zubair Autonomous Engineering Forge** — an open-source, zero-budget engineering platform for planning, orchestrating, executing, and verifying software tasks through agent workflows.
 
-ZForge is a zero-budget, open-source-only autonomous engineering platform. Its internal Chief Autonomous Engineer discovers, verifies, composes and maintains engineering tools; specialist agents build and test software; BLACK VANTA is the human-facing text/voice control surface.
+[![Quality Gate](https://github.com/zopair/ZForge/actions/workflows/ci.yml/badge.svg)](https://github.com/zopair/ZForge/actions/workflows/ci.yml)
+[![GitHub Pages](https://github.com/zopair/ZForge/actions/workflows/pages.yml/badge.svg)](https://github.com/zopair/ZForge/actions/workflows/pages.yml)
 
-## 📊 Daily Research Brief
+**GitHub Pages demo URL:** [BLACK VANTA — ZForge](https://zopair.github.io/ZForge/) (deployment target; verify the latest Pages workflow run for current availability)  
+**Source:** [github.com/zopair/ZForge](https://github.com/zopair/ZForge)
 
-The latest 24-hour research summary and SHA-256 integrity digest: [Open DAILY_BRIEF.md](DAILY_BRIEF.md).
+> **Project status:** Active proof of concept / MVP. The repository contains implemented planning, agent orchestration, task-gateway, workspace, and execution components. It is not presented as a fully autonomous, production-hardened hosted service. See [implementation status and limits](#7-live-demo--screenshots) and the architecture documents before deployment.
 
-## Non-negotiable principles
-1. **Open source only:** public source code is not enough; verify OSI-compatible licensing for code, dependencies, models, data, fonts and assets.
-2. **Zero budget:** no paid APIs, subscriptions, credits, required commercial SaaS or expiring trial dependencies.
-3. **Evidence over popularity:** stars, forks, downloads and branding are discovery hints only, never proof of superiority.
-4. **Proof before claims:** status is scoped to capability, version, environment and reproducible test.
-5. **Learning without repeating failures:** preserve root causes, tested fixes, failed approaches and resource limits.
-6. **Safe autonomy:** least privilege, secret isolation, isolated execution, explicit approval for destructive or externally visible actions.
-7. **Reversible improvement:** updates are proposed, tested in isolation and rollback-ready; no silent production upgrades.
+## 1. Project Overview & Problem Statement
 
-## Architecture
-- [Architecture](docs/ARCHITECTURE.md)
-- [Phone-only Cloud Execution Fabric](docs/CLOUD_EXECUTION.md)
-- [Universal Open-Source Discovery Engine](docs/UNIVERSAL_DISCOVERY_ENGINE.md)
-- [Secure Execution Runtime Contract](docs/EXECUTION_RUNTIME_CONTRACT.md)
-- [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
-- [Local Model Registry](memory/MODEL_REGISTRY.md)
-- [Local Model Runtime Policy](docs/MODEL_RUNTIME_POLICY.md)
-- [BLACK VANTA UI](docs/BLACK_VANTA_UI.md)
-- [Web Build Worker](docs/WEB_BUILD_WORKER.md)
-- [Generated Web App Browser Verification](docs/WEB_BROWSER_VERIFICATION.md)
-- [Browser QA](docs/BROWSER_QA.md)
-- [Live Agent Progress and Specialist Delegation](docs/LIVE_AGENT_PROGRESS.md)
-- [Chief Agent Specialist Delegation](docs/CHIEF_AGENT_ORCHESTRATION.md)
-- [Local Voice Runtime and Readiness](docs/LOCAL_VOICE.md)
-- [Tool evaluation protocol](docs/TOOL_EVALUATION.md)
-- [Agent operating system](docs/AGENT_OPERATING_SYSTEM.md)
-- [Conversational Core](docs/CONVERSATIONAL_CORE.md)
+Engineering work often spans disconnected tools for research, planning, coding, testing, and delivery. ZForge explores a unified workflow that turns a natural-language request into a reviewable plan, delegates bounded work to specialist agents, executes in a workspace, and returns inspectable results.
 
-## Internal components
-- Discovery planner, strict license/zero-cost gates and toolchain composition: src/core/discovery-engine.js
-- Bounded discovery orchestration with query budget and cache: src/core/discovery-service.js
-- Read-only GitHub search adapter with official rate-limit stop: src/adapters/github-discovery.js
-- Repository metadata/license/manifest inspector: src/adapters/github-repository-inspector.js
-- Official release metadata adapter and review-only update monitor: src/adapters/github-release-monitor.js and src/core/release-monitor.js
-- Local-only Ollama model adapter: src/adapters/ollama-model-adapter.js
-- Local repository memory and canonical prompt providers: src/adapters/local-repository-memory-store.js
-- Approval-gated GitHub task branch/file and draft-PR writer: src/adapters/github-repository-writer.js
-- Chief Agent draft planner and validated active-specialist DAG proposals: src/core/chief-agent.js
-- Bounded parallel specialist orchestration with dependency-aware scheduling: src/core/multi-agent-coordinator.js
-- Central conversational interface, intent routing, capability registry and immutable approval-gated task planning: src/core/conversational-core.js
-- Durable conversational sessions: src/runtime/conversation-store.js
-- Authenticated task gateway, durable task ledger and cursor-based progress events: src/runtime/task-gateway.js
-- Local-only whisper.cpp transcription, Piper TTS and optional Egyptian Cairene KemeTone TTS with readiness checks and automatic language-aware fallback: src/runtime/local-voice-service.js
-- Self-hosted web build and Chromium/Firefox/WebKit generated-app verification workers: src/runtime/web-build-service.js and src/runtime/web-browser-verification-service.js
-- Self-hosted local workspace process runner: src/runtime/local-execution-runtime.js
-- Runtime API and deployment guide: docs/TASK_GATEWAY.md
-- Agent manifest and activation gates: src/core/agent-architect.js
-- Local-only Ollama model adapter: src/adapters/ollama-model-adapter.js
-- Chief Agent draft planner with validated active-specialist DAG proposals: src/core/chief-agent.js
-- Bounded multi-agent DAG coordinator with dependency-aware execution and progress callbacks: src/core/multi-agent-coordinator.js
-- Agent manifest and activation gates: src/core/agent-architect.js
-- Chief Agent: prompts/CHIEF_AGENT.md
-- Agent Architect: prompts/AGENT_ARCHITECT.md
-- Tool registry and engineering memory: memory/
+The project has two main surfaces:
 
-## Current implementation status
-The repository includes a BLACK VANTA PWA with an optional self-hosted Runtime connection and a phone-only cloud handoff. The cloud workflow accepts owner-authored task issues, provisions an ephemeral GitHub Actions runner, starts the existing ZForge Task Gateway and a small open model on that runner, executes tasks in a disposable repository snapshot, then posts a result comment and uploads artifacts. It does not require phone-side installation or a permanent runtime host. The issue-based handoff is asynchronous and requires the user to submit a public GitHub issue; it does not provide a live in-page stream. Chief Agent can propose a validated specialist DAG using only independently ACTIVE Agent Factory profiles; the gateway executes delegated tasks concurrently where dependencies allow and streams their lifecycle into the same live progress feed. Explicit specialist selection continues to run only that profile. The gateway persists task state, invokes Chief Agent planning with bounded discovery and engineering memory, then runs a local model tool loop (`run_command`, `read_file`, `write_file`, `list_files`, `finish_task`) in a workspace. Completion requires successful tool evidence. The host process runner is not a container/OS sandbox and runs with the service account's permissions; deploy it as an unprivileged user or choose the optional Podman/Docker backend. The container backend applies a read-only root filesystem, workspace-only writable mount, CPU/RAM/PID limits and reduced capabilities. Binary artifacts can be published with SHA-256 verification and downloaded through the authenticated gateway. Agent proposals, test evidence, independent reviews and explicit activation are now handled by the Agent Factory; BLACK VANTA can select active specialist agents. Bounded multi-agent DAG scheduling is implemented with dependency-aware parallel execution and per-agent profiles. A self-hosted Android debug worker now runs Gradle tests, assembles APK/AAB outputs, and stores verified artifacts; release signing remains pending. The runtime also persists bounded agent progress events and streams them into BLACK VANTA; optional local whisper.cpp transcription, Piper synthesis and Egyptian Cairene KemeTone synthesis are available when host binaries and models are configured; the readiness endpoint verifies local executables, Python modules and model files before enabling each engine. Arabic-only text prefers KemeTone when installed, while mixed-language text falls back to Piper. Still pending: persistent distributed scheduling/recovery, SBOM/provenance generation, Android release signing and iOS build workers, independent verification workers and production-grade deployment automation. GitHub Pages remains static hosting; GitHub Actions provide ephemeral event-triggered execution, not a persistent backend. See docs/CLOUD_EXECUTION.md for the cloud worker's exact limits and security boundary.
+- **BLACK VANTA:** a responsive, Arabic-first Progressive Web App (PWA) for conversation and task handoff.
+- **ZForge runtime:** a Node.js service that coordinates the conversational core, Chief Agent, specialist factory, workspace manager, task gateway, model adapter, and execution services.
 
-## Tests
-Run `npm test` with Node.js 20 or newer. CI uses Node.js 24.
+The platform supports two execution paths:
 
-## GitHub Pages
-Set **Settings → Pages → Build and deployment → Source** to **GitHub Actions**. The included workflow deploys the static shell.
+1. **GitHub Actions cloud handoff:** the static PWA prepares an owner-scoped GitHub Issue. After the repository owner submits it, an event-triggered workflow provisions a disposable runner, executes a bounded task, and posts a result comment with artifacts.
+2. **Optional self-hosted runtime:** an operator can run the Node.js gateway locally or on their own host and connect the PWA to it.
+
+**Who benefits:** developers exploring agent-assisted software delivery, engineering teams prototyping multi-agent workflows, and researchers evaluating reproducible, evidence-based automation.
+
+**Core problem addressed:** reducing the gap between an AI-generated plan and a verifiable engineering result—without requiring a paid API or a permanent hosted backend.
+
+## 2. Tech Stack & Versions
+
+Versions below are taken from the repository manifests and workflows. Where the repository does not pin a version, that is stated rather than guessed.
+
+| Area | Technology | Detected version / policy |
+|---|---|---|
+| Application language | JavaScript (ES modules) | No separate compiler/transpiler |
+| Runtime | Node.js | `>=20` in `package.json`; CI and Pages use Node.js `24` |
+| Front end | HTML5, CSS3, browser JavaScript | No frontend framework declared |
+| PWA | Web App Manifest, Service Worker, browser APIs | Native browser platform |
+| Runtime APIs | Node.js built-in modules and HTTP server | No runtime npm dependencies declared |
+| Automated tests | Node.js built-in test runner | `node --test` |
+| Browser smoke tests | Playwright | `1.56.1`, installed in CI without saving to the project manifest |
+| Auxiliary voice adapter | Python | Python 3 syntax-checked in CI; exact minor version is not pinned |
+| Local model integration | Ollama adapter | External local service; Ollama version is not pinned in this repository |
+| Cloud execution model | Qwen2.5 1.5B | Apache-2.0 model downloaded by the cloud workflow |
+| Cloud build image | Node.js, JDK, Android SDK, Python | Node.js 24, JDK 21, Android SDK 35 in the worker image |
+| CI/CD | GitHub Actions | Workflow actions are version-tagged in `.github/workflows/` |
+| Static hosting | GitHub Pages | Static PWA; not a persistent application server |
+
+No npm runtime package dependencies are declared in the current `package.json`.
+
+## 3. Prerequisites & Dependencies
+
+### Static PWA
+
+- A modern browser with JavaScript, Service Worker, and PWA support.
+- Internet access to load the GitHub Pages deployment.
+- No Node.js installation, local model, API key, or environment variable is required to open the static interface.
+
+### Automated checks
+
+- Node.js 20 or newer and npm.
+- Python 3 for the auxiliary KemeTone adapter syntax check.
+- For browser smoke tests: Playwright 1.56.1 and Chromium, Firefox, and WebKit browser binaries.
+
+### Optional self-hosted runtime
+
+- Node.js 20 or newer.
+- A private gateway token of at least 16 characters.
+- Ollama and a locally available model for model-driven tasks.
+- Optional Podman or Docker when using the container execution backend.
+- Optional JDK and Android SDK for Android build tasks.
+- Optional local voice binaries/models (whisper.cpp, FFmpeg, Piper, and/or KemeTone) for voice features.
+
+The cloud worker provisions its own temporary toolchain on a GitHub-hosted runner. GitHub Actions is ephemeral and quota-limited; it is not an always-on server.
+
+## 4. Installation & Local Setup (Step-by-Step)
+
+### A. Clone and inspect
+
+```bash
+git clone https://github.com/zopair/ZForge.git
+cd ZForge
+node --version
+npm --version
+```
+
+Use Node.js 20 or newer. The repository currently declares no npm runtime dependencies, so an `npm install` is not required for the core test suite.
+
+### B. Run the automated tests
+
+```bash
+npm test
+```
+
+### C. Serve the static PWA locally
+
+From the repository root, run:
+
+```bash
+python3 -m http.server 8000
+```
+
+Open [http://localhost:8000](http://localhost:8000). This serves the static interface only; it does not start the ZForge runtime or provide agent execution by itself.
+
+### D. Start the optional self-hosted runtime
+
+Set a private token in the shell, then start the service:
+
+**Linux / macOS**
+```bash
+export ZFORGE_GATEWAY_TOKEN='replace-with-a-random-token-of-at-least-16-characters'
+npm start
+```
+
+**PowerShell**
+```powershell
+$env:ZFORGE_GATEWAY_TOKEN = "replace-with-a-random-token-of-at-least-16-characters"
+npm start
+```
+
+The gateway defaults to `127.0.0.1:8787`. Configure the optional runtime URL in BLACK VANTA to connect the PWA. Do not expose the gateway publicly without an appropriate deployment and access-control review.
+
+### E. Optional container backend
+
+Set `ZFORGE_EXECUTION_BACKEND=container` and configure the container engine (Podman by default). The selected engine must already be installed and available to the service account. Review [Task Gateway and Local Execution Runtime](docs/TASK_GATEWAY.md) and [Architecture](docs/ARCHITECTURE.md) before enabling it.
+
+## 5. Environment Variables
+
+### Required for the self-hosted runtime
+
+| Variable | Description | Safe example |
+|---|---|---|
+| `ZFORGE_GATEWAY_TOKEN` | Bearer token; minimum 16 characters | `replace-with-a-random-token-16chars-min` |
+
+### Optional runtime configuration
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `ZFORGE_HOST` | Gateway bind address | `127.0.0.1` |
+| `ZFORGE_PORT` | Gateway port | `8787` |
+| `ZFORGE_DATA_DIR` | Persistent task/agent data directory | `./.zforge-data` |
+| `ZFORGE_WORKSPACE_DIR` | Agent workspace directory | `./.zforge-workspaces` |
+| `ZFORGE_ARTIFACT_DIR` | Artifact storage directory | `./.zforge-artifacts` |
+| `ZFORGE_REPO_ROOT` | Repository root used for prompts and memory | Current working directory |
+| `ZFORGE_MODEL` | Local model name | `qwen3:8b` |
+| `OLLAMA_BASE_URL` | Ollama endpoint | `http://127.0.0.1:11434` |
+| `GITHUB_TOKEN` | Optional token for GitHub discovery operations | Unset (unauthenticated discovery) |
+| `ZFORGE_ALLOWED_ORIGINS` | Comma-separated allowed browser origins | `https://zopair.github.io` |
+| `ZFORGE_EXECUTION_BACKEND` | `local` or `container` execution adapter | `local` |
+| `ZFORGE_AGENT_MAX_STEPS` | Maximum tool-loop steps | `16` |
+| `ZFORGE_MAX_PARALLEL_AGENTS` | Parallel agent limit | Defined by runtime fallback |
+| `ZFORGE_MODEL_REQUEST_TIMEOUT_MS` | Model request timeout | `60000` |
+| `ZFORGE_WEB_BUILD_TIMEOUT_MS` | Web build timeout | `840000` |
+| `ZFORGE_BROWSER_VERIFY_TIMEOUT_MS` | Browser verification timeout | `30000` |
+| `ZFORGE_ANDROID_BUILD_TIMEOUT_MS` | Android build timeout | `840000` |
+| `ZFORGE_VOICE_TIMEOUT_MS` | Voice request timeout | `120000` |
+| `ZFORGE_KEMETONE_TIMEOUT_MS` | KemeTone request timeout | `300000` |
+
+### Optional container settings
+
+| Variable | Default |
+|---|---|
+| `ZFORGE_CONTAINER_ENGINE` | `podman` |
+| `ZFORGE_CONTAINER_IMAGE` | `node:24-bookworm-slim` |
+| `ZFORGE_CONTAINER_NETWORK` | `bridge` |
+| `ZFORGE_CONTAINER_CPUS` | `2` |
+| `ZFORGE_CONTAINER_MEMORY` | `4g` |
+| `ZFORGE_CONTAINER_PIDS` | `256` |
+| `ZFORGE_CONTAINER_TMPFS` | `1g` |
+
+### Optional Android and voice tool paths
+
+| Variable | Purpose |
+|---|---|
+| `ANDROID_HOME`, `ANDROID_SDK_ROOT` | Android SDK location |
+| `JAVA_HOME` | JDK location |
+| `ZFORGE_WHISPER_BIN`, `ZFORGE_WHISPER_MODEL` | whisper.cpp executable and model path |
+| `ZFORGE_FFMPEG_BIN` | FFmpeg executable |
+| `ZFORGE_PIPER_BIN`, `ZFORGE_PIPER_MODEL` | Piper command and voice model path |
+| `ZFORGE_KEMETONE_PYTHON`, `ZFORGE_KEMETONE_DIR` | KemeTone Python executable and model directory |
+| `ZFORGE_KEMETONE_ESPEAK_BIN`, `ZFORGE_KEMETONE_ESPEAK_LIB` | eSpeak-NG executable and optional library path |
+
+`PATH` is inherited from the host environment. The static GitHub Pages interface requires **no environment variables**. Never commit real tokens, model credentials, or private runtime configuration.
+
+## 6. Usage Guide & Core Features
+
+1. Open BLACK VANTA and start a conversation in the chat interface.
+2. Ask a question or describe an engineering task. The conversational core routes dialogue separately from execution requests.
+3. For an execution request, review the proposed task plan and approval boundary documented by the project.
+4. Use the configured execution path:
+   - With the optional self-hosted runtime, connect the gateway from the runtime settings.
+   - Without a connected runtime, the PWA prepares a GitHub Issue handoff. Review the issue content and submit it while signed in as the repository owner.
+5. Follow the workflow result comment and download any generated artifacts before their retention period expires.
+
+### Main capabilities represented in the codebase
+
+- Conversational core, intent routing, and capability registry.
+- Chief Agent planning and specialist-agent factory.
+- Dependency-aware multi-agent task coordination.
+- Local repository memory, task history, and engineering issue ledger.
+- Authenticated task gateway with durable task state and progress events.
+- Local or optional container-backed workspace execution.
+- Repository/tool discovery and evidence-oriented tool evaluation.
+- Web build and Chromium/Firefox/WebKit verification services.
+- Android debug build worker and artifact handling.
+- Optional local speech-to-text and text-to-speech adapters.
+- GitHub Actions cloud task handoff with bounded, disposable execution.
+
+### Important operational boundaries
+
+- GitHub Pages serves a static PWA; it is not a persistent backend.
+- Cloud execution is event-triggered and asynchronous. The PWA does not provide a live in-page result stream for the GitHub Issue handoff.
+- Cloud task issues are public. Never include secrets, personal data, or confidential source material in them.
+- Cloud artifacts have a seven-day retention period in the documented workflow.
+- The local process runner is not an OS sandbox. Use a dedicated unprivileged account or the optional container backend.
+- Android release signing and iOS build workers are not implemented as complete release paths.
+- A successful workflow or test run is not proof of production readiness.
+
+See [Cloud Execution Fabric](docs/CLOUD_EXECUTION.md), [Task Gateway](docs/TASK_GATEWAY.md), and [Architecture](docs/ARCHITECTURE.md) for implementation boundaries.
+
+## 7. Live Demo & Screenshots
+
+- **GitHub Pages deployment target:** [https://zopair.github.io/ZForge/](https://zopair.github.io/ZForge/) (the workflow is configured; current public reachability was not independently confirmed during this review)
+- **Repository:** [https://github.com/zopair/ZForge](https://github.com/zopair/ZForge)
+- **Cloud execution design:** [docs/CLOUD_EXECUTION.md](docs/CLOUD_EXECUTION.md)
+
+The Pages workflow deploys the static site from `main` and runs a live smoke check after deployment. If the demo is temporarily unavailable, inspect the latest [Pages workflow run](https://github.com/zopair/ZForge/actions/workflows/pages.yml).
+
+### Screenshots
+
+Add current, real UI captures to `docs/screenshots/` and update the paths below. These are placeholders, not screenshots of verified states.
+
+<!-- ![BLACK VANTA desktop interface](docs/screenshots/black-vanta-desktop.png) -->
+<!-- ![BLACK VANTA mobile interface](docs/screenshots/black-vanta-mobile.png) -->
+<!-- ![Cloud task result and artifacts](docs/screenshots/cloud-task-result.png) -->
+
+## 8. Testing & Verification
+
+### Local checks
+
+```bash
+npm test
+node --check src/core/cloud-task-contract.js
+node --check src/runtime/server.js
+node --check scripts/run-cloud-task.mjs
+node --check scripts/run-cloud-conversation.mjs
+node --check src/core/cloud-conversation-bridge.js
+node --check scripts/post-cloud-task-result.mjs
+node --check assets/cloud-execution.js
+python3 -m py_compile scripts/kemetone-inference.py
+```
+
+### Browser smoke tests
+
+The CI workflow installs the pinned Playwright runner and browser binaries, then runs:
+
+```bash
+npm install --no-save --package-lock=false playwright@1.56.1
+npx playwright install --with-deps chromium firefox webkit
+node scripts/browser-smoke.mjs
+```
+
+### GitHub verification
+
+- Pull requests and pushes to the configured branches run the [Quality Gate](.github/workflows/ci.yml).
+- The [Pages deployment workflow](.github/workflows/pages.yml) publishes the static PWA and runs `scripts/pages-live-smoke.mjs`.
+- Cloud execution is exercised through the owner-scoped issue workflow; inspect the workflow run and resulting issue comment rather than assuming a task succeeded.
+
+## Proof of Concept & Enterprise Customization Readiness
+
+**Status:** Active PoC / MVP; suitable for technical review and controlled experimentation. Not certified or claimed as production-ready.
+
+Potential enterprise customization areas include identity integration, policy configuration, persistent job scheduling, isolated execution infrastructure, artifact retention controls, observability, SBOM/provenance generation, and organization-specific approval workflows. These are extension areas, not claims that those capabilities are already complete.
+
+## Intellectual Property & Authorship
+
+Project authorship and original implementation: **Aly Hussein Zopair (علي حسين زبير ALY HUSSEIN ZOPAIR)**.
+
+ZForge is an independently developed proof of concept. Third-party components, models, libraries, and assets remain subject to their respective licenses and notices. Review the repository's license and provenance records before redistribution or commercial deployment.
