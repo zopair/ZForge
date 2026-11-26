@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { chromium, firefox, webkit } from 'playwright';
 import { WebBrowserVerificationService } from '../src/runtime/web-browser-verification-service.js';
@@ -68,6 +68,21 @@ try {
       const navigation = await page.goto(origin, { waitUntil: 'networkidle' });
       assert.equal(navigation?.status(), 200, name + ': app document should return HTTP 200');
       assert.match(await page.title(), /BLACK VANTA/);
+      if (name === 'chromium') {
+        const screenshotDir = resolve('artifacts/screenshots');
+        await mkdir(screenshotDir, { recursive: true });
+        await page.screenshot({
+          path: resolve(screenshotDir, 'black-vanta-mobile.png'),
+          fullPage: true,
+        });
+        const desktopPage = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+        await desktopPage.goto(origin, { waitUntil: 'networkidle' });
+        await desktopPage.screenshot({
+          path: resolve(screenshotDir, 'black-vanta-desktop.png'),
+          fullPage: true,
+        });
+        await desktopPage.close();
+      }
       let createdCloudIssue = null;
       let createdCloudIssueCount = 0;
       let githubPreflightCount = 0;

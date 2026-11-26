@@ -49,3 +49,11 @@ jobs:
         run: npx playwright install --with-deps chromium firefox webkit
       - name: Run BLACK VANTA browser smoke tests
         run: node scripts/browser-smoke.mjs
+      - name: Upload BLACK VANTA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zforge-ui-screenshots
+          path: artifacts/screenshots/*.png
+          if-no-files-found: ignore
+          retention-days: 14
